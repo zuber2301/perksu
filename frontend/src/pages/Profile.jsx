@@ -1,0 +1,110 @@
+import { useAuthStore } from '../store/authStore'
+import { useQuery } from '@tanstack/react-query'
+import { walletsAPI, recognitionAPI } from '../lib/api'
+import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase } from 'react-icons/hi'
+
+export default function Profile() {
+  const { user } = useAuthStore()
+
+  const { data: wallet } = useQuery({
+    queryKey: ['myWallet'],
+    queryFn: () => walletsAPI.getMyWallet(),
+  })
+
+  const { data: stats } = useQuery({
+    queryKey: ['myRecognitionStats'],
+    queryFn: () => recognitionAPI.getMyStats(),
+  })
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Profile Header */}
+      <div className="card text-center">
+        <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-perksu-purple to-perksu-blue flex items-center justify-center text-white text-3xl font-bold mb-4">
+          {user?.first_name?.[0]}{user?.last_name?.[0]}
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {user?.first_name} {user?.last_name}
+        </h1>
+        <p className="text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</p>
+      </div>
+
+      {/* Contact Info */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4">Contact Information</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <HiOutlineMail className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="font-medium">{user?.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <HiOutlineBriefcase className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Role</p>
+              <p className="font-medium capitalize">{user?.role?.replace('_', ' ')}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <HiOutlineUser className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Status</p>
+              <p className="font-medium capitalize">{user?.status}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4">Recognition Stats</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">Points Balance</p>
+            <p className="text-2xl font-bold text-perksu-purple">{wallet?.data?.balance || 0}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">Lifetime Earned</p>
+            <p className="text-2xl font-bold text-green-600">{wallet?.data?.lifetime_earned || 0}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">Recognitions Given</p>
+            <p className="text-2xl font-bold text-blue-600">{stats?.data?.total_given || 0}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">Recognitions Received</p>
+            <p className="text-2xl font-bold text-orange-600">{stats?.data?.total_received || 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Badges */}
+      {stats?.data?.top_badges?.length > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-semibold mb-4">Top Badges</h2>
+          <div className="space-y-3">
+            {stats.data.top_badges.map((badge, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-perksu-orange to-perksu-pink flex items-center justify-center text-white text-sm font-bold">
+                    {index + 1}
+                  </div>
+                  <span className="font-medium">{badge.name}</span>
+                </div>
+                <span className="text-gray-500">{badge.count}x received</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
