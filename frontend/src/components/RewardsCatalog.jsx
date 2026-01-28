@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HiOutlineGift, HiOutlineSearch, HiOutlineFilter } from 'react-icons/hi'
+import { formatCurrency } from '../lib/currency'
 
 export default function RewardsCatalog({ vouchers, onRedeem, isRedeeming, walletBalance = 0 }) {
   const [search, setSearch] = useState('')
@@ -98,7 +99,7 @@ export default function RewardsCatalog({ vouchers, onRedeem, isRedeeming, wallet
                     <h3 className="font-semibold text-gray-900">{voucher.name}</h3>
                   </div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-perksu-purple/10 text-perksu-purple">
-                    {voucher.denomination || voucher.face_value}
+                    {formatCurrency(voucher.denomination || voucher.face_value)}
                   </span>
                 </div>
 
