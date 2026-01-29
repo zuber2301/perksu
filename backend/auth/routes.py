@@ -6,11 +6,12 @@ from datetime import timedelta
 from database import get_db
 from models import User
 from config import settings
-from auth.schemas import Token, LoginRequest, LoginResponse, UserResponse, OTPRequest, OTPVerify
-from auth.utils import verify_password, create_access_token, get_current_user, generate_otp
+from auth.schemas import Token, LoginRequest, LoginResponse, UserResponse, OTPRequest, OTPVerify, SystemAdminResponse
+from auth.utils import verify_password, create_access_token, get_current_user, generate_otp, get_system_admin
 from auth.email_service import send_otp_email
-from models import User, LoginOTP
+from models import User, LoginOTP, SystemAdmin, Tenant
 from datetime import datetime, timedelta
+from uuid import UUID
 
 router = APIRouter()
 
@@ -20,27 +21,43 @@ async def request_otp(
     otp_data: OTPRequest,
     db: Session = Depends(get_db)
 ):
-    """Generate and send OTP to user email"""
-    # Security: Rate limiting check (e.g., max 5 requests per hour)
-    # For now, we'll just implement the core logic
+    """Generate and send OTP to user personal email or mobile phone if valid"""
+    identifier = None
+    target_user = None
+
+    if otp_data.email:
+        identifier = otp_data.email
+        target_user = db.query(User).filter(User.personal_email == otp_data.email).first()
+    elif otp_data.mobile_phone:
+        identifier = otp_data.mobile_phone
+        target_user = db.query(User).filter(User.mobile_phone == otp_data.mobile_phone).first()
+    else:
+        raise HTTPException(status_code=400, detail="Email or Mobile Phone is required")
     
+    if not target_user:
+        # User requested: "verification is must"
+        # To avoid enumeration, we still return "sent", but we don't actually send anything.
+        return {"message": "If an account is associated with this identifier, an OTP has been sent."}
+
     otp_code = generate_otp()
     expires_at = datetime.utcnow() + timedelta(minutes=5)
     
-    # Check if a user exists with this email (optional, based on requirements)
-    # The requirement says "Do not reveal if email exists", but we need a user to issue a JWT later.
-    # However, for request-otp, we just store it.
-    
     new_otp = LoginOTP(
-        email=otp_data.email,
+        email=identifier, # Storing the identifier (email or phone) in the email field of LoginOTP for simplicity
         otp_code=otp_code,
         expires_at=expires_at
     )
     db.add(new_otp)
     db.commit()
     
-    # Send email
-    send_otp_email(otp_data.email, otp_code)
+    # Send via appropriate channel
+    if otp_data.email:
+        send_otp_email(otp_data.email, otp_code)
+        print(f"OTP Email sent to {otp_data.email}")
+    else:
+        # TODO: Implement actual SMS service (Twilio, AWS SNS, etc.)
+        # For now, we simulate sending SMS
+        print(f"SMS OTP [{otp_code}] sent to {otp_data.mobile_phone}")
     
     return {"message": "OTP sent successfully"}
 
@@ -51,8 +68,12 @@ async def verify_otp(
     db: Session = Depends(get_db)
 ):
     """Verify OTP and return JWT token"""
+    identifier = verify_data.email or verify_data.mobile_phone
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Identifier (email or mobile_phone) is required")
+
     record = db.query(LoginOTP).filter(
-        LoginOTP.email == verify_data.email,
+        LoginOTP.email == identifier,
         LoginOTP.used == False,
         LoginOTP.expires_at > datetime.utcnow()
     ).order_by(LoginOTP.created_at.desc()).first()
@@ -75,10 +96,11 @@ async def verify_otp(
     record.used = True
     db.commit()
     
-    # Find or Create user (based on requirement "3.5 ... user = get_or_create_user(email)")
-    # In many enterprise apps, we might only allow existing users.
-    # For this demo, we'll check for existing user or we can create if allowed.
-    user = db.query(User).filter(User.email == verify_data.email).first()
+    # Find user (verify against personal_email or mobile_phone)
+    if verify_data.email:
+        user = db.query(User).filter(User.personal_email == verify_data.email).first()
+    else:
+        user = db.query(User).filter(User.mobile_phone == verify_data.mobile_phone).first()
     
     if not user:
         # If no user exists, we might need to handle registration or error.
@@ -101,7 +123,8 @@ async def verify_otp(
             "sub": str(user.id),
             "tenant_id": str(user.tenant_id),
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "type": "tenant"
         },
         expires_delta=access_token_expires
     )
@@ -118,7 +141,36 @@ async def login(
     login_data: LoginRequest,
     db: Session = Depends(get_db)
 ):
-    """Authenticate user and return JWT token"""
+    """Authenticate user or system admin and return JWT token"""
+    # 1. Check SystemAdmin table first
+    system_admin = db.query(SystemAdmin).filter(SystemAdmin.email == login_data.email).first()
+    if system_admin and verify_password(login_data.password, system_admin.password_hash):
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+        access_token = create_access_token(
+            data={
+                "sub": str(system_admin.id),
+                "email": system_admin.email,
+                "role": "platform_admin",
+                "type": "system"
+            },
+            expires_delta=access_token_expires
+        )
+        return LoginResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserResponse(
+                id=system_admin.id,
+                tenant_id=UUID('00000000-0000-0000-0000-000000000000'),
+                email=system_admin.email,
+                first_name=system_admin.first_name,
+                last_name=system_admin.last_name,
+                role="platform_admin",
+                is_super_admin=system_admin.is_super_admin,
+                status="active"
+            )
+        )
+
+    # 2. Check regular User table
     user = db.query(User).filter(User.email == login_data.email).first()
     
     if not user or not verify_password(login_data.password, user.password_hash):
@@ -140,7 +192,8 @@ async def login(
             "sub": str(user.id),
             "tenant_id": str(user.tenant_id),
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "type": "tenant"
         },
         expires_delta=access_token_expires
     )
@@ -214,3 +267,49 @@ async def get_current_user_info(
 async def logout(current_user: User = Depends(get_current_user)):
     """Logout user (client should discard the token)"""
     return {"message": "Successfully logged out"}
+
+
+@router.post("/impersonate/{tenant_id}", response_model=LoginResponse)
+async def impersonate_tenant(
+    tenant_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: SystemAdmin = Depends(get_system_admin)
+):
+    """Allows a system admin to impersonate a tenant admin"""
+    # Find the tenant admin for this tenant
+    user = db.query(User).filter(
+        User.tenant_id == tenant_id,
+        User.role == 'admin'
+    ).first()
+    
+    if not user:
+        # If no admin, try to find any active user in that tenant
+        user = db.query(User).filter(
+            User.tenant_id == tenant_id,
+            User.status == 'active'
+        ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No user found for this tenant to impersonate"
+        )
+
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={
+            "sub": str(user.id),
+            "tenant_id": str(user.tenant_id),
+            "email": user.email,
+            "role": user.role,
+            "type": "tenant",
+            "impersonator_id": str(current_admin.id)
+        },
+        expires_delta=access_token_expires
+    )
+    
+    return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse.from_orm(user)
+    )

@@ -69,3 +69,32 @@ class UserListResponse(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str
+
+
+class StagingUserResponse(BaseModel):
+    id: UUID
+    batch_id: UUID
+    raw_full_name: Optional[str] = None
+    raw_email: Optional[str] = None
+    raw_department: Optional[str] = None
+    raw_role: Optional[str] = None
+    raw_manager_email: Optional[str] = None
+    is_valid: bool
+    validation_errors: list[str]
+    processed: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class BulkUploadResponse(BaseModel):
+    batch_id: UUID
+    total_rows: int
+    valid_rows: int
+    invalid_rows: int
+
+
+class BulkActionRequest(BaseModel):
+    user_ids: list[UUID]
+    action: Literal['deactivate', 'activate', 'resend_invite']

@@ -21,6 +21,20 @@ CREATE TABLE tenants (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- System Admins (God-mode Platform Operators)
+CREATE TABLE system_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    is_super_admin BOOLEAN DEFAULT FALSE,
+    mfa_enabled BOOLEAN DEFAULT TRUE,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Master Budget Ledger (Platform Level)
 CREATE TABLE master_budget_ledger (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -48,6 +62,8 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
+    personal_email VARCHAR(255),
+    mobile_phone VARCHAR(20),
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
@@ -374,7 +390,7 @@ INSERT INTO departments (id, tenant_id, name) VALUES
 -- Password for all jSpark users is 'jspark123'
 -- Hash: $2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG
 INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, role, department_id, is_super_admin) VALUES
-('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'super_user@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Platform', 'Owner', 'platform_admin', '00000000-0000-0000-0000-100000000001', TRUE),
+('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'super_user@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Perksu', 'Admin', 'platform_admin', '00000000-0000-0000-0000-100000000001', TRUE),
 ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'hr@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'HR', 'Admin', 'hr_admin', '00000000-0000-0000-0000-100000000001', FALSE),
 ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'manager@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Manager', 'User', 'manager', '00000000-0000-0000-0000-100000000001', FALSE),
 ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'employee@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Employee', 'User', 'employee', '00000000-0000-0000-0000-100000000001', FALSE);

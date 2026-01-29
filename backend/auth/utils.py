@@ -9,8 +9,9 @@ from uuid import UUID
 
 from config import settings
 from database import get_db
-from models import User
+from models import User, SystemAdmin
 from auth.schemas import TokenData
+from auth.context import TenantContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -48,6 +49,9 @@ def decode_token(token: str) -> TokenData:
         tenant_id: str = payload.get("tenant_id")
         email: str = payload.get("email")
         role: str = payload.get("role")
+        token_type: str = payload.get("type", "tenant")
+        impersonator_id: str = payload.get("impersonator_id")
+        
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -58,7 +62,9 @@ def decode_token(token: str) -> TokenData:
             user_id=UUID(user_id),
             tenant_id=UUID(tenant_id) if tenant_id else None,
             email=email,
-            role=role
+            role=role,
+            type=token_type,
+            impersonator_id=UUID(impersonator_id) if impersonator_id else None
         )
     except JWTError:
         raise HTTPException(
@@ -71,21 +77,40 @@ def decode_token(token: str) -> TokenData:
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-) -> User:
+):
     token_data = decode_token(token)
-    user = db.query(User).filter(User.id == token_data.user_id).first()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    if user.status != 'active':
+    
+    if token_data.type == "system":
+        admin = db.query(SystemAdmin).filter(SystemAdmin.id == token_data.user_id).first()
+        if admin is None:
+            raise HTTPException(status_code=401, detail="System Admin not found")
+        
+        # Set Global Access context
+        TenantContext.set(tenant_id=token_data.tenant_id, global_access=True)
+        admin.token_data = token_data
+        return admin
+    else:
+        user = db.query(User).filter(User.id == token_data.user_id).first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        if user.status != 'active':
+            raise HTTPException(status_code=403, detail="User account is not active")
+        
+        # Set Tenant Restricted context
+        TenantContext.set(tenant_id=user.tenant_id, global_access=False)
+        user.token_data = token_data
+        return user
+
+
+async def get_system_admin(
+    current_user = Depends(get_current_user)
+) -> SystemAdmin:
+    if not isinstance(current_user, SystemAdmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is not active"
+            detail="System Admin access required"
         )
-    return user
+    return current_user
 
 
 def require_role(*allowed_roles):

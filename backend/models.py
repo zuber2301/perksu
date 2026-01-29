@@ -79,6 +79,25 @@ class Tenant(Base):
     master_budget_ledger = relationship("MasterBudgetLedger", back_populates="tenant")
 
 
+class SystemAdmin(Base):
+    __tablename__ = "system_admins"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    first_name = Column(String(100))
+    last_name = Column(String(100))
+    is_super_admin = Column(Boolean, default=False)
+    mfa_enabled = Column(Boolean, default=True)
+    last_login_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
+
 class MasterBudgetLedger(Base):
     __tablename__ = "master_budget_ledger"
     
@@ -116,6 +135,8 @@ class User(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     email = Column(String(255), nullable=False)
+    personal_email = Column(String(255))
+    mobile_phone = Column(String(20))
     password_hash = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
@@ -126,7 +147,8 @@ class User(Base):
     date_of_birth = Column(Date)
     hire_date = Column(Date)
     is_super_admin = Column(Boolean, default=False)
-    status = Column(String(50), default='active')
+    status = Column(String(50), default='pending_invite') # pending_invite, active, deactivated
+    invitation_sent_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -140,6 +162,34 @@ class User(Base):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+
+class StagingUser(Base):
+    __tablename__ = "staging_users"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    batch_id = Column(GUID(), nullable=False) # To group uploads
+    
+    # Data from CSV
+    raw_full_name = Column(String(255))
+    raw_email = Column(String(255))
+    raw_department = Column(String(255))
+    raw_role = Column(String(50))
+    raw_manager_email = Column(String(255))
+    
+    # Validation results
+    is_valid = Column(Boolean, default=True)
+    validation_errors = Column(JSONType(), default=[]) # List of strings
+    
+    # Processed data (if valid)
+    first_name = Column(String(100))
+    last_name = Column(String(100))
+    department_id = Column(GUID())
+    manager_id = Column(GUID())
+    
+    processed = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class LoginOTP(Base):

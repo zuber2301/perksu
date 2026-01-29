@@ -3,6 +3,13 @@ import { useQuery } from '@tanstack/react-query'
 import { walletsAPI, recognitionAPI } from '../lib/api'
 import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase } from 'react-icons/hi'
 
+const ROLE_DISPLAY_NAMES = {
+  platform_admin: 'Perksu Admin',
+  hr_admin: 'HR Admin',
+  manager: 'Manager',
+  employee: 'Employee'
+}
+
 export default function Profile() {
   const { user } = useAuthStore()
 
@@ -26,7 +33,7 @@ export default function Profile() {
         <h1 className="text-2xl font-bold text-gray-900">
           {user?.first_name} {user?.last_name}
         </h1>
-        <p className="text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</p>
+        <p className="text-gray-500">{ROLE_DISPLAY_NAMES[user?.role] || user?.role?.replace('_', ' ')}</p>
       </div>
 
       {/* Contact Info */}
@@ -48,7 +55,7 @@ export default function Profile() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Role</p>
-              <p className="font-medium capitalize">{user?.role?.replace('_', ' ')}</p>
+              <p className="font-medium">{ROLE_DISPLAY_NAMES[user?.role] || user?.role?.replace('_', ' ')}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">

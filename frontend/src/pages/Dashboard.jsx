@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore'
 import { walletsAPI, recognitionAPI, feedAPI } from '../lib/api'
 import { format } from 'date-fns'
 import { HiOutlineSparkles, HiOutlineGift, HiOutlineTrendingUp, HiOutlineUsers } from 'react-icons/hi'
+import { formatCurrency } from '../lib/currency'
 import WalletBalance from '../components/WalletBalance'
 import FeedCard from '../components/FeedCard'
 
@@ -50,8 +51,8 @@ export default function Dashboard() {
               <HiOutlineSparkles className="w-6 h-6 text-perksu-purple" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
-            {stats?.data?.points_given || 0} points
+          <p className="text-sm text-gray-500 mt-2 font-medium">
+             Current Quarter: {formatCurrency(stats?.data?.points_given || 0)}
           </p>
         </div>
 
@@ -65,8 +66,8 @@ export default function Dashboard() {
               <HiOutlineTrendingUp className="w-6 h-6 text-perksu-green" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
-            {stats?.data?.points_received || 0} points
+          <p className="text-sm text-gray-500 mt-2 font-medium">
+             Total Rewards: {formatCurrency(stats?.data?.points_received || 0)}
           </p>
         </div>
 

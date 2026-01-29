@@ -35,6 +35,13 @@ const adminNavigation = [
   { name: 'Audit Log', href: '/audit', icon: HiOutlineClipboardList, roles: ['hr_admin', 'platform_admin'] },
 ]
 
+const ROLE_DISPLAY_NAMES = {
+  platform_admin: 'Perksu Admin',
+  hr_admin: 'HR Admin',
+  manager: 'Manager',
+  employee: 'Employee'
+}
+
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user, logout } = useAuthStore()
@@ -134,8 +141,8 @@ export default function Layout() {
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {user?.first_name} {user?.last_name}
                 </p>
-                <p className="text-xs text-gray-500 truncate capitalize">
-                  {user?.role?.replace('_', ' ')}
+                <p className="text-xs text-gray-500 truncate">
+                  {ROLE_DISPLAY_NAMES[user?.role] || user?.role?.replace('_', ' ')}
                 </p>
               </div>
             </div>

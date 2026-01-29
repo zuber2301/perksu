@@ -1,0 +1,9 @@
+email,personal_email,mobile_phone,first_name,last_name,role,password,tenant_id,status
+admin@jspark.com,admin_personal@gmail.com,+919876543210,Tenant,Admin,hr_admin,Pass123!,00000000-0000-0000-0000-000000000000,active
+manager@jspark.com,sarah_dev@gmail.com,+919876543211,Sarah,Manager,manager,Pass123!,00000000-0000-0000-0000-000000000000,active
+employee@jspark.com,john_doe@gmail.com,+919876543212,John,Employee,employee,Pass123!,00000000-0000-0000-0000-000000000000,active
+finance@jspark.com,finance_perks@gmail.com,+919876543213,Finance,User,employee,Pass123!,00000000-0000-0000-0000-000000000000,active
+director@jspark.com,mike_director@gmail.com,+919876543214,Michael,Director,manager,Pass123!,00000000-0000-0000-0000-000000000000,active
+intern@jspark.com,alice_intern@gmail.com,+919876543215,Alice,Intern,employee,Pass123!,00000000-0000-0000-0000-000000000000,active
+marketing@jspark.com,marketing_lead@gmail.com,+919876543216,Marketing,Lead,manager,Pass123!,00000000-0000-0000-0000-000000000000,active
+sales@jspark.com,sales_rep@gmail.com,+919876543217,Sales,Rep,employee,Pass123!,00000000-0000-0000-0000-000000000000,active

@@ -73,7 +73,7 @@ docker-compose up -d
 
 | Email | Password | Role |
 |-------|----------|------|
-| super_user@jspark.com | jspark123 | Platform Owner |
+| super_user@jspark.com | jspark123 | Perksu Admin |
 | admin@triton.com | jspark123 | HR Admin |
 | manager@triton.com | jspark123 | Manager |
 | employee@triton.com | jspark123 | Employee |
