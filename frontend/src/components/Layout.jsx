@@ -27,12 +27,6 @@ const navigation = [
   { name: 'Wallet', href: '/wallet', icon: HiOutlineCash },
 ]
 
-const recognitionShortcuts = [
-  { name: 'Individual Award', href: '/recognize?type=individual_award', icon: HiOutlineSparkles, roles: ['manager', 'hr_admin', 'platform_admin'] },
-  { name: 'Group Award', href: '/recognize?type=group_award', icon: HiOutlineUsers, roles: ['manager', 'hr_admin', 'platform_admin'] },
-  { name: 'E-Card', href: '/recognize?type=ecard', icon: HiOutlineNewspaper },
-]
-
 const adminNavigation = [
   { name: 'Budgets', href: '/budgets', icon: HiOutlineChartBar, roles: ['manager', 'hr_admin', 'platform_admin'] },
   { name: 'Users', href: '/users', icon: HiOutlineUsers, roles: ['hr_admin', 'platform_admin'] },
@@ -103,24 +97,6 @@ export default function Layout() {
                 <item.icon className="w-5 h-5" />
                 {item.name}
               </NavLink>
-            ))}
-
-            <div className="pt-4 pb-2">
-              <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                Quick Actions
-              </p>
-            </div>
-            {recognitionShortcuts.map((item) => (
-              canAccess(item.roles) && (
-                <NavLink
-                  key={item.name}
-                  to={item.href}
-                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
-                >
-                  <item.icon className="w-5 h-5 transition-colors" />
-                  <span className="text-sm">{item.name}</span>
-                </NavLink>
-              )
             ))}
 
             {adminNavigation.some(item => canAccess(item.roles)) && (
