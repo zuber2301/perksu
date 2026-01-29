@@ -56,6 +56,7 @@ async def login(
             role=user.role,
             department_id=user.department_id,
             avatar_url=user.avatar_url,
+            is_super_admin=user.is_super_admin,
             status=user.status
         )
     )

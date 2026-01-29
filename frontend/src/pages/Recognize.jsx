@@ -30,36 +30,21 @@ export default function Recognize() {
     queryFn: () => recognitionAPI.getAll({ limit: 10 }),
   })
 
-  const recognitionMutation = useMutation({
-    mutationFn: (data) => recognitionAPI.create(data),
-    onSuccess: () => {
-      toast.success('Recognition sent successfully! 🎉')
-      queryClient.invalidateQueries(['recognitions'])
-      queryClient.invalidateQueries(['feed'])
-      queryClient.invalidateQueries(['myWallet'])
-      setShowModal(false)
-      setSelectedUser(null)
-      setSearchQuery('')
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to send recognition')
-    },
-  })
-
   const handleSelectUser = (selectedUser) => {
     setSelectedUser(selectedUser)
     setShowModal(true)
   }
 
-  const handleSendRecognition = (data) => {
-    recognitionMutation.mutate({
-      to_user_id: selectedUser.id,
-      ...data,
-    })
-  }
-
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      <RecognitionModal 
+        isOpen={showModal} 
+        onClose={() => {
+          setShowModal(false)
+          setSelectedUser(null)
+        }}
+        initialSelectedUser={selectedUser}
+      />
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-perksu-purple to-perksu-blue rounded-2xl mb-4">
@@ -157,19 +142,6 @@ export default function Recognize() {
           </div>
         </div>
       )}
-
-      {/* Recognition Modal */}
-      <RecognitionModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false)
-          setSelectedUser(null)
-        }}
-        recipient={selectedUser}
-        badges={badges?.data || []}
-        onSubmit={handleSendRecognition}
-        isLoading={recognitionMutation.isPending}
-      />
     </div>
   )
 }

@@ -114,7 +114,10 @@ export const notificationsAPI = {
 // Tenants API
 export const tenantsAPI = {
   getCurrent: () => api.get('/tenants/current'),
+  getAll: () => api.get('/tenants'),
+  getById: (id) => api.get(`/tenants/${id}`),
   updateCurrent: (data) => api.put('/tenants/current', data),
+  provision: (data) => api.post('/tenants', data),
   getDepartments: () => api.get('/tenants/departments'),
   createDepartment: (data) => api.post('/tenants/departments', data),
   updateDepartment: (id, data) => api.put(`/tenants/departments/${id}`, data),

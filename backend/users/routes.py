@@ -13,6 +13,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[UserListResponse])
 async def get_users(
+    tenant_id: Optional[UUID] = None,
     department_id: Optional[UUID] = None,
     role: Optional[str] = None,
     status: Optional[str] = Query(default="active"),
@@ -21,8 +22,13 @@ async def get_users(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all users for current tenant with optional filters"""
-    query = db.query(User).filter(User.tenant_id == current_user.tenant_id)
+    """Get users with optional filters (platform admin can view all tenants)"""
+    query = db.query(User)
+
+    if current_user.role != 'platform_admin':
+        query = query.filter(User.tenant_id == current_user.tenant_id)
+    elif tenant_id:
+        query = query.filter(User.tenant_id == tenant_id)
     
     if department_id:
         query = query.filter(User.department_id == department_id)

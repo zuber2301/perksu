@@ -50,7 +50,9 @@ def setup_database():
         id="550e8400-e29b-41d4-a716-446655440000",
         name="Test Corp",
         slug="test-corp",
-        status="active"
+        status="ACTIVE",
+        subscription_tier="basic",
+        master_budget_balance=10000
     )
     db.add(tenant)
     db.commit()

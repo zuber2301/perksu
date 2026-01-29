@@ -102,10 +102,11 @@ export default function Login() {
           <div className="mt-8 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</p>
             <div className="space-y-1 text-sm text-gray-600">
-              <p><span className="font-medium">HR Admin:</span> admin@demo.com</p>
-              <p><span className="font-medium">Manager:</span> manager@demo.com</p>
-              <p><span className="font-medium">Employee:</span> employee@demo.com</p>
-              <p className="text-gray-400 mt-2">Password: password123</p>
+              <p><span className="font-medium">Platform Owner:</span> super_user@jspark.com</p>
+              <p><span className="font-medium">HR Admin:</span> admin@triton.com</p>
+              <p><span className="font-medium">Manager:</span> manager@triton.com</p>
+              <p><span className="font-medium">Employee:</span> employee@triton.com</p>
+              <p className="text-gray-400 mt-2">Password: jspark123</p>
             </div>
           </div>
         </div>

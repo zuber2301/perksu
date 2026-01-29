@@ -38,11 +38,25 @@ async def get_feed(
         # Enrich metadata based on event type
         metadata = dict(item.event_metadata) if item.event_metadata else {}
         
-        if item.event_type == 'recognition' and item.reference_id:
+        if item.event_type in ['recognition', 'milestone'] and item.reference_id:
             recognition = db.query(Recognition).filter(Recognition.id == item.reference_id).first()
             if recognition:
                 metadata['message'] = recognition.message
                 metadata['points'] = str(recognition.points)
+                metadata['recognition_type'] = recognition.recognition_type
+                if recognition.badge_id:
+                    badge = db.query(Badge).filter(Badge.id == recognition.badge_id).first()
+                    if badge:
+                        metadata['badge_name'] = badge.name
+                        metadata['badge_icon'] = badge.icon_url
+                if recognition.ecard_template:
+                    metadata['ecard_template'] = recognition.ecard_template
+        
+        if item.event_type == 'team_spotlight' and item.reference_id:
+            recognition = db.query(Recognition).filter(Recognition.id == item.reference_id).first()
+            if recognition:
+                metadata['message'] = recognition.message
+                metadata['recognition_type'] = 'group_award'
                 if recognition.badge_id:
                     badge = db.query(Badge).filter(Badge.id == recognition.badge_id).first()
                     if badge:
@@ -90,11 +104,25 @@ async def get_my_feed(
         
         metadata = dict(item.event_metadata) if item.event_metadata else {}
         
-        if item.event_type == 'recognition' and item.reference_id:
+        if item.event_type in ['recognition', 'milestone'] and item.reference_id:
             recognition = db.query(Recognition).filter(Recognition.id == item.reference_id).first()
             if recognition:
                 metadata['message'] = recognition.message
                 metadata['points'] = str(recognition.points)
+                metadata['recognition_type'] = recognition.recognition_type
+                if recognition.badge_id:
+                    badge = db.query(Badge).filter(Badge.id == recognition.badge_id).first()
+                    if badge:
+                        metadata['badge_name'] = badge.name
+                        metadata['badge_icon'] = badge.icon_url
+                if recognition.ecard_template:
+                    metadata['ecard_template'] = recognition.ecard_template
+
+        if item.event_type == 'team_spotlight' and item.reference_id:
+            recognition = db.query(Recognition).filter(Recognition.id == item.reference_id).first()
+            if recognition:
+                metadata['message'] = recognition.message
+                metadata['recognition_type'] = 'group_award'
                 if recognition.badge_id:
                     badge = db.query(Badge).filter(Badge.id == recognition.badge_id).first()
                     if badge:

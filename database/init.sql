@@ -12,12 +12,24 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE tenants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    domain VARCHAR(255) UNIQUE,
-    logo_url VARCHAR(500),
-    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
-    settings JSONB DEFAULT '{}',
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    branding_config JSONB DEFAULT '{}',
+    subscription_tier VARCHAR(50) DEFAULT 'basic',
+    master_budget_balance NUMERIC(15, 2) DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TRIAL')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Master Budget Ledger (Platform Level)
+CREATE TABLE master_budget_ledger (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    transaction_type VARCHAR(20) NOT NULL,
+    amount NUMERIC(15, 2) NOT NULL,
+    balance_after NUMERIC(15, 2) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Departments
@@ -45,6 +57,7 @@ CREATE TABLE users (
     avatar_url VARCHAR(500),
     date_of_birth DATE,
     hire_date DATE,
+    is_super_admin BOOLEAN DEFAULT FALSE,
     status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -146,8 +159,10 @@ CREATE TABLE recognitions (
     from_user_id UUID NOT NULL REFERENCES users(id),
     to_user_id UUID NOT NULL REFERENCES users(id),
     badge_id UUID REFERENCES badges(id),
+    recognition_type VARCHAR(50) DEFAULT 'standard',
     points DECIMAL(15, 2) NOT NULL DEFAULT 0,
     message TEXT NOT NULL,
+    ecard_template VARCHAR(100),
     visibility VARCHAR(20) DEFAULT 'public' CHECK (visibility IN ('public', 'private', 'department')),
     status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('pending', 'active', 'rejected', 'revoked')),
     department_budget_id UUID REFERENCES department_budgets(id),
@@ -178,7 +193,7 @@ CREATE TABLE recognition_reactions (
 CREATE TABLE feed (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    event_type VARCHAR(50) NOT NULL CHECK (event_type IN ('recognition', 'redemption', 'milestone', 'birthday', 'anniversary', 'achievement')),
+    event_type VARCHAR(50) NOT NULL CHECK (event_type IN ('recognition', 'redemption', 'milestone', 'birthday', 'anniversary', 'achievement', 'team_spotlight')),
     reference_type VARCHAR(50),
     reference_id UUID,
     actor_id UUID REFERENCES users(id),
@@ -337,11 +352,34 @@ INSERT INTO vouchers (brand_id, name, description, denomination, points_required
 ((SELECT id FROM brands WHERE name = 'Target'), 'Target GiftCard $25', 'Valid at Target stores and Target.com', 25.00, 250, 0, 365),
 ((SELECT id FROM brands WHERE name = 'Target'), 'Target GiftCard $50', 'Valid at Target stores and Target.com', 50.00, 500, 0, 365);
 
--- Insert demo tenant
-INSERT INTO tenants (id, name, domain, status) VALUES
-('550e8400-e29b-41d4-a716-446655440000', 'Demo Company', 'demo.perksu.com', 'active');
+-- Root Tenant (jSpark) & Platform Users
+INSERT INTO tenants (id, name, slug, status, subscription_tier, master_budget_balance) VALUES
+('00000000-0000-0000-0000-000000000000', 'jSpark', 'jspark', 'ACTIVE', 'enterprise', 0);
 
--- Insert demo departments
+INSERT INTO departments (id, tenant_id, name) VALUES
+('00000000-0000-0000-0000-100000000001', '00000000-0000-0000-0000-000000000000', 'Platform Operations');
+
+-- Password for all jSpark users is 'jspark123'
+-- Hash: $2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG
+INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, role, department_id, is_super_admin) VALUES
+('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'super_user@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Platform', 'Owner', 'platform_admin', '00000000-0000-0000-0000-100000000001', TRUE),
+('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'hr@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'HR', 'Admin', 'hr_admin', '00000000-0000-0000-0000-100000000001', FALSE),
+('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'manager@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Manager', 'User', 'manager', '00000000-0000-0000-0000-100000000001', FALSE),
+('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'employee@jspark.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Employee', 'User', 'employee', '00000000-0000-0000-0000-100000000001', FALSE);
+
+INSERT INTO wallets (tenant_id, user_id, balance, lifetime_earned, lifetime_spent) VALUES
+('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001', 0, 0, 0),
+('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000002', 0, 0, 0),
+('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000003', 0, 0, 0),
+('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000004', 0, 0, 0);
+
+-- Tenants (Triton, Uniplane, Zebra)
+INSERT INTO tenants (id, name, slug, status, subscription_tier, master_budget_balance) VALUES
+('550e8400-e29b-41d4-a716-446655440000', 'Triton', 'triton', 'ACTIVE', 'enterprise', 100000),
+('551e8400-e29b-41d4-a716-446655440000', 'Uniplane', 'uniplane', 'ACTIVE', 'premium', 75000),
+('552e8400-e29b-41d4-a716-446655440000', 'Zebra', 'zebra', 'ACTIVE', 'basic', 50000);
+
+-- Departments (Triton)
 INSERT INTO departments (id, tenant_id, name) VALUES
 ('660e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440000', 'Engineering'),
 ('660e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440000', 'Marketing'),
@@ -349,26 +387,77 @@ INSERT INTO departments (id, tenant_id, name) VALUES
 ('660e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440000', 'Human Resources'),
 ('660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440000', 'Finance');
 
--- Insert demo users (password is 'password123' for all)
--- Hash: $2b$12$LioEPbbh3tSOF5x/gIBHT.L7pviNt5hvDx8ml.S/v.f6pctz9gYG2
-INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, role, department_id) VALUES
-('770e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440000', 'admin@demo.com', '$2b$12$LioEPbbh3tSOF5x/gIBHT.L7pviNt5hvDx8ml.S/v.f6pctz9gYG2', 'Admin', 'User', 'hr_admin', '660e8400-e29b-41d4-a716-446655440004'),
-('770e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440000', 'manager@demo.com', '$2b$12$LioEPbbh3tSOF5x/gIBHT.L7pviNt5hvDx8ml.S/v.f6pctz9gYG2', 'John', 'Manager', 'manager', '660e8400-e29b-41d4-a716-446655440001'),
-('770e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440000', 'employee@demo.com', '$2b$12$LioEPbbh3tSOF5x/gIBHT.L7pviNt5hvDx8ml.S/v.f6pctz9gYG2', 'Jane', 'Employee', 'employee', '660e8400-e29b-41d4-a716-446655440001'),
-('770e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440000', 'sarah@demo.com', '$2b$12$LioEPbbh3tSOF5x/gIBHT.L7pviNt5hvDx8ml.S/v.f6pctz9gYG2', 'Sarah', 'Wilson', 'employee', '660e8400-e29b-41d4-a716-446655440002'),
-('770e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440000', 'mike@demo.com', '$2b$12$LioEPbbh3tSOF5x/gIBHT.L7pviNt5hvDx8ml.S/v.f6pctz9gYG2', 'Mike', 'Johnson', 'manager', '660e8400-e29b-41d4-a716-446655440003');
+-- Departments (Uniplane)
+INSERT INTO departments (id, tenant_id, name) VALUES
+('661e8400-e29b-41d4-a716-446655440001', '551e8400-e29b-41d4-a716-446655440000', 'Engineering'),
+('661e8400-e29b-41d4-a716-446655440002', '551e8400-e29b-41d4-a716-446655440000', 'Operations'),
+('661e8400-e29b-41d4-a716-446655440003', '551e8400-e29b-41d4-a716-446655440000', 'People');
 
--- Update manager relationships
-UPDATE users SET manager_id = '770e8400-e29b-41d4-a716-446655440002' WHERE id = '770e8400-e29b-41d4-a716-446655440003';
-UPDATE users SET manager_id = '770e8400-e29b-41d4-a716-446655440001' WHERE id IN ('770e8400-e29b-41d4-a716-446655440002', '770e8400-e29b-41d4-a716-446655440005');
+-- Departments (Zebra)
+INSERT INTO departments (id, tenant_id, name) VALUES
+('662e8400-e29b-41d4-a716-446655440001', '552e8400-e29b-41d4-a716-446655440000', 'Engineering'),
+('662e8400-e29b-41d4-a716-446655440002', '552e8400-e29b-41d4-a716-446655440000', 'Operations'),
+('662e8400-e29b-41d4-a716-446655440003', '552e8400-e29b-41d4-a716-446655440000', 'Customer Success');
 
--- Create wallets for demo users
-INSERT INTO wallets (tenant_id, user_id, balance, lifetime_earned, lifetime_spent) VALUES
-('550e8400-e29b-41d4-a716-446655440000', '770e8400-e29b-41d4-a716-446655440001', 500, 500, 0),
-('550e8400-e29b-41d4-a716-446655440000', '770e8400-e29b-41d4-a716-446655440002', 1000, 1500, 500),
-('550e8400-e29b-41d4-a716-446655440000', '770e8400-e29b-41d4-a716-446655440003', 750, 1000, 250),
-('550e8400-e29b-41d4-a716-446655440000', '770e8400-e29b-41d4-a716-446655440004', 300, 400, 100),
-('550e8400-e29b-41d4-a716-446655440000', '770e8400-e29b-41d4-a716-446655440005', 850, 1200, 350);
+-- Seed users (password is 'jspark123' for all seeded users)
+-- Hash: $2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG
+INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, role, department_id, is_super_admin) VALUES
+('770e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440000', 'admin@triton.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Triton', 'Admin', 'hr_admin', '660e8400-e29b-41d4-a716-446655440004', TRUE),
+('770e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440000', 'manager@triton.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Triton', 'Manager', 'manager', '660e8400-e29b-41d4-a716-446655440001', FALSE),
+('770e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440000', 'employee@triton.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Triton', 'Employee', 'employee', '660e8400-e29b-41d4-a716-446655440001', FALSE),
+('770e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440000', 'sarah@triton.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Sarah', 'Wilson', 'employee', '660e8400-e29b-41d4-a716-446655440002', FALSE),
+('770e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440000', 'mike@triton.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Mike', 'Johnson', 'manager', '660e8400-e29b-41d4-a716-446655440003', FALSE),
+('771e8400-e29b-41d4-a716-446655440001', '551e8400-e29b-41d4-a716-446655440000', 'admin@uniplane.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Uniplane', 'Admin', 'hr_admin', '661e8400-e29b-41d4-a716-446655440003', TRUE),
+('771e8400-e29b-41d4-a716-446655440002', '551e8400-e29b-41d4-a716-446655440000', 'manager@uniplane.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Uniplane', 'Manager', 'manager', '661e8400-e29b-41d4-a716-446655440001', FALSE),
+('772e8400-e29b-41d4-a716-446655440001', '552e8400-e29b-41d4-a716-446655440000', 'admin@zebra.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Zebra', 'Admin', 'hr_admin', '662e8400-e29b-41d4-a716-446655440003', TRUE),
+('772e8400-e29b-41d4-a716-446655440002', '552e8400-e29b-41d4-a716-446655440000', 'manager@zebra.com', '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG', 'Zebra', 'Manager', 'manager', '662e8400-e29b-41d4-a716-446655440001', FALSE);
+
+-- Generate additional employees (Triton: 27, Uniplane: 28, Zebra: 28)
+INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, role, department_id, is_super_admin)
+SELECT
+    '550e8400-e29b-41d4-a716-446655440000',
+    'employee' || g || '@triton.com',
+    '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG',
+    'Triton',
+    'Employee ' || g,
+    'employee',
+    '660e8400-e29b-41d4-a716-446655440001',
+    FALSE
+FROM generate_series(1, 27) AS g;
+
+INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, role, department_id, is_super_admin)
+SELECT
+    '551e8400-e29b-41d4-a716-446655440000',
+    'employee' || g || '@uniplane.com',
+    '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG',
+    'Uniplane',
+    'Employee ' || g,
+    'employee',
+    '661e8400-e29b-41d4-a716-446655440001',
+    FALSE
+FROM generate_series(1, 28) AS g;
+
+INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, role, department_id, is_super_admin)
+SELECT
+    '552e8400-e29b-41d4-a716-446655440000',
+    'employee' || g || '@zebra.com',
+    '$2b$12$Jibk.ng3AJ1BbOCMP4p0T.3e55KC489xJ0.D9si9fExHGXH5a5FnG',
+    'Zebra',
+    'Employee ' || g,
+    'employee',
+    '662e8400-e29b-41d4-a716-446655440001',
+    FALSE
+FROM generate_series(1, 28) AS g;
+
+-- Create wallets for Triton, Uniplane, Zebra users
+INSERT INTO wallets (tenant_id, user_id, balance, lifetime_earned, lifetime_spent)
+SELECT tenant_id, id, 0, 0, 0 FROM users WHERE tenant_id = '550e8400-e29b-41d4-a716-446655440000';
+
+INSERT INTO wallets (tenant_id, user_id, balance, lifetime_earned, lifetime_spent)
+SELECT tenant_id, id, 0, 0, 0 FROM users WHERE tenant_id = '551e8400-e29b-41d4-a716-446655440000';
+
+INSERT INTO wallets (tenant_id, user_id, balance, lifetime_earned, lifetime_spent)
+SELECT tenant_id, id, 0, 0, 0 FROM users WHERE tenant_id = '552e8400-e29b-41d4-a716-446655440000';
 
 -- Create demo budget
 INSERT INTO budgets (id, tenant_id, name, fiscal_year, total_points, allocated_points, status, created_by) VALUES

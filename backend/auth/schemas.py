@@ -29,6 +29,7 @@ class UserResponse(BaseModel):
     role: str
     department_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
+    is_super_admin: bool = False
     status: str
 
     class Config:

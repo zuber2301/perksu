@@ -11,10 +11,11 @@ class Tenant(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
-    domain = Column(String(255), unique=True)
-    logo_url = Column(String(500))
-    status = Column(String(50), default='active')
-    settings = Column(JSONB, default={})
+    slug = Column(String(255), unique=True, nullable=False)
+    branding_config = Column(JSONB, default={})
+    subscription_tier = Column(String(50), default='basic')
+    master_budget_balance = Column(Numeric(15, 2), default=0)
+    status = Column(String(50), default='ACTIVE')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -22,6 +23,22 @@ class Tenant(Base):
     departments = relationship("Department", back_populates="tenant")
     users = relationship("User", back_populates="tenant")
     budgets = relationship("Budget", back_populates="tenant")
+    master_budget_ledger = relationship("MasterBudgetLedger", back_populates="tenant")
+
+
+class MasterBudgetLedger(Base):
+    __tablename__ = "master_budget_ledger"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    transaction_type = Column(String(20), nullable=False)  # credit/debit
+    amount = Column(Numeric(15, 2), nullable=False)
+    balance_after = Column(Numeric(15, 2), nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    tenant = relationship("Tenant", back_populates="master_budget_ledger")
 
 
 class Department(Base):
@@ -55,6 +72,7 @@ class User(Base):
     avatar_url = Column(String(500))
     date_of_birth = Column(Date)
     hire_date = Column(Date)
+    is_super_admin = Column(Boolean, default=False)
     status = Column(String(50), default='active')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -178,8 +196,10 @@ class Recognition(Base):
     from_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     to_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     badge_id = Column(UUID(as_uuid=True), ForeignKey("badges.id"))
+    recognition_type = Column(String(50), default='standard')  # standard, individual_award, group_award, ecard
     points = Column(Numeric(15, 2), nullable=False, default=0)
     message = Column(Text, nullable=False)
+    ecard_template = Column(String(100))
     visibility = Column(String(20), default='public')  # public/private/department
     status = Column(String(50), default='active')  # pending/active/rejected/revoked
     department_budget_id = Column(UUID(as_uuid=True), ForeignKey("department_budgets.id"))

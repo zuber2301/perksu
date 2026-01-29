@@ -6,26 +6,37 @@ from datetime import datetime
 
 class TenantBase(BaseModel):
     name: str
-    domain: Optional[str] = None
-    logo_url: Optional[str] = None
+    slug: str
 
 
 class TenantCreate(TenantBase):
     pass
 
 
+class TenantProvisionCreate(TenantBase):
+    admin_email: str
+    admin_password: str
+    admin_first_name: str
+    admin_last_name: str
+    initial_balance: float = 0.0
+    subscription_tier: str = "basic"
+    branding_config: Optional[Dict[str, Any]] = None
+
+
 class TenantUpdate(BaseModel):
     name: Optional[str] = None
-    domain: Optional[str] = None
-    logo_url: Optional[str] = None
+    slug: Optional[str] = None
+    branding_config: Optional[Dict[str, Any]] = None
+    subscription_tier: Optional[str] = None
     status: Optional[str] = None
-    settings: Optional[Dict[str, Any]] = None
 
 
 class TenantResponse(TenantBase):
     id: UUID
+    branding_config: Dict[str, Any]
+    subscription_tier: str
+    master_budget_balance: float
     status: str
-    settings: Dict[str, Any]
     created_at: datetime
     updated_at: datetime
 

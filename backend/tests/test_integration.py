@@ -27,20 +27,20 @@ class TestAuthentication:
         """Test login returns token with valid credentials"""
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "admin@demo.com", "password": "password123"}
+            json={"email": "super_user@jspark.com", "password": "jspark123"}
         )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
-        assert data["user"]["email"] == "admin@demo.com"
-        assert data["user"]["role"] == "hr_admin"
+        assert data["user"]["email"] == "super_user@jspark.com"
+        assert data["user"]["role"] == "platform_admin"
     
     def test_login_with_invalid_password(self):
         """Test login fails with wrong password"""
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "admin@demo.com", "password": "wrongpassword"}
+            json={"email": "super_user@jspark.com", "password": "wrongpassword"}
         )
         assert response.status_code == 401
     
@@ -48,7 +48,7 @@ class TestAuthentication:
         """Test login fails with non-existent email"""
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "nonexistent@demo.com", "password": "password123"}
+            json={"email": "nonexistent@jspark.com", "password": "jspark123"}
         )
         assert response.status_code == 401
     
@@ -62,7 +62,7 @@ class TestAuthentication:
         # Login first
         login = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "admin@demo.com", "password": "password123"}
+            json={"email": "super_user@jspark.com", "password": "jspark123"}
         )
         token = login.json()["access_token"]
         
@@ -72,14 +72,14 @@ class TestAuthentication:
             headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 200
-        assert response.json()["email"] == "admin@demo.com"
+        assert response.json()["email"] == "super_user@jspark.com"
 
 
-def get_auth_header(email="admin@demo.com"):
+def get_auth_header(email="super_user@jspark.com"):
     """Helper to get auth header"""
     response = requests.post(
         f"{BASE_URL}/api/auth/login",
-        json={"email": email, "password": "password123"}
+        json={"email": email, "password": "jspark123"}
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -254,7 +254,7 @@ class TestAudit:
         """Test getting audit logs (HR admin access)"""
         response = requests.get(
             f"{BASE_URL}/api/audit",
-            headers=get_auth_header("admin@demo.com")  # HR admin
+            headers=get_auth_header("admin@triton.com")  # HR admin
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
@@ -272,7 +272,7 @@ class TestTenants:
         assert response.status_code == 200
         data = response.json()
         assert "name" in data
-        assert data["name"] == "Demo Company"
+        assert data["name"] == "jSpark"
     
     def test_get_departments(self):
         """Test getting tenant departments"""
@@ -283,7 +283,7 @@ class TestTenants:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        assert len(data) >= 5  # We have 5 departments
+        assert len(data) >= 1  # jSpark has at least one department
 
 
 class TestRoleBasedAccess:
@@ -293,7 +293,7 @@ class TestRoleBasedAccess:
         """Test that employees cannot access audit logs"""
         response = requests.get(
             f"{BASE_URL}/api/audit",
-            headers=get_auth_header("employee@demo.com")
+            headers=get_auth_header("employee@triton.com")
         )
         # Should be 403 Forbidden
         assert response.status_code == 403
@@ -302,7 +302,7 @@ class TestRoleBasedAccess:
         """Test that employees can access their own wallet"""
         response = requests.get(
             f"{BASE_URL}/api/wallets/me",
-            headers=get_auth_header("employee@demo.com")
+            headers=get_auth_header("employee@triton.com")
         )
         assert response.status_code == 200
 
