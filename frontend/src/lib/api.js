@@ -37,8 +37,10 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
-  requestOTP: (email) => api.post('/auth/request-otp', { email }),
-  verifyOTP: (email, otp_code) => api.post('/auth/verify-otp', { email, otp_code }),
+  requestOTP: (identifier, isEmail = true) => 
+    api.post('/auth/request-otp', isEmail ? { email: identifier } : { mobile_phone: identifier }),
+  verifyOTP: (identifier, otp_code, isEmail = true) => 
+    api.post('/auth/verify-otp', isEmail ? { email: identifier, otp_code } : { mobile_phone: identifier, otp_code }),
   me: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
 }
@@ -51,6 +53,13 @@ export const usersAPI = {
   update: (id, data) => api.put(`/users/${id}`, data),
   search: (q) => api.get('/users/search', { params: { q } }),
   getDirectReports: (id) => api.get(`/users/${id}/direct-reports`),
+  downloadTemplate: () => api.get('/users/template', { responseType: 'blob' }),
+  upload: (formData) => api.post('/users/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getStaging: (batchId) => api.get(`/users/staging/${batchId}`),
+  confirmImport: (batchId) => api.post(`/users/staging/${batchId}/confirm`),
+  bulkAction: (data) => api.post('/users/bulk-action', data),
 }
 
 // Wallets API

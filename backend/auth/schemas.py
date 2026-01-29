@@ -13,6 +13,20 @@ class TokenData(BaseModel):
     tenant_id: Optional[UUID] = None
     email: Optional[str] = None
     role: Optional[str] = None
+    type: Optional[str] = "tenant"  # "system" or "tenant"
+    impersonator_id: Optional[UUID] = None
+
+
+class SystemAdminResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    first_name: str
+    last_name: str
+    is_super_admin: bool
+    mfa_enabled: bool
+
+    class Config:
+        from_attributes = True
 
 
 class LoginRequest(BaseModel):
@@ -21,11 +35,13 @@ class LoginRequest(BaseModel):
 
 
 class OTPRequest(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    mobile_phone: Optional[str] = None
 
 
 class OTPVerify(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    mobile_phone: Optional[str] = None
     otp_code: str
 
 
@@ -48,4 +64,5 @@ class UserResponse(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str
-    user: UserResponse
+    user: Optional[UserResponse] = None
+    system_admin: Optional[SystemAdminResponse] = None

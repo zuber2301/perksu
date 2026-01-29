@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from config import settings
 from database import engine, Base
+from startup_utils import init_platform_admin
 from auth.routes import router as auth_router
 from tenants.routes import router as tenants_router
 from users.routes import router as users_router
@@ -20,6 +21,10 @@ from audit.routes import router as audit_router
 async def lifespan(app: FastAPI):
     # Startup
     print("Starting Perksu API...")
+    # Ensure tables exist (strategic fix 4a)
+    Base.metadata.create_all(bind=engine)
+    # Ensure platform admin exists (strategic fix 4b)
+    init_platform_admin()
     yield
     # Shutdown
     print("Shutting down Perksu API...")

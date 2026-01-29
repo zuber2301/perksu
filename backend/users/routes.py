@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
+import io
+import csv
 
 from database import get_db
-from models import User, Wallet
+from models import User, Wallet, StagingUser
 from auth.utils import get_current_user, get_hr_admin, get_password_hash, verify_password
-from users.schemas import UserCreate, UserUpdate, UserResponse, UserListResponse, PasswordChange
+from users.schemas import UserCreate, UserUpdate, UserResponse, UserListResponse, PasswordChange, StagingUserResponse, BulkUploadResponse, BulkActionRequest
+from users.service import process_bulk_upload, commit_staging_batch
 
 router = APIRouter()
 
@@ -102,6 +106,112 @@ async def search_users(
          User.email.ilike(search_term))
     ).limit(limit).all()
     return users
+
+
+@router.get("/direct-reports", response_model=List[UserListResponse]) # Fixed from {user_id}/direct-reports for convenience
+async def get_my_direct_reports(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get direct reports for the current logged in user"""
+    reports = db.query(User).filter(
+        User.tenant_id == current_user.tenant_id,
+        User.manager_id == current_user.id,
+        User.status == 'active'
+    ).all()
+    return reports
+
+
+# --- Bulk Provisioning Endpoints ---
+
+@router.get("/template")
+async def download_template(current_user: User = Depends(get_hr_admin)):
+    """Download CSV template for bulk user upload"""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Full Name", "Email", "Department", "Role", "Manager Email"])
+    writer.writerow(["John Doe", "john.doe@company.com", "Sales", "manager", ""])
+    writer.writerow(["Jane Smith", "jane.smith@company.com", "Sales", "employee", "john.doe@company.com"])
+    
+    content = output.getvalue()
+    return Response(
+        content=content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=user_upload_template.csv"}
+    )
+
+
+@router.post("/upload", response_model=BulkUploadResponse)
+async def upload_users_csv(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """Upload CSV/Excel file to staging area"""
+    content = await file.read()
+    ext = file.filename.split('.')[-1].lower()
+    
+    if ext not in ['csv', 'xlsx']:
+        raise HTTPException(status_code=400, detail="Only .csv and .xlsx files are supported")
+        
+    batch_id, total, valid = process_bulk_upload(db, current_user.tenant_id, content, ext)
+    
+    return BulkUploadResponse(
+        batch_id=batch_id,
+        total_rows=total,
+        valid_rows=valid,
+        invalid_rows=total - valid
+    )
+
+
+@router.get("/staging/{batch_id}", response_model=List[StagingUserResponse])
+async def get_staging_users(
+    batch_id: UUID,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """List staging records for a specific batch"""
+    records = db.query(StagingUser).filter(
+        StagingUser.tenant_id == current_user.tenant_id,
+        StagingUser.batch_id == batch_id
+    ).order_by(StagingUser.created_at.asc()).all()
+    return records
+
+
+@router.post("/staging/{batch_id}/confirm")
+async def confirm_staging_import(
+    batch_id: UUID,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """Commit valid staging records to production"""
+    count = commit_staging_batch(db, current_user.tenant_id, batch_id)
+    return {"message": f"Successfully provisioned {count} users", "count": count}
+
+
+@router.post("/bulk-action")
+async def bulk_user_action(
+    request: BulkActionRequest,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """Bulk actions on users (activate, deactivate, resend invite)"""
+    users = db.query(User).filter(
+        User.id.in_(request.user_ids),
+        User.tenant_id == current_user.tenant_id
+    ).all()
+    
+    for user in users:
+        if request.action == 'deactivate':
+            user.status = 'deactivated'
+        elif request.action == 'activate':
+            user.status = 'active'
+        elif request.action == 'resend_invite':
+            user.invitation_sent_at = func.now()
+            # In a real system, trigger email here
+            
+    db.commit()
+    return {"message": f"Bulk {request.action} completed for {len(users)} users"}
 
 
 @router.get("/{user_id}", response_model=UserResponse)
