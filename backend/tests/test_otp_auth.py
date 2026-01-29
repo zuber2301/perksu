@@ -58,6 +58,7 @@ def setup_database():
         id="770e8400-e29b-41d4-a716-446655440001",
         tenant_id=tenant.id,
         email="test@test.com",
+        personal_email="test@test.com",
         password_hash=get_password_hash("password123"),
         first_name="Test",
         last_name="User",

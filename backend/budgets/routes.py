@@ -10,8 +10,9 @@ from auth.utils import get_current_user, get_hr_admin
 from budgets.schemas import (
     BudgetCreate, BudgetUpdate, BudgetResponse,
     DepartmentBudgetCreate, DepartmentBudgetUpdate, DepartmentBudgetResponse,
-    BudgetAllocationRequest
+    BudgetAllocationRequest, LeadAllocationResponse, LeadPointAllocationRequest
 )
+from models import Budget, DepartmentBudget, User, AuditLog, LeadAllocation
 
 router = APIRouter()
 
@@ -46,6 +47,7 @@ async def get_budgets(
             "allocated_points": budget.allocated_points,
             "remaining_points": Decimal(str(budget.total_points)) - Decimal(str(budget.allocated_points)),
             "status": budget.status,
+            "expiry_date": budget.expiry_date,
             "created_by": budget.created_by,
             "created_at": budget.created_at
         }
@@ -69,6 +71,7 @@ async def create_budget(
         total_points=budget_data.total_points,
         allocated_points=0,
         status='draft',
+        expiry_date=budget_data.expiry_date,
         created_by=current_user.id
     )
     db.add(budget)
@@ -97,6 +100,7 @@ async def create_budget(
         "allocated_points": budget.allocated_points,
         "remaining_points": Decimal(str(budget.total_points)) - Decimal(str(budget.allocated_points)),
         "status": budget.status,
+        "expiry_date": budget.expiry_date,
         "created_by": budget.created_by,
         "created_at": budget.created_at
     }
@@ -126,6 +130,7 @@ async def get_budget(
         "allocated_points": budget.allocated_points,
         "remaining_points": Decimal(str(budget.total_points)) - Decimal(str(budget.allocated_points)),
         "status": budget.status,
+        "expiry_date": budget.expiry_date,
         "created_by": budget.created_by,
         "created_at": budget.created_at
     }
@@ -177,6 +182,7 @@ async def update_budget(
         "allocated_points": budget.allocated_points,
         "remaining_points": Decimal(str(budget.total_points)) - Decimal(str(budget.allocated_points)),
         "status": budget.status,
+        "expiry_date": budget.expiry_date,
         "created_by": budget.created_by,
         "created_at": budget.created_at
     }
@@ -321,3 +327,77 @@ async def activate_budget(
     db.commit()
     
     return {"message": "Budget activated successfully"}
+
+
+@router.get("/leads/all", response_model=List[LeadAllocationResponse])
+async def get_all_lead_allocations(
+    budget_id: Optional[UUID] = None,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all lead point allocations (HR Admin only)"""
+    query = db.query(LeadAllocation).filter(LeadAllocation.tenant_id == current_user.tenant_id)
+    if budget_id:
+        query = query.filter(LeadAllocation.budget_id == budget_id)
+    
+    allocations = query.all()
+    return allocations
+
+
+@router.post("/leads/allocate")
+async def allocate_points_to_lead(
+    allocation_data: LeadPointAllocationRequest,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """Allocate points to a specific Lead (HR Admin only)"""
+    budget = db.query(Budget).filter(
+        Budget.id == allocation_data.budget_id,
+        Budget.tenant_id == current_user.tenant_id
+    ).first()
+    if not budget:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    
+    # Check if budget has enough remaining points
+    if budget.remaining_points < float(allocation_data.points):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient budget. Available: {budget.remaining_points}"
+        )
+    
+    # Create or update lead allocation
+    lead_alloc = db.query(LeadAllocation).filter(
+        LeadAllocation.budget_id == allocation_data.budget_id,
+        LeadAllocation.lead_id == allocation_data.lead_id
+    ).first()
+    
+    if lead_alloc:
+        lead_alloc.allocated_points = Decimal(str(lead_alloc.allocated_points)) + allocation_data.points
+    else:
+        lead_alloc = LeadAllocation(
+            tenant_id=current_user.tenant_id,
+            budget_id=allocation_data.budget_id,
+            lead_id=allocation_data.lead_id,
+            allocated_points=allocation_data.points,
+            spent_points=0
+        )
+        db.add(lead_alloc)
+    
+    # Update budget allocated points
+    budget.allocated_points = Decimal(str(budget.allocated_points)) + allocation_data.points
+    
+    # Audit log
+    audit = AuditLog(
+        tenant_id=current_user.tenant_id,
+        actor_id=current_user.id,
+        action="lead_points_allocated",
+        entity_type="lead_allocation",
+        entity_id=lead_alloc.id,
+        new_values={"lead_id": str(allocation_data.lead_id), "points": str(allocation_data.points)}
+    )
+    db.add(audit)
+    
+    db.commit()
+    db.refresh(lead_alloc)
+    
+    return {"message": "Points allocated to lead successfully", "total_allocated": str(lead_alloc.allocated_points)}

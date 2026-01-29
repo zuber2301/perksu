@@ -11,7 +11,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app
 from database import Base, get_db
-from models import User, Tenant, Wallet, Badge, Department
+from models import (
+    User, Tenant, Wallet, Badge, Department, SystemAdmin,
+    Budget, Recognition, Notification, Redemption, AuditLog,
+    Voucher, LoginOTP, WalletLedger, StagingUser
+)
 
 # Test database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -325,7 +329,8 @@ class TestNotifications:
         response = client.get("/api/notifications/count", headers=self.get_auth_header())
         assert response.status_code == 200
         data = response.json()
-        assert "count" in data
+        assert "unread" in data
+        assert "total" in data
 
 
 class TestBudgets:

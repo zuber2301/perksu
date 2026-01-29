@@ -10,6 +10,7 @@ class BudgetBase(BaseModel):
     fiscal_year: int
     fiscal_quarter: Optional[int] = None
     total_points: Decimal
+    expiry_date: Optional[datetime] = None
 
 
 class BudgetCreate(BudgetBase):
@@ -20,6 +21,7 @@ class BudgetUpdate(BaseModel):
     name: Optional[str] = None
     total_points: Optional[Decimal] = None
     status: Optional[str] = None
+    expiry_date: Optional[datetime] = None
 
 
 class BudgetResponse(BudgetBase):
@@ -67,3 +69,31 @@ class DepartmentBudgetResponse(BaseModel):
 
 class BudgetAllocationRequest(BaseModel):
     allocations: List[DepartmentBudgetCreate]
+
+
+class LeadAllocationBase(BaseModel):
+    lead_id: UUID
+    allocated_points: Decimal
+
+
+class LeadAllocationCreate(LeadAllocationBase):
+    budget_id: UUID
+
+
+class LeadAllocationResponse(LeadAllocationBase):
+    id: UUID
+    tenant_id: UUID
+    budget_id: UUID
+    spent_points: Decimal
+    remaining_points: Decimal
+    usage_percentage: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LeadPointAllocationRequest(BaseModel):
+    lead_id: UUID
+    budget_id: UUID
+    points: Decimal

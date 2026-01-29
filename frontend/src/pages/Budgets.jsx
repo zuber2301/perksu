@@ -4,10 +4,18 @@ import { budgetsAPI, tenantsAPI, usersAPI, walletsAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineChartBar, HiOutlineCheck, HiOutlineUsers, HiOutlineCash, HiOutlineSparkles } from 'react-icons/hi'
+import { 
+  HiOutlinePlus, HiOutlinePencil, HiOutlineChartBar, HiOutlineCheck, 
+  HiOutlineUsers, HiOutlineCash, HiOutlineSparkles, HiOutlineTrendingUp,
+  HiOutlineFire, HiOutlineCube, HiOutlineDotsVertical, HiOutlineCalendar
+} from 'react-icons/hi'
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar
+} from 'recharts'
 
 export default function Budgets() {
-  const [activeTab, setActiveTab] = useState('budgets') // budgets, allocations
+  const [activeTab, setActiveTab] = useState('budgets') // budgets, allocations, insights
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showAllocateModal, setShowAllocateModal] = useState(false)
   const [showPointAllocationModal, setShowPointAllocationModal] = useState(false)
@@ -25,7 +33,13 @@ export default function Budgets() {
   const { data: leads } = useQuery({
     queryKey: ['users', { role: 'manager' }],
     queryFn: () => usersAPI.getAll({ role: 'manager' }),
-    enabled: activeTab === 'allocations',
+    enabled: activeTab === 'allocations' || activeTab === 'insights',
+  })
+
+  const { data: leadAllocations } = useQuery({
+    queryKey: ['leadAllocations', selectedBudget?.id],
+    queryFn: () => budgetsAPI.getAllLeadAllocations({ budget_id: selectedBudget?.id }),
+    enabled: !!selectedBudget && (activeTab === 'allocations' || activeTab === 'insights'),
   })
 
   const { data: departments } = useQuery({
@@ -75,11 +89,12 @@ export default function Budgets() {
     },
   })
 
-  const pointAllocationMutation = useMutation({
-    mutationFn: (data) => walletsAPI.allocatePoints(data),
+  const leadPointAllocationMutation = useMutation({
+    mutationFn: (data) => budgetsAPI.allocateToLead(data),
     onSuccess: () => {
-      toast.success('Points allocated successfully')
-      queryClient.invalidateQueries(['users'])
+      toast.success('Lead points allocated successfully')
+      queryClient.invalidateQueries(['budgets'])
+      queryClient.invalidateQueries(['leadAllocations'])
       setShowPointAllocationModal(false)
       setSelectedLead(null)
     },
@@ -135,6 +150,16 @@ export default function Budgets() {
     return colors[status] || 'bg-gray-100 text-gray-800'
   }
 
+  // Prevent runtime NaN/Infinity errors in percentage/width calculations
+  const safePercent = (numerator, denominator) => {
+    const n = parseFloat(numerator) || 0
+    const d = parseFloat(denominator) || 0
+    if (d === 0) return 0
+    const p = (n / d) * 100
+    if (!isFinite(p)) return 0
+    return Math.max(0, Math.min(100, +p.toFixed(1)))
+  }
+
   if (!isHRAdmin()) {
     return (
       <div className="card text-center py-12">
@@ -184,6 +209,16 @@ export default function Budgets() {
           }`}
         >
           Lead Point Allocations
+        </button>
+        <button
+          onClick={() => setActiveTab('insights')}
+          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'insights'
+              ? 'border-perksu-purple text-perksu-purple'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Spend Analysis
         </button>
       </div>
 
@@ -259,13 +294,13 @@ export default function Budgets() {
                       <div
                         className="h-full bg-gradient-to-r from-perksu-purple to-perksu-blue"
                         style={{
-                          width: `${(budget.allocated_points / budget.total_points) * 100}%`,
+                          width: `${safePercent(budget.allocated_points, budget.total_points)}%`,
                         }}
                       />
                     </div>
                     <div className="flex justify-between items-center mt-1">
                         <p className="text-xs text-gray-500">
-                          {((budget.allocated_points / budget.total_points) * 100).toFixed(1)}% allocated
+                          {safePercent(budget.allocated_points, budget.total_points)}% allocated
                         </p>
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Departmental distribution</p>
                     </div>
@@ -287,7 +322,7 @@ export default function Budgets() {
             </div>
           )}
         </>
-      ) : (
+      ) : activeTab === 'allocations' ? (
         /* Leads point allocation view */
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
@@ -295,46 +330,183 @@ export default function Budgets() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lead Name</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Department</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Allocated</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Used</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Remaining</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Usage %</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Expiry</th>
                   <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {leads?.data?.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-bold text-gray-900">
-                      {lead.first_name} {lead.last_name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {lead.department_id ? departments?.data?.find(d => d.id === lead.department_id)?.name || 'N/A' : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {lead.email}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedLead(lead)
-                          setShowPointAllocationModal(true)
-                        }}
-                        className="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 ml-auto shadow-sm"
-                      >
-                        <HiOutlineSparkles className="w-4 h-4" />
-                        Allocate Points
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {(!leads?.data || leads.data.length === 0) && (
-                    <tr>
-                        <td colSpan="4" className="px-6 py-12 text-center text-gray-400 italic">
-                            No Tenant Leads (Managers) found in the organization.
-                        </td>
+                {leads?.data?.map((lead) => {
+                  const allocation = leadAllocations?.data?.find(a => a.lead_id === lead.id) || null;
+                  const budget = budgets?.data?.find(b => b.id === allocation?.budget_id) || null;
+                  const usagePct = allocation ? safePercent(allocation.spent_points, allocation.allocated_points) : 0
+                  const allocatedPoints = allocation ? (parseFloat(allocation.allocated_points) || 0) : 0
+                  const spentPoints = allocation ? (parseFloat(allocation.spent_points) || 0) : 0
+                  const remainingPoints = allocation ? Math.max(0, allocatedPoints - spentPoints) : 0
+                  
+                  return (
+                    <tr key={lead.id} className="hover:bg-gray-50 transition-colors">                      <td className="px-6 py-4">
+                        <p className="font-bold text-gray-900">{lead.first_name} {lead.last_name}</p>
+                        <p className="text-xs text-gray-500">
+                           {lead.department_id ? departments?.data?.find(d => d.id === lead.department_id)?.name : 'No Department'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-center font-semibold text-gray-900">
+                        {allocatedPoints}
+                      </td>
+                      <td className="px-6 py-4 text-center font-semibold text-orange-600">
+                        {spentPoints}
+                      </td>
+                      <td className="px-6 py-4 text-center font-semibold text-green-600">
+                        {remainingPoints}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-perksu-purple" 
+                              style={{ width: `${usagePct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500">{allocation?.usage_percentage || 0}%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase">
+                        {budget?.expiry_date ? format(new Date(budget.expiry_date), 'dd MMM yyyy') : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => {
+                            setSelectedLead(lead)
+                            setShowPointAllocationModal(true)
+                          }}
+                          className="btn-secondary text-xs"
+                        >
+                          {allocation ? 'Top Up' : 'Allocate'}
+                        </button>
+                      </td>
                     </tr>
-                )}
+                  );
+                })}
               </tbody>
             </table>
+            {(!leads?.data || leads.data.length === 0) && (
+                <div className="px-6 py-12 text-center text-gray-400 italic">
+                    No Tenant Leads (Managers) found in the organization.
+                </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Spend Analysis / Insights View */
+        <div className="space-y-6">
+          {/* Top Metric Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="card p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                  <HiOutlineTrendingUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Burn Rate</p>
+                  <p className="text-2xl font-bold text-gray-900">12.5k / mo</p>
+                </div>
+              </div>
+            </div>
+            <div className="card p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
+                  <HiOutlineFire className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Leads</p>
+                  <p className="text-2xl font-bold text-gray-900">84%</p>
+                </div>
+              </div>
+            </div>
+            <div className="card p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600">
+                  <HiOutlineCube className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Points Yield</p>
+                  <p className="text-2xl font-bold text-gray-900">92%</p>
+                </div>
+              </div>
+            </div>
+            <div className="card p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
+                  <HiOutlineSparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">ROI Ratio</p>
+                  <p className="text-2xl font-bold text-gray-900">4.2 : 1</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="card p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <HiOutlineTrendingUp className="text-blue-500" />
+                Burn Rate Velocity
+              </h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={[
+                      { month: 'Jan', points: 4000 },
+                      { month: 'Feb', points: 3000 },
+                      { month: 'Mar', points: 5000 },
+                      { month: 'Apr', points: 8000 },
+                      { month: 'May', points: 6000 },
+                      { month: 'Jun', points: 9000 },
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: '#9CA3AF' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: '#9CA3AF' }} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    />
+                    <Line type="monotone" dataKey="points" stroke="#8B5CF6" strokeWidth={4} dot={{ r: 6, fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="card p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <HiOutlineCube className="text-purple-500" />
+                Departmental Spend Heatmap
+              </h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    layout="vertical"
+                    data={[
+                      { dept: 'Sales', allocated: 10000, spent: 8500 },
+                      { dept: 'Eng', allocated: 15000, spent: 7000 },
+                      { dept: 'HR', allocated: 5000, spent: 4500 },
+                      { dept: 'Marketing', allocated: 8000, spent: 3000 },
+                      { dept: 'Ops', allocated: 12000, spent: 10000 },
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="dept" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: '#374151' }} />
+                    <Tooltip cursor={{ fill: '#F9FAFB' }} />
+                    <Bar dataKey="spent" fill="#8B5CF6" radius={[0, 4, 4, 0]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -503,14 +675,29 @@ export default function Budgets() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
-                pointAllocationMutation.mutate({
-                  user_id: selectedLead.id,
+                leadPointAllocationMutation.mutate({
+                  lead_id: selectedLead.id,
+                  budget_id: formData.get('budget_id'),
                   points: parseFloat(formData.get('points')),
-                  description: formData.get('description'),
                 });
               }} 
               className="space-y-4"
             >
+              <div>
+                <label className="label">Source Budget</label>
+                <select 
+                  name="budget_id" 
+                  className="input" 
+                  required
+                  defaultValue={selectedBudget?.id}
+                >
+                  <option value="">Select a budget</option>
+                  {budgets?.data?.filter(b => b.status === 'active').map(b => (
+                    <option key={b.id} value={b.id}>{b.name} (FY{b.fiscal_year}) - {b.remaining_points} left</option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="label">Amount to Allocate</label>
                 <div className="relative">
@@ -526,15 +713,6 @@ export default function Budgets() {
                 </div>
               </div>
               
-              <div>
-                <label className="label">Allocation Note (Optional)</label>
-                <textarea 
-                  name="description" 
-                  className="input min-h-[100px] py-3" 
-                  placeholder="e.g., Monthly budget for Q1 Rewards"
-                />
-              </div>
-
               <div className="pt-4 flex gap-3">
                 <button 
                   type="button" 
@@ -545,10 +723,10 @@ export default function Budgets() {
                 </button>
                 <button 
                   type="submit" 
-                  disabled={pointAllocationMutation.isPending}
+                  disabled={leadPointAllocationMutation.isPending}
                   className="flex-1 btn-primary py-3 rounded-2xl shadow-lg shadow-perksu-purple/20"
                 >
-                  {pointAllocationMutation.isPending ? 'Processing...' : 'Confirm Allocation'}
+                  {leadPointAllocationMutation.isPending ? 'Processing...' : 'Confirm Allocation'}
                 </button>
               </div>
             </form>

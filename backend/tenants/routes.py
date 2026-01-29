@@ -105,6 +105,19 @@ async def update_current_tenant(
     return tenant
 
 
+# Department endpoints
+@router.get("/departments", response_model=List[DepartmentResponse])
+async def get_departments(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all departments for current tenant"""
+    departments = db.query(Department).filter(
+        Department.tenant_id == current_user.tenant_id
+    ).all()
+    return departments
+
+
 @router.get("/", response_model=List[TenantResponse])
 async def list_tenants(
     db: Session = Depends(get_db),

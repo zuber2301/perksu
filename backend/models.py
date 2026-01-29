@@ -97,6 +97,14 @@ class SystemAdmin(Base):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
 
+    @property
+    def role(self):
+        return "platform_admin"
+
+    @property
+    def tenant_id(self):
+        # Platform admins operate globally or in a default platform tenant
+        return uuid.UUID('00000000-0000-0000-0000-000000000000')
 
 class MasterBudgetLedger(Base):
     __tablename__ = "master_budget_ledger"
@@ -158,6 +166,7 @@ class User(Base):
     wallet = relationship("Wallet", back_populates="user", uselist=False)
     recognitions_given = relationship("Recognition", foreign_keys="Recognition.from_user_id", back_populates="from_user")
     recognitions_received = relationship("Recognition", foreign_keys="Recognition.to_user_id", back_populates="to_user")
+    lead_allocations = relationship("LeadAllocation", back_populates="lead")
     
     @property
     def full_name(self):
@@ -219,6 +228,7 @@ class Budget(Base):
     total_points = Column(Numeric(15, 2), nullable=False, default=0)
     allocated_points = Column(Numeric(15, 2), nullable=False, default=0)
     status = Column(String(50), default='active')
+    expiry_date = Column(DateTime(timezone=True))
     created_by = Column(GUID(), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -226,6 +236,7 @@ class Budget(Base):
     # Relationships
     tenant = relationship("Tenant", back_populates="budgets")
     department_budgets = relationship("DepartmentBudget", back_populates="budget")
+    lead_allocations = relationship("LeadAllocation", back_populates="budget")
     
     @property
     def remaining_points(self):
@@ -289,6 +300,35 @@ class WalletLedger(Base):
     
     # Relationships
     wallet = relationship("Wallet", back_populates="ledger_entries")
+
+
+class LeadAllocation(Base):
+    __tablename__ = "lead_allocations"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    budget_id = Column(GUID(), ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False)
+    lead_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    
+    allocated_points = Column(Numeric(15, 2), nullable=False, default=0)
+    spent_points = Column(Numeric(15, 2), nullable=False, default=0)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    budget = relationship("Budget", back_populates="lead_allocations")
+    lead = relationship("User")
+
+    @property
+    def remaining_points(self):
+        return float(self.allocated_points) - float(self.spent_points)
+    
+    @property
+    def usage_percentage(self):
+        if float(self.allocated_points) == 0:
+            return 0
+        return round((float(self.spent_points) / float(self.allocated_points)) * 100, 2)
 
 
 class Badge(Base):

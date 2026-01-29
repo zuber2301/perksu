@@ -9,7 +9,7 @@ from database import get_db
 from models import (
     Recognition, Badge, User, Wallet, WalletLedger, Budget,
     DepartmentBudget, Feed, Notification, AuditLog,
-    RecognitionComment, RecognitionReaction
+    RecognitionComment, RecognitionReaction, LeadAllocation
 )
 from auth.utils import get_current_user, get_manager_or_above
 from recognition.schemas import (
@@ -145,16 +145,36 @@ async def create_recognition(
     # 2. Financial Validation (The Gatekeeper)
     dept_budget = None
     manager_wallet = None
+    lead_allocation = None
 
     if total_points > 0:
         if rec_type == 'individual_award':
-            # Manager Wallet Validation
-            manager_wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
-            if not manager_wallet or manager_wallet.balance < total_points:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Insufficient wallet balance. Please request a budget increase from your Admin."
-                )
+            # Manager Wallet or Lead Allocation Validation
+            active_budget = db.query(Budget).filter(
+                Budget.tenant_id == current_user.tenant_id,
+                Budget.status == 'active'
+            ).first()
+            
+            if active_budget:
+                lead_allocation = db.query(LeadAllocation).filter(
+                    LeadAllocation.budget_id == active_budget.id,
+                    LeadAllocation.lead_id == current_user.id
+                ).first()
+            
+            if lead_allocation:
+                if lead_allocation.remaining_points < float(total_points):
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Insufficient lead budget. Remaining: {lead_allocation.remaining_points}"
+                    )
+            else:
+                # Fallback to wallet if no budget allocation exists
+                manager_wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
+                if not manager_wallet or manager_wallet.balance < total_points:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="Insufficient wallet balance or lead budget allocation. Please contact your Admin."
+                    )
         else:
             # Budget Validation
             active_budget = db.query(Budget).filter(
@@ -181,7 +201,9 @@ async def create_recognition(
     
     # Financial debits
     if total_points > 0:
-        if manager_wallet:
+        if lead_allocation:
+            lead_allocation.spent_points = Decimal(str(lead_allocation.spent_points)) + total_points
+        elif manager_wallet:
             manager_wallet.balance = Decimal(str(manager_wallet.balance)) - total_points
             manager_wallet.lifetime_spent = Decimal(str(manager_wallet.lifetime_spent)) + total_points
         elif dept_budget:
