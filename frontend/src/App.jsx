@@ -11,6 +11,7 @@ import Budgets from './pages/Budgets'
 import Users from './pages/Users'
 import Audit from './pages/Audit'
 import Profile from './pages/Profile'
+import Tenants from './pages/Tenants'
 
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuthStore()
@@ -35,6 +36,7 @@ function App() {
         <Route path="budgets" element={<Budgets />} />
         <Route path="users" element={<Users />} />
         <Route path="audit" element={<Audit />} />
+        <Route path="tenants" element={<Tenants />} />
         <Route path="profile" element={<Profile />} />
       </Route>
     </Routes>
