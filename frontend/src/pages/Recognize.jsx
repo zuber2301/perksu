@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { recognitionAPI, usersAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
+import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { HiOutlineSearch, HiOutlineSparkles, HiOutlineStar } from 'react-icons/hi'
+import { HiOutlineSearch, HiOutlineSparkles, HiOutlineStar, HiOutlineUsers } from 'react-icons/hi'
 import RecognitionModal from '../components/RecognitionModal'
 import FeedCard from '../components/FeedCard'
 
@@ -11,8 +12,19 @@ export default function Recognize() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [defaultType, setDefaultType] = useState('standard')
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const type = searchParams.get('type')
+    if (type) {
+      handleOpenWorkflow(type)
+      // Clear the param after opening to avoid re-opening on back navigation
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams])
 
   const { data: badges } = useQuery({
     queryKey: ['badges'],
@@ -32,8 +44,21 @@ export default function Recognize() {
 
   const handleSelectUser = (selectedUser) => {
     setSelectedUser(selectedUser)
+    setDefaultType('standard')
     setShowModal(true)
   }
+
+  const handleOpenWorkflow = (type) => {
+    setDefaultType(type)
+    setSelectedUser(null)
+    setShowModal(true)
+  }
+
+  const pathways = [
+    { id: 'individual_award', name: 'Individual Award', description: 'Manager-to-employee high impact recognition', icon: HiOutlineSparkles, color: 'orange', roles: ['manager', 'hr_admin', 'platform_admin'] },
+    { id: 'group_award', name: 'Group Award', description: 'Celebrate team-wide wins and project milestones', icon: HiOutlineUsers, color: 'blue', roles: ['manager', 'hr_admin', 'platform_admin'] },
+    { id: 'ecard', name: 'Send E-Card', description: 'Personalized cards for birthdays and milestones', icon: HiOutlineStar, color: 'purple' },
+  ]
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -42,8 +67,10 @@ export default function Recognize() {
         onClose={() => {
           setShowModal(false)
           setSelectedUser(null)
+          setDefaultType('standard')
         }}
         initialSelectedUser={selectedUser}
+        defaultType={defaultType}
       />
       {/* Header */}
       <div className="text-center">
@@ -56,9 +83,29 @@ export default function Recognize() {
         </p>
       </div>
 
+      {/* Pathways */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {pathways.map(path => (
+          (!path.roles || path.roles.includes(user?.role)) && (
+            <button
+              key={path.id}
+              onClick={() => handleOpenWorkflow(path.id)}
+              className="flex flex-col items-start p-6 bg-white rounded-2xl border-2 border-transparent hover:border-perksu-purple shadow-sm hover:shadow-md transition-all text-left"
+            >
+              <div className={`w-12 h-12 rounded-xl mb-4 flex items-center justify-center bg-${path.color}-100 text-${path.color}-600`}>
+                <path.icon className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">{path.name}</h3>
+              <p className="text-sm text-gray-500">{path.description}</p>
+            </button>
+          )
+        ))}
+      </div>
+
       {/* Search */}
       <div className="card">
-        <label className="label">Search for a colleague</label>
+        <label className="label font-bold text-gray-700">Quick Recognition</label>
+        <p className="text-xs text-gray-500 mb-4">Search for a colleague to give standard recognition</p>
         <div className="relative">
           <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input

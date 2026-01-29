@@ -20,9 +20,16 @@ const ECARD_TEMPLATES = [
   { id: 'festive', name: 'Festive', color: 'orange' },
 ]
 
-export default function RecognitionModal({ isOpen, onClose, initialSelectedUser }) {
-  const [recognitionType, setRecognitionType] = useState('standard')
+export default function RecognitionModal({ isOpen, onClose, initialSelectedUser, defaultType = 'standard' }) {
+  const [recognitionType, setRecognitionType] = useState(defaultType)
   const [recipients, setRecipients] = useState([])
+
+  useEffect(() => {
+    if (defaultType) {
+      setRecognitionType(defaultType)
+    }
+  }, [defaultType, isOpen])
+
   const [message, setMessage] = useState('')
   const [points, setPoints] = useState(10)
   const [badgeId, setBadgeId] = useState('')
