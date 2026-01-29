@@ -23,6 +23,11 @@ class TenantProvisionCreate(TenantBase):
     branding_config: Optional[Dict[str, Any]] = None
 
 
+class TenantLoadBudget(BaseModel):
+    amount: float
+    description: Optional[str] = "Manual budget load"
+
+
 class TenantUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None

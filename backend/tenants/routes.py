@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
+from decimal import Decimal
 
 from database import get_db
 from models import Tenant, Department, User, MasterBudgetLedger, Wallet
 from auth.utils import get_current_user, get_hr_admin, get_platform_admin, get_password_hash
 from tenants.schemas import (
     TenantCreate, TenantUpdate, TenantResponse, TenantProvisionCreate,
-    DepartmentCreate, DepartmentUpdate, DepartmentResponse
+    DepartmentCreate, DepartmentUpdate, DepartmentResponse, TenantLoadBudget
 )
 
 router = APIRouter()
@@ -123,6 +124,53 @@ async def get_tenant(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
+    return tenant
+
+
+@router.post("/{tenant_id}/toggle-status", response_model=TenantResponse)
+async def toggle_tenant_status(
+    tenant_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_platform_admin)
+):
+    """Toggle tenant active/inactive status (Platform Admin only)"""
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    tenant.status = 'INACTIVE' if tenant.status == 'ACTIVE' else 'ACTIVE'
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+
+@router.post("/{tenant_id}/load-budget", response_model=TenantResponse)
+async def load_tenant_budget(
+    tenant_id: UUID,
+    budget_data: TenantLoadBudget,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_platform_admin)
+):
+    """Load budget to a tenant (Platform Admin only)"""
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Update tenant balance
+    tenant.master_budget_balance += Decimal(str(budget_data.amount))
+    
+    # Record in ledger
+    ledger_entry = MasterBudgetLedger(
+        tenant_id=tenant.id,
+        transaction_type='credit',
+        amount=budget_data.amount,
+        balance_after=tenant.master_budget_balance,
+        description=budget_data.description
+    )
+    db.add(ledger_entry)
+    
+    db.commit()
+    db.refresh(tenant)
     return tenant
 
 

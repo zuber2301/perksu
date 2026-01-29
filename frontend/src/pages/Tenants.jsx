@@ -9,12 +9,20 @@ import {
   HiOutlineCheckCircle,
   HiOutlineXCircle,
   HiOutlineSearch,
-  HiOutlineMail
+  HiOutlineMail,
+  HiOutlinePencil,
+  HiOutlineTrash,
+  HiOutlineLockClosed,
+  HiOutlineEye,
+  HiOutlineCurrencyDollar
 } from 'react-icons/hi'
 
 export default function Tenants() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
+  const [selectedTenant, setSelectedTenant] = useState(null)
+  const [activeDropdown, setActiveDropdown] = useState(null)
   const queryClient = useQueryClient()
 
   const { data: tenants, isLoading } = useQuery({
@@ -45,6 +53,29 @@ export default function Tenants() {
     }
   })
 
+  const toggleStatusMutation = useMutation({
+    mutationFn: (id) => tenantsAPI.toggleStatus(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tenants'])
+      toast.success('Status updated')
+      setActiveDropdown(null)
+    },
+    onError: () => toast.error('Failed to update status')
+  })
+
+  const loadBudgetMutation = useMutation({
+    mutationFn: ({ id, data }) => tenantsAPI.loadBudget(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tenants'])
+      toast.success('Budget loaded successfully')
+      setIsBudgetModalOpen(false)
+      setSelectedTenant(null)
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to load budget')
+    }
+  })
+
   const filteredTenants = tenants?.filter(tenant => 
     tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
@@ -61,7 +92,7 @@ export default function Tenants() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onClick={() => setActiveDropdown(null)}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tenant Dashboard</h1>
@@ -199,10 +230,47 @@ export default function Tenants() {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button className="text-gray-400 hover:text-gray-600">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm relative">
+                    <button 
+                      className="text-gray-400 hover:text-indigo-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActiveDropdown(activeDropdown === tenant.id ? null : tenant.id)
+                      }}
+                    >
                       <HiOutlineDotsVertical className="w-5 h-5" />
                     </button>
+
+                    {activeDropdown === tenant.id && (
+                      <div className="absolute right-6 top-12 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-50">
+                        <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                          <HiOutlinePencil className="w-4 h-4 text-gray-400" />
+                          Edit Settings
+                        </button>
+                        <button                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            onClick={() => {
+                              setSelectedTenant(tenant)
+                              setIsBudgetModalOpen(true)
+                              setActiveDropdown(null)
+                            }}
+                          >
+                            <HiOutlineCurrencyDollar className="w-4 h-4 text-gray-400" />
+                            Load Budget
+                          </button>
+                          <button                           className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                            tenant.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
+                          }`}
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to ${tenant.status === 'ACTIVE' ? 'suspend' : 'activate'} ${tenant.name}?`)) {
+                              toggleStatusMutation.mutate(tenant.id)
+                            }
+                          }}
+                        >
+                          <HiOutlineLockClosed className="w-4 h-4" />
+                          {tenant.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -289,6 +357,79 @@ export default function Tenants() {
                   disabled={provisionMutation.isPending}
                 >
                   {provisionMutation.isPending ? 'Provisioning...' : 'Complete Provisioning'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Load Budget Modal */}
+      {isBudgetModalOpen && selectedTenant && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Load Budget</h2>
+                <p className="text-sm text-gray-500">{selectedTenant.name}</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsBudgetModalOpen(false)
+                  setSelectedTenant(null)
+                }} 
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <HiOutlineXCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const data = {
+                  amount: parseFloat(formData.get('amount')),
+                  description: formData.get('description')
+                }
+                loadBudgetMutation.mutate({ id: selectedTenant.id, data })
+              }} 
+              className="p-6 space-y-4"
+            >
+              <div className="space-y-2">
+                <label className="label">Amount (USD)</label>
+                <input 
+                  name="amount" 
+                  type="number" 
+                  step="0.01" 
+                  className="input h-12 text-lg font-bold" 
+                  placeholder="0.00" 
+                  required 
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="label">Description</label>
+                <input 
+                  name="description" 
+                  type="text" 
+                  className="input" 
+                  placeholder="e.g. Quarterly allocation" 
+                />
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsBudgetModalOpen(false)}
+                  className="btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary flex-1"
+                  disabled={loadBudgetMutation.isLoading}
+                >
+                  {loadBudgetMutation.isLoading ? 'Processing...' : 'Confirm Load'}
                 </button>
               </div>
             </form>
