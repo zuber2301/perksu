@@ -99,6 +99,18 @@ CREATE TABLE department_budgets (
     UNIQUE(budget_id, department_id)
 );
 
+-- Login OTPs for Passwordless Auth
+CREATE TABLE login_otps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL,
+    otp_code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX idx_login_otps_email ON login_otps(email);
+
 -- =====================================================
 -- WALLET & LEDGER TABLES
 -- =====================================================

@@ -17,7 +17,16 @@ class TokenData(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: Optional[str] = None
+
+
+class OTPRequest(BaseModel):
+    email: EmailStr
+
+
+class OTPVerify(BaseModel):
+    email: EmailStr
+    otp_code: str
 
 
 class UserResponse(BaseModel):
