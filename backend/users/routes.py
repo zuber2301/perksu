@@ -204,7 +204,7 @@ async def bulk_user_action(
     for user in users:
         if request.action == 'deactivate':
             user.status = 'deactivated'
-        elif request.action == 'activate':
+        elif request.action == 'activate' or request.action == 'reactivate':
             user.status = 'active'
         elif request.action == 'resend_invite':
             user.invitation_sent_at = func.now()

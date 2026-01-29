@@ -13,7 +13,8 @@ import {
   HiOutlineCheckCircle, 
   HiOutlineExclamationCircle,
   HiOutlineTrash,
-  HiOutlineMail
+  HiOutlineMail,
+  HiOutlineSparkles
 } from 'react-icons/hi'
 
 export default function Users() {
@@ -184,7 +185,7 @@ export default function Users() {
   }
 
   const filteredUsers = users?.data?.filter((user) =>
-    `${user.first_name} ${user.last_name} ${user.email}`
+    `${user.first_name} ${user.last_name} ${user.email} ${user.personal_email || ''} ${user.mobile_phone || ''}`
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
   )
@@ -295,6 +296,8 @@ export default function Users() {
                   />
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Employee</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Personal Email</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Mobile Number</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -305,7 +308,7 @@ export default function Users() {
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan="6" className="px-4 py-4 h-16 bg-gray-50/50"></td>
+                    <td colSpan="8" className="px-4 py-4 h-16 bg-gray-50/50"></td>
                   </tr>
                 ))
               ) : filteredUsers?.map((user) => (
@@ -331,6 +334,12 @@ export default function Users() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-4 py-4 text-sm text-gray-600 truncate max-w-[150px]">
+                    {user.personal_email || '-'}
+                  </td>
+                  <td className="px-4 py-4 text-sm text-gray-600">
+                    {user.mobile_phone || '-'}
+                  </td>
                   <td className="px-4 py-4">
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${getRoleColor(user.role)}`}>
                       {user.role.replace('_', ' ')}
@@ -345,9 +354,38 @@ export default function Users() {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <button className="p-2 text-gray-400 hover:text-gray-600">
-                      <HiOutlinePencil className="w-5 h-5" />
-                    </button>
+                    <div className="flex justify-end gap-2">
+                       {/* Update User */}
+                       <button 
+                         onClick={() => {
+                           setSelectedUser(user);
+                           setShowCreateModal(true);
+                         }}
+                         className="p-2 text-gray-400 hover:text-perksu-purple hover:bg-perksu-purple/5 rounded-lg transition-all"
+                         title="Update User"
+                       >
+                         <HiOutlinePencil className="w-5 h-5" />
+                       </button>
+
+                       {/* Deactivate/Reactivate */}
+                       {user.status === 'deactivated' ? (
+                         <button 
+                           onClick={() => bulkActionMutation.mutate({ user_ids: [user.id], action: 'reactivate' })}
+                           className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                           title="Reactivate"
+                         >
+                           <HiOutlineCheckCircle className="w-5 h-5" />
+                         </button>
+                       ) : (
+                         <button 
+                           onClick={() => bulkActionMutation.mutate({ user_ids: [user.id], action: 'deactivate' })}
+                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                           title="Deactivate"
+                         >
+                           <HiOutlineTrash className="w-5 h-5" />
+                         </button>
+                       )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -507,34 +545,90 @@ export default function Users() {
         </div>
       )}
 
-      {/* Single Add Modal (Basic version for completeness) */}
+      {/* Update/Create User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900">New Employee Setup</h2>
-            <form onSubmit={handleCreateUser} className="space-y-5">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">
+              {selectedUser ? 'Edit Employee Details' : 'New Employee Setup'}
+            </h2>
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (selectedUser) {
+                  // TODO: Implement updateMutation
+                  toast.success('Update feature coming soon');
+                  setShowCreateModal(false);
+                } else {
+                  handleCreateUser(e);
+                }
+              }} 
+              className="space-y-5"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">First Name</label>
-                  <input name="first_name" className="input" placeholder="e.g. John" required />
+                  <input 
+                    name="first_name" 
+                    className="input" 
+                    defaultValue={selectedUser?.first_name}
+                    placeholder="e.g. John" 
+                    required 
+                  />
                 </div>
                 <div>
                   <label className="label">Last Name</label>
-                  <input name="last_name" className="input" placeholder="e.g. Doe" required />
+                  <input 
+                    name="last_name" 
+                    className="input" 
+                    defaultValue={selectedUser?.last_name}
+                    placeholder="e.g. Doe" 
+                    required 
+                  />
                 </div>
-              </div>
-              <div>
-                <label className="label">Work Email</label>
-                <input name="email" type="email" className="input" placeholder="john.doe@company.com" required />
-              </div>
-              <div>
-                <label className="label">Initial Password</label>
-                <input name="password" type="password" className="input" placeholder="••••••••" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="label">Work Email</label>
+                  <input 
+                    name="email" 
+                    type="email" 
+                    className="input" 
+                    defaultValue={selectedUser?.email}
+                    placeholder="john.doe@company.com" 
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="label">Personal Email</label>
+                  <input 
+                    name="personal_email" 
+                    type="email" 
+                    className="input" 
+                    defaultValue={selectedUser?.personal_email}
+                    placeholder="personal@email.com" 
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label">Mobile Number</label>
+                <input 
+                  name="mobile_phone" 
+                  className="input" 
+                  defaultValue={selectedUser?.mobile_phone}
+                  placeholder="+91 00000 00000" 
+                />
+              </div>
+              {!selectedUser && (
+                <div>
+                  <label className="label">Initial Password</label>
+                  <input name="password" type="password" className="input" placeholder="••••••••" required />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="label">Org Role</label>
-                  <select name="role" className="input" required>
+                  <select name="role" className="input" defaultValue={selectedUser?.role || 'employee'} required>
                     <option value="employee">Employee</option>
                     <option value="manager">Manager</option>
                     <option value="hr_admin">HR Admin</option>
@@ -542,7 +636,7 @@ export default function Users() {
                 </div>
                 <div>
                   <label className="label">Department</label>
-                  <select name="department_id" className="input">
+                  <select name="department_id" className="input" defaultValue={selectedUser?.department_id || ''}>
                     <option value="">Select department</option>
                     {departments?.data?.map((dept) => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>
@@ -551,8 +645,19 @@ export default function Users() {
                 </div>
               </div>
               <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-2xl transition-all">Cancel</button>
-                <button type="submit" className="flex-1 btn-primary py-3 shadow-lg shadow-perksu-purple/20">Create & Send Invite</button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setSelectedUser(null);
+                  }} 
+                  className="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-2xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="flex-1 btn-primary py-3 shadow-lg shadow-perksu-purple/20">
+                  {selectedUser ? 'Save Changes' : 'Create & Send Invite'}
+                </button>
               </div>
             </form>
           </div>
