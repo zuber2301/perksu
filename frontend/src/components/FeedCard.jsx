@@ -49,9 +49,44 @@ export default function FeedCard({ item }) {
     switch (item.event_type) {
       case 'recognition':
         return <HiOutlineStar className="w-5 h-5 text-yellow-500" />
+      case 'team_spotlight':
+        return <HiOutlineStar className="w-5 h-5 text-perksu-blue" />
+      case 'milestone':
+        return <HiOutlineStar className="w-5 h-5 text-perksu-purple" />
       default:
         return <HiOutlineStar className="w-5 h-5 text-gray-400" />
     }
+  }
+
+  const getEventText = () => {
+    if (item.event_type === 'team_spotlight') {
+      return (
+        <p className="text-sm text-gray-900">
+          <span className="font-medium">{item.actor_name}</span>
+          {' celebrated a '}
+          <span className="font-bold text-perksu-blue">Team Win</span>
+          {` with ${item.metadata?.recipient_count} members`}
+        </p>
+      )
+    }
+    if (item.event_type === 'milestone') {
+      return (
+        <p className="text-sm text-gray-900">
+          <span className="font-medium">{item.actor_name}</span>
+          {' sent an '}
+          <span className="font-bold text-perksu-purple">E-Card</span>
+          {' to '}
+          <span className="font-medium">{item.target_name}</span>
+        </p>
+      )
+    }
+    return (
+      <p className="text-sm text-gray-900">
+        <span className="font-medium">{item.actor_name}</span>
+        {' recognized '}
+        <span className="font-medium">{item.target_name}</span>
+      </p>
+    )
   }
 
   const getInitials = (name) => {
@@ -71,11 +106,7 @@ export default function FeedCard({ item }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
             {getEventIcon()}
-            <p className="text-sm text-gray-900">
-              <span className="font-medium">{item.actor_name}</span>
-              {' recognized '}
-              <span className="font-medium">{item.target_name}</span>
-            </p>
+            {getEventText()}
           </div>
           <p className="text-xs text-gray-500 mt-1">
             {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
@@ -84,15 +115,31 @@ export default function FeedCard({ item }) {
       </div>
 
       {item.metadata?.message && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+        <div className={`mt-4 p-4 rounded-lg ${
+          item.event_type === 'team_spotlight' ? 'bg-perksu-blue/5 border-2 border-perksu-blue/10' :
+          item.event_type === 'milestone' ? 'bg-perksu-purple/5 border-2 border-perksu-purple/10' :
+          'bg-gray-50'
+        }`}>
+          {item.event_type === 'milestone' && (
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-perksu-purple bg-perksu-purple/10 px-2 py-0.5 rounded inline-block">
+              {item.metadata.ecard_template || 'E-Card'}
+            </div>
+          )}
           <p className="text-gray-700">{item.metadata.message}</p>
+          {item.event_type === 'team_spotlight' && item.metadata?.recipient_names && (
+            <div className="mt-3 flex flex-wrap gap-1">
+              {item.metadata.recipient_names.map(name => (
+                <span key={name} className="text-[10px] bg-white px-2 py-0.5 rounded border border-gray-200">{name}</span>
+              ))}
+            </div>
+          )}
           {item.metadata?.badge_name && (
             <div className="mt-2 inline-flex items-center space-x-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
               <span className="text-lg">{item.metadata.badge_icon}</span>
               <span>{item.metadata.badge_name}</span>
             </div>
           )}
-          {item.metadata?.points && (
+          {item.metadata?.points && item.metadata.points !== '0' && (
             <span className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
               +{item.metadata.points} points
             </span>

@@ -73,11 +73,10 @@ docker-compose up -d
 
 | Email | Password | Role |
 |-------|----------|------|
-| admin@demo.com | password123 | HR Admin |
-| manager@demo.com | password123 | Manager |
-| employee@demo.com | password123 | Employee |
-| sarah@demo.com | password123 | Employee |
-| mike@demo.com | password123 | Manager |
+| super_user@jspark.com | jspark123 | Platform Owner |
+| admin@triton.com | jspark123 | HR Admin |
+| manager@triton.com | jspark123 | Manager |
+| employee@triton.com | jspark123 | Employee |
 
 ## Project Structure
 

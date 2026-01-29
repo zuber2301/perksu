@@ -37,6 +37,8 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
+  requestOTP: (email) => api.post('/auth/request-otp', { email }),
+  verifyOTP: (email, otp_code) => api.post('/auth/verify-otp', { email, otp_code }),
   me: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
 }
@@ -114,7 +116,12 @@ export const notificationsAPI = {
 // Tenants API
 export const tenantsAPI = {
   getCurrent: () => api.get('/tenants/current'),
+  getAll: () => api.get('/tenants'),
+  getById: (id) => api.get(`/tenants/${id}`),
   updateCurrent: (data) => api.put('/tenants/current', data),
+  provision: (data) => api.post('/tenants', data),
+  toggleStatus: (id) => api.post(`/tenants/${id}/toggle-status`),
+  loadBudget: (id, data) => api.post(`/tenants/${id}/load-budget`, data),
   getDepartments: () => api.get('/tenants/departments'),
   createDepartment: (data) => api.post('/tenants/departments', data),
   updateDepartment: (id, data) => api.put(`/tenants/departments/${id}`, data),

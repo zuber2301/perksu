@@ -1,20 +1,74 @@
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Numeric, Integer, Text, Date, CheckConstraint
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Numeric, Integer, Text, Date, CheckConstraint, TypeDecorator, CHAR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB as PG_JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+import json
 from database import Base
 import uuid
 
+class GUID(TypeDecorator):
+    """Platform-independent GUID type."""
+    impl = CHAR
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PG_UUID(as_uuid=True))
+        else:
+            return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == 'postgresql':
+            return str(value)
+        else:
+            return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        if not isinstance(value, uuid.UUID):
+            return uuid.UUID(value)
+        return value
+
+class JSONType(TypeDecorator):
+    """Platform-independent JSON type."""
+    impl = Text
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PG_JSONB())
+        else:
+            return dialect.type_descriptor(Text())
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == 'postgresql':
+            return value
+        else:
+            return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == 'postgresql':
+            return value
+        else:
+            return json.loads(value)
 
 class Tenant(Base):
     __tablename__ = "tenants"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
-    domain = Column(String(255), unique=True)
-    logo_url = Column(String(500))
-    status = Column(String(50), default='active')
-    settings = Column(JSONB, default={})
+    slug = Column(String(255), unique=True, nullable=False)
+    branding_config = Column(JSONType(), default={})
+    subscription_tier = Column(String(50), default='basic')
+    master_budget_balance = Column(Numeric(15, 2), default=0)
+    status = Column(String(50), default='ACTIVE')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -22,15 +76,31 @@ class Tenant(Base):
     departments = relationship("Department", back_populates="tenant")
     users = relationship("User", back_populates="tenant")
     budgets = relationship("Budget", back_populates="tenant")
+    master_budget_ledger = relationship("MasterBudgetLedger", back_populates="tenant")
+
+
+class MasterBudgetLedger(Base):
+    __tablename__ = "master_budget_ledger"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    transaction_type = Column(String(20), nullable=False)  # credit/debit
+    amount = Column(Numeric(15, 2), nullable=False)
+    balance_after = Column(Numeric(15, 2), nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    tenant = relationship("Tenant", back_populates="master_budget_ledger")
 
 
 class Department(Base):
     __tablename__ = "departments"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
-    parent_id = Column(UUID(as_uuid=True), ForeignKey("departments.id"))
+    parent_id = Column(GUID(), ForeignKey("departments.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -43,18 +113,19 @@ class Department(Base):
 class User(Base):
     __tablename__ = "users"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     email = Column(String(255), nullable=False)
     password_hash = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     role = Column(String(50), nullable=False)
-    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id"))
-    manager_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    department_id = Column(GUID(), ForeignKey("departments.id"))
+    manager_id = Column(GUID(), ForeignKey("users.id"))
     avatar_url = Column(String(500))
     date_of_birth = Column(Date)
     hire_date = Column(Date)
+    is_super_admin = Column(Boolean, default=False)
     status = Column(String(50), default='active')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -71,18 +142,30 @@ class User(Base):
         return f"{self.first_name} {self.last_name}"
 
 
+class LoginOTP(Base):
+    __tablename__ = "login_otps"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), nullable=False, index=True)
+    otp_code = Column(String(10), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    attempts = Column(Integer, default=0)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Budget(Base):
     __tablename__ = "budgets"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     fiscal_year = Column(Integer, nullable=False)
     fiscal_quarter = Column(Integer)
     total_points = Column(Numeric(15, 2), nullable=False, default=0)
     allocated_points = Column(Numeric(15, 2), nullable=False, default=0)
     status = Column(String(50), default='active')
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_by = Column(GUID(), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -98,10 +181,10 @@ class Budget(Base):
 class DepartmentBudget(Base):
     __tablename__ = "department_budgets"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    budget_id = Column(UUID(as_uuid=True), ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False)
-    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    budget_id = Column(GUID(), ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False)
+    department_id = Column(GUID(), ForeignKey("departments.id", ondelete="CASCADE"), nullable=False)
     allocated_points = Column(Numeric(15, 2), nullable=False, default=0)
     spent_points = Column(Numeric(15, 2), nullable=False, default=0)
     monthly_cap = Column(Numeric(15, 2))
@@ -120,9 +203,9 @@ class DepartmentBudget(Base):
 class Wallet(Base):
     __tablename__ = "wallets"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
     balance = Column(Numeric(15, 2), nullable=False, default=0)
     lifetime_earned = Column(Numeric(15, 2), nullable=False, default=0)
     lifetime_spent = Column(Numeric(15, 2), nullable=False, default=0)
@@ -137,17 +220,17 @@ class Wallet(Base):
 class WalletLedger(Base):
     __tablename__ = "wallet_ledger"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    wallet_id = Column(UUID(as_uuid=True), ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    wallet_id = Column(GUID(), ForeignKey("wallets.id", ondelete="CASCADE"), nullable=False)
     transaction_type = Column(String(20), nullable=False)  # credit/debit
     source = Column(String(50), nullable=False)  # hr_allocation/recognition/redemption/adjustment/expiry/reversal
     points = Column(Numeric(15, 2), nullable=False)
     balance_after = Column(Numeric(15, 2), nullable=False)
     reference_type = Column(String(50))
-    reference_id = Column(UUID(as_uuid=True))
+    reference_id = Column(GUID())
     description = Column(Text)
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_by = Column(GUID(), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -157,8 +240,8 @@ class WalletLedger(Base):
 class Badge(Base):
     __tablename__ = "badges"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"))
     name = Column(String(100), nullable=False)
     description = Column(Text)
     icon_url = Column(String(500))
@@ -173,16 +256,18 @@ class Badge(Base):
 class Recognition(Base):
     __tablename__ = "recognitions"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    from_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    to_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    badge_id = Column(UUID(as_uuid=True), ForeignKey("badges.id"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    from_user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
+    to_user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
+    badge_id = Column(GUID(), ForeignKey("badges.id"))
+    recognition_type = Column(String(50), default='standard')  # standard, individual_award, group_award, ecard
     points = Column(Numeric(15, 2), nullable=False, default=0)
     message = Column(Text, nullable=False)
+    ecard_template = Column(String(100))
     visibility = Column(String(20), default='public')  # public/private/department
     status = Column(String(50), default='active')  # pending/active/rejected/revoked
-    department_budget_id = Column(UUID(as_uuid=True), ForeignKey("department_budgets.id"))
+    department_budget_id = Column(GUID(), ForeignKey("department_budgets.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -197,9 +282,9 @@ class Recognition(Base):
 class RecognitionComment(Base):
     __tablename__ = "recognition_comments"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    recognition_id = Column(UUID(as_uuid=True), ForeignKey("recognitions.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    recognition_id = Column(GUID(), ForeignKey("recognitions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
@@ -211,9 +296,9 @@ class RecognitionComment(Base):
 class RecognitionReaction(Base):
     __tablename__ = "recognition_reactions"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    recognition_id = Column(UUID(as_uuid=True), ForeignKey("recognitions.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    recognition_id = Column(GUID(), ForeignKey("recognitions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
     reaction_type = Column(String(20), default='like')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
@@ -225,15 +310,15 @@ class RecognitionReaction(Base):
 class Feed(Base):
     __tablename__ = "feed"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     event_type = Column(String(50), nullable=False)  # recognition/redemption/milestone/birthday/anniversary/achievement
     reference_type = Column(String(50))
-    reference_id = Column(UUID(as_uuid=True))
-    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    target_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reference_id = Column(GUID())
+    actor_id = Column(GUID(), ForeignKey("users.id"))
+    target_id = Column(GUID(), ForeignKey("users.id"))
     visibility = Column(String(20), default='public')
-    event_metadata = Column("metadata", JSONB, default={})
+    event_metadata = Column("metadata", JSONType, default={})
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -244,7 +329,7 @@ class Feed(Base):
 class Brand(Base):
     __tablename__ = "brands"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     logo_url = Column(String(500))
@@ -259,8 +344,8 @@ class Brand(Base):
 class Voucher(Base):
     __tablename__ = "vouchers"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    brand_id = Column(UUID(as_uuid=True), ForeignKey("brands.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    brand_id = Column(GUID(), ForeignKey("brands.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     denomination = Column(Numeric(15, 2), nullable=False)
@@ -282,9 +367,9 @@ class Voucher(Base):
 class TenantVoucher(Base):
     __tablename__ = "tenant_vouchers"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    voucher_id = Column(UUID(as_uuid=True), ForeignKey("vouchers.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    voucher_id = Column(GUID(), ForeignKey("vouchers.id", ondelete="CASCADE"), nullable=False)
     is_active = Column(Boolean, default=True)
     custom_points_required = Column(Numeric(15, 2))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -293,10 +378,10 @@ class TenantVoucher(Base):
 class Redemption(Base):
     __tablename__ = "redemptions"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    voucher_id = Column(UUID(as_uuid=True), ForeignKey("vouchers.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
+    voucher_id = Column(GUID(), ForeignKey("vouchers.id"), nullable=False)
     points_used = Column(Numeric(15, 2), nullable=False)
     copay_amount = Column(Numeric(15, 2), default=0)
     voucher_code = Column(String(255))
@@ -316,14 +401,14 @@ class Redemption(Base):
 class AuditLog(Base):
     __tablename__ = "audit_log"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"))
-    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id"))
+    actor_id = Column(GUID(), ForeignKey("users.id"))
     action = Column(String(100), nullable=False)
     entity_type = Column(String(100))
-    entity_id = Column(UUID(as_uuid=True))
-    old_values = Column(JSONB)
-    new_values = Column(JSONB)
+    entity_id = Column(GUID())
+    old_values = Column(JSONType)
+    new_values = Column(JSONType)
     ip_address = Column(String(45))
     user_agent = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -332,14 +417,14 @@ class AuditLog(Base):
 class Notification(Base):
     __tablename__ = "notifications"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(50), nullable=False)
     title = Column(String(255), nullable=False)
     message = Column(Text)
     reference_type = Column(String(50))
-    reference_id = Column(UUID(as_uuid=True))
+    reference_id = Column(GUID())
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

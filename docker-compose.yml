@@ -33,7 +33,11 @@ services:
       SECRET_KEY: ${SECRET_KEY:-perksu-super-secret-key-change-in-production}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:6173}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:7173}
+      SMTP_EMAIL: ${SMTP_EMAIL}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
     ports:
       - "${BACKEND_EXTERNAL_PORT:-6100}:8000"
     volumes:
@@ -53,7 +57,7 @@ services:
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:6100}
     ports:
-      - "${FRONTEND_EXTERNAL_PORT:-6173}:5173"
+      - "${FRONTEND_EXTERNAL_PORT:-7173}:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules

@@ -16,7 +16,8 @@ import {
   HiOutlineLogout,
   HiOutlineUser,
   HiOutlineMenu,
-  HiOutlineX
+  HiOutlineX,
+  HiOutlineOfficeBuilding
 } from 'react-icons/hi'
 
 const navigation = [
@@ -28,7 +29,8 @@ const navigation = [
 ]
 
 const adminNavigation = [
-  { name: 'Budgets', href: '/budgets', icon: HiOutlineChartBar, roles: ['hr_admin', 'platform_admin'] },
+  { name: 'Tenants', href: '/tenants', icon: HiOutlineOfficeBuilding, roles: ['platform_admin'] },
+  { name: 'Budgets', href: '/budgets', icon: HiOutlineChartBar, roles: ['manager', 'hr_admin', 'platform_admin'] },
   { name: 'Users', href: '/users', icon: HiOutlineUsers, roles: ['hr_admin', 'platform_admin'] },
   { name: 'Audit Log', href: '/audit', icon: HiOutlineClipboardList, roles: ['hr_admin', 'platform_admin'] },
 ]

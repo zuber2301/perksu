@@ -44,6 +44,7 @@ class UserResponse(BaseModel):
     avatar_url: Optional[str] = None
     date_of_birth: Optional[date] = None
     hire_date: Optional[date] = None
+    is_super_admin: bool = False
     status: str
     created_at: datetime
 

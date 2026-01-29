@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from database import get_db
 from models import (
-    Recognition, Badge, User, Wallet, WalletLedger,
+    Recognition, Badge, User, Wallet, WalletLedger, Budget,
     DepartmentBudget, Feed, Notification, AuditLog,
     RecognitionComment, RecognitionReaction
 )
@@ -80,8 +80,10 @@ async def get_recognitions(
             from_user_id=rec.from_user_id,
             to_user_id=rec.to_user_id,
             badge_id=rec.badge_id,
+            recognition_type=rec.recognition_type or 'standard',
             points=rec.points,
             message=rec.message,
+            ecard_template=rec.ecard_template,
             visibility=rec.visibility,
             status=rec.status,
             created_at=rec.created_at,
@@ -102,133 +104,218 @@ async def create_recognition(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a new recognition"""
-    # Validate recipient exists
-    recipient = db.query(User).filter(
-        User.id == recognition_data.to_user_id,
-        User.tenant_id == current_user.tenant_id
-    ).first()
-    if not recipient:
-        raise HTTPException(status_code=404, detail="Recipient not found")
+    """Create a new recognition with multi-workflow support"""
+    rec_type = recognition_data.recognition_type
     
-    # Can't recognize yourself
-    if recognition_data.to_user_id == current_user.id:
-        raise HTTPException(status_code=400, detail="Cannot recognize yourself")
-    
-    # Check if manager and has budget (for managers giving points)
-    dept_budget = None
-    if recognition_data.points > 0 and current_user.role in ['manager', 'hr_admin']:
-        # Find active budget and department budget
-        from models import Budget
-        active_budget = db.query(Budget).filter(
-            Budget.tenant_id == current_user.tenant_id,
-            Budget.status == 'active'
+    # 1. Validation & Recipient Selection
+    recipients = []
+    if rec_type == 'group_award':
+        if not recognition_data.to_user_ids:
+            raise HTTPException(status_code=400, detail="Recipients required for group award")
+        recipients = db.query(User).filter(
+            User.id.in_(recognition_data.to_user_ids),
+            User.tenant_id == current_user.tenant_id
+        ).all()
+        if len(recipients) != len(recognition_data.to_user_ids):
+            raise HTTPException(status_code=404, detail="Some recipients not found")
+    else:
+        if not recognition_data.to_user_id:
+             raise HTTPException(status_code=400, detail="Recipient required")
+        recipient = db.query(User).filter(
+            User.id == recognition_data.to_user_id,
+            User.tenant_id == current_user.tenant_id
         ).first()
-        
-        if active_budget and current_user.department_id:
-            dept_budget = db.query(DepartmentBudget).filter(
-                DepartmentBudget.budget_id == active_budget.id,
-                DepartmentBudget.department_id == current_user.department_id
+        if not recipient:
+            raise HTTPException(status_code=404, detail="Recipient not found")
+        if recipient.id == current_user.id:
+            raise HTTPException(status_code=400, detail="Cannot recognize yourself")
+        recipients = [recipient]
+
+    # Calculate points logic
+    total_points = Decimal(str(recognition_data.points))
+    points_per_user = total_points
+    if rec_type == 'group_award':
+        if recognition_data.is_equal_split:
+            # Total pot is divided equally
+            points_per_user = total_points / Decimal(str(len(recipients)))
+        else:
+            # Flat amount for each
+            total_points = points_per_user * Decimal(str(len(recipients)))
+
+    # 2. Financial Validation (The Gatekeeper)
+    dept_budget = None
+    manager_wallet = None
+
+    if total_points > 0:
+        if rec_type == 'individual_award':
+            # Manager Wallet Validation
+            manager_wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
+            if not manager_wallet or manager_wallet.balance < total_points:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Insufficient wallet balance. Please request a budget increase from your Admin."
+                )
+        else:
+            # Budget Validation
+            active_budget = db.query(Budget).filter(
+                Budget.tenant_id == current_user.tenant_id,
+                Budget.status == 'active'
             ).first()
             
-            if dept_budget:
-                remaining = Decimal(str(dept_budget.allocated_points)) - Decimal(str(dept_budget.spent_points))
-                if remaining < recognition_data.points:
-                    raise HTTPException(
+            if active_budget and current_user.department_id:
+                dept_budget = db.query(DepartmentBudget).filter(
+                    DepartmentBudget.budget_id == active_budget.id,
+                    DepartmentBudget.department_id == current_user.department_id
+                ).first()
+                
+                if not dept_budget or (Decimal(str(dept_budget.allocated_points)) - Decimal(str(dept_budget.spent_points))) < total_points:
+                     raise HTTPException(
                         status_code=400,
-                        detail=f"Insufficient department budget. Available: {remaining}"
+                        detail=f"Insufficient department budget. Required: {total_points}"
                     )
+            else:
+                 raise HTTPException(status_code=400, detail="No active budget or department found for point allocation")
+
+    # 3. Create Recognition(s) & Process Ledger
+    created_recognitions = []
     
-    # Create recognition
-    recognition = Recognition(
-        tenant_id=current_user.tenant_id,
-        from_user_id=current_user.id,
-        to_user_id=recognition_data.to_user_id,
-        badge_id=recognition_data.badge_id,
-        points=recognition_data.points,
-        message=recognition_data.message,
-        visibility=recognition_data.visibility,
-        status='active',
-        department_budget_id=dept_budget.id if dept_budget else None
-    )
-    db.add(recognition)
-    db.flush()
-    
-    # Process points if applicable
-    if recognition_data.points > 0:
-        # Debit department budget
-        if dept_budget:
-            dept_budget.spent_points = Decimal(str(dept_budget.spent_points)) + recognition_data.points
+    # Financial debits
+    if total_points > 0:
+        if manager_wallet:
+            manager_wallet.balance = Decimal(str(manager_wallet.balance)) - total_points
+            manager_wallet.lifetime_spent = Decimal(str(manager_wallet.lifetime_spent)) + total_points
+        elif dept_budget:
+            dept_budget.spent_points = Decimal(str(dept_budget.spent_points)) + total_points
+
+    for recipient in recipients:
+        recognition = Recognition(
+            tenant_id=current_user.tenant_id,
+            from_user_id=current_user.id,
+            to_user_id=recipient.id,
+            badge_id=recognition_data.badge_id,
+            recognition_type=rec_type,
+            points=points_per_user,
+            message=recognition_data.message,
+            ecard_template=recognition_data.ecard_template,
+            visibility=recognition_data.visibility,
+            status='active',
+            department_budget_id=dept_budget.id if dept_budget else None
+        )
+        db.add(recognition)
+        db.flush() # Get ID
+        created_recognitions.append(recognition)
         
-        # Credit recipient's wallet
-        recipient_wallet = db.query(Wallet).filter(Wallet.user_id == recipient.id).first()
-        if recipient_wallet:
-            old_balance = recipient_wallet.balance
-            recipient_wallet.balance = Decimal(str(recipient_wallet.balance)) + recognition_data.points
-            recipient_wallet.lifetime_earned = Decimal(str(recipient_wallet.lifetime_earned)) + recognition_data.points
-            
-            # Create ledger entry
-            ledger_entry = WalletLedger(
-                tenant_id=current_user.tenant_id,
-                wallet_id=recipient_wallet.id,
-                transaction_type='credit',
-                source='recognition',
-                points=recognition_data.points,
-                balance_after=recipient_wallet.balance,
-                reference_type='recognition',
-                reference_id=recognition.id,
-                description=f"Recognition from {current_user.first_name} {current_user.last_name}",
-                created_by=current_user.id
-            )
-            db.add(ledger_entry)
-    
-    # Create feed entry
-    feed_entry = Feed(
-        tenant_id=current_user.tenant_id,
-        event_type='recognition',
-        reference_type='recognition',
-        reference_id=recognition.id,
-        actor_id=current_user.id,
-        target_id=recipient.id,
-        visibility=recognition_data.visibility,
-        metadata={
-            "points": str(recognition_data.points),
-            "message": recognition_data.message[:100]
-        }
-    )
-    db.add(feed_entry)
-    
-    # Create notification for recipient
-    notification = Notification(
-        tenant_id=current_user.tenant_id,
-        user_id=recipient.id,
-        type='recognition_received',
-        title='You received recognition!',
-        message=f"{current_user.first_name} {current_user.last_name} recognized you with {recognition_data.points} points",
-        reference_type='recognition',
-        reference_id=recognition.id
-    )
-    db.add(notification)
-    
-    # Audit log
-    audit = AuditLog(
+        # Credit Recipient
+        if points_per_user > 0:
+            recipient_wallet = db.query(Wallet).filter(Wallet.user_id == recipient.id).first()
+            if recipient_wallet:
+                recipient_wallet.balance = Decimal(str(recipient_wallet.balance)) + points_per_user
+                recipient_wallet.lifetime_earned = Decimal(str(recipient_wallet.lifetime_earned)) + points_per_user
+                
+                db.add(WalletLedger(
+                    tenant_id=current_user.tenant_id,
+                    wallet_id=recipient_wallet.id,
+                    transaction_type='credit' if rec_type != 'individual_award' else 'AWARD',
+                    source='recognition' if rec_type != 'individual_award' else 'award',
+                    points=points_per_user,
+                    balance_after=recipient_wallet.balance,
+                    reference_type='recognition',
+                    reference_id=recognition.id,
+                    description=f"Recognition from {current_user.full_name}",
+                    created_by=current_user.id
+                ))
+
+    # Debit ledger for manager if applicable
+    if manager_wallet and total_points > 0:
+        db.add(WalletLedger(
+            tenant_id=current_user.tenant_id,
+            wallet_id=manager_wallet.id,
+            transaction_type='debit' if rec_type != 'individual_award' else 'AWARD',
+            source='recognition' if rec_type != 'individual_award' else 'award',
+            points=total_points,
+            balance_after=manager_wallet.balance,
+            reference_type='recognition_bulk',
+            reference_id=created_recognitions[0].id,
+            description=f"Awarded points to {len(recipients)} recipient(s)",
+            created_by=current_user.id
+        ))
+
+    # 4. Social & Feed
+    if rec_type == 'group_award':
+        db.add(Feed(
+            tenant_id=current_user.tenant_id,
+            event_type='team_spotlight',
+            reference_type='recognition_bulk',
+            reference_id=created_recognitions[0].id,
+            actor_id=current_user.id,
+            visibility=recognition_data.visibility,
+            metadata={
+                "points": str(total_points),
+                "recipient_count": len(recipients),
+                "recipient_names": [r.full_name for r in recipients],
+                "message": recognition_data.message
+            }
+        ))
+    elif rec_type == 'ecard':
+         db.add(Feed(
+            tenant_id=current_user.tenant_id,
+            event_type='milestone',
+            reference_type='recognition',
+            reference_id=created_recognitions[0].id,
+            actor_id=current_user.id,
+            target_id=recipients[0].id,
+            visibility=recognition_data.visibility,
+            metadata={
+                "template": recognition_data.ecard_template,
+                "message": recognition_data.message
+            }
+        ))
+    else:
+        db.add(Feed(
+            tenant_id=current_user.tenant_id,
+            event_type='recognition',
+            reference_type='recognition',
+            reference_id=created_recognitions[0].id,
+            actor_id=current_user.id,
+            target_id=recipients[0].id,
+            visibility=recognition_data.visibility,
+            metadata={
+                "points": str(points_per_user),
+                "message": recognition_data.message[:100],
+                "is_award": rec_type == 'individual_award'
+            }
+        ))
+
+    # 5. Notifications
+    for recipient in recipients:
+        db.add(Notification(
+            tenant_id=current_user.tenant_id,
+            user_id=recipient.id,
+            type='recognition_received' if rec_type != 'ecard' else 'ecard_received',
+            title='You received recognition!' if rec_type != 'ecard' else 'You received an E-Card!',
+            message=f"{current_user.full_name} recognized you with {points_per_user} points" if points_per_user > 0 else f"{current_user.full_name} sent you an E-Card!",
+            reference_type='recognition',
+            reference_id=created_recognitions[recipients.index(recipient)].id
+        ))
+
+    # 6. Audit Log
+    db.add(AuditLog(
         tenant_id=current_user.tenant_id,
         actor_id=current_user.id,
         action="recognition_created",
         entity_type="recognition",
-        entity_id=recognition.id,
+        entity_id=created_recognitions[0].id,
         new_values={
-            "to_user_id": str(recognition_data.to_user_id),
-            "points": str(recognition_data.points),
+            "type": rec_type,
+            "recipient_count": len(recipients),
+            "total_points": str(total_points),
             "message": recognition_data.message
         }
-    )
-    db.add(audit)
-    
+    ))
+
     db.commit()
-    db.refresh(recognition)
-    
-    return recognition
+    db.refresh(created_recognitions[0])
+    return created_recognitions[0]
 
 
 @router.get("/{recognition_id}", response_model=RecognitionDetailResponse)

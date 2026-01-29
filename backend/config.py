@@ -2,6 +2,9 @@ from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import List, Union
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -16,6 +19,12 @@ class Settings(BaseSettings):
     # CORS - accept string or list
     cors_origins: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://localhost:5180"
     
+    # SMTP Settings
+    smtp_email: str = os.getenv("SMTP_EMAIL", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "465"))
+
     @field_validator('cors_origins', mode='before')
     @classmethod
     def parse_cors_origins(cls, v):

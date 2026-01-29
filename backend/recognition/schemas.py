@@ -18,21 +18,27 @@ class BadgeResponse(BaseModel):
 
 
 class RecognitionCreate(BaseModel):
-    to_user_id: UUID
+    to_user_id: Optional[UUID] = None
+    to_user_ids: Optional[List[UUID]] = None
     badge_id: Optional[UUID] = None
     points: Decimal
     message: str
+    recognition_type: str = 'standard'
+    ecard_template: Optional[str] = None
     visibility: str = 'public'
+    is_equal_split: bool = False # For group awards
 
 
 class RecognitionResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     from_user_id: UUID
-    to_user_id: UUID
+    to_user_id: Optional[UUID] = None
     badge_id: Optional[UUID] = None
+    recognition_type: str
     points: Decimal
     message: str
+    ecard_template: Optional[str] = None
     visibility: str
     status: str
     created_at: datetime
