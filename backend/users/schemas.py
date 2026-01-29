@@ -21,6 +21,8 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
+    personal_email: Optional[EmailStr] = None
+    mobile_phone: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     role: Optional[Literal['platform_admin', 'hr_admin', 'manager', 'employee']] = None
@@ -36,6 +38,8 @@ class UserResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     email: str
+    personal_email: Optional[str] = None
+    mobile_phone: Optional[str] = None
     first_name: str
     last_name: str
     role: str
@@ -79,6 +83,10 @@ class StagingUserResponse(BaseModel):
     raw_department: Optional[str] = None
     raw_role: Optional[str] = None
     raw_manager_email: Optional[str] = None
+    raw_personal_email: Optional[str] = None
+    raw_mobile_phone: Optional[str] = None
+    raw_date_of_birth: Optional[str] = None
+    raw_hire_date: Optional[str] = None
     is_valid: bool
     validation_errors: list[str]
     processed: bool

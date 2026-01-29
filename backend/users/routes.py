@@ -129,9 +129,22 @@ async def download_template(current_user: User = Depends(get_hr_admin)):
     """Download CSV template for bulk user upload"""
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Full Name", "Email", "Department", "Role", "Manager Email"])
-    writer.writerow(["John Doe", "john.doe@company.com", "Sales", "manager", ""])
-    writer.writerow(["Jane Smith", "jane.smith@company.com", "Sales", "employee", "john.doe@company.com"])
+    # Comprehensive headers to match users table requirements
+    writer.writerow([
+        "First Name", "Last Name", "Work Email", "Personal Email", 
+        "Mobile Number", "Role", "Department", "Manager Email", 
+        "Date of Birth", "Hire Date"
+    ])
+    writer.writerow([
+        "John", "Doe", "john.doe@perksu.com", "john.personal@gmail.com", 
+        "+919876543210", "manager", "Sales", "", 
+        "1985-05-20", "2020-01-15"
+    ])
+    writer.writerow([
+        "Jane", "Smith", "jane.smith@perksu.com", "jane.s@yahoo.com", 
+        "+919876543211", "employee", "Sales", "john.doe@perksu.com", 
+        "1992-08-12", "2022-03-01"
+    ])
     
     content = output.getvalue()
     return Response(

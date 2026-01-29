@@ -177,6 +177,10 @@ class StagingUser(Base):
     raw_department = Column(String(255))
     raw_role = Column(String(50))
     raw_manager_email = Column(String(255))
+    raw_personal_email = Column(String(255))
+    raw_mobile_phone = Column(String(20))
+    raw_date_of_birth = Column(String(50))
+    raw_hire_date = Column(String(50))
     
     # Validation results
     is_valid = Column(Boolean, default=True)

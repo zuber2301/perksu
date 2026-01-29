@@ -19,7 +19,6 @@ import {
 
 export default function Users() {
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showAllocateModal, setShowAllocateModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   
   const [uploadStep, setUploadStep] = useState('upload') // upload, preview, processing
@@ -61,6 +60,19 @@ export default function Users() {
     },
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => usersAPI.update(id, data),
+    onSuccess: () => {
+      toast.success('User updated successfully')
+      queryClient.invalidateQueries(['users'])
+      setShowCreateModal(false)
+      setSelectedUser(null)
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to update user')
+    },
+  })
+
   const uploadMutation = useMutation({
     mutationFn: (file) => {
       const formData = new FormData()
@@ -92,8 +104,7 @@ export default function Users() {
     onSuccess: (res) => {
       toast.success(res.data.message)
       queryClient.invalidateQueries(['users'])
-      setShowUploadModal(false)
-      setUploadStep('upload')
+      setUploadStep('processing') // Show success screen
     },
     onError: (err) => {
       toast.error(err.response?.data?.detail || 'Import failed')
@@ -112,17 +123,27 @@ export default function Users() {
     }
   })
 
-  const handleCreateUser = (e) => {
+  const handleSubmitUser = (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
-    createMutation.mutate({
+    const payload = {
       email: formData.get('email'),
-      password: formData.get('password'),
       first_name: formData.get('first_name'),
       last_name: formData.get('last_name'),
       role: formData.get('role'),
       department_id: formData.get('department_id') || null,
-    })
+      personal_email: formData.get('personal_email') || null,
+      mobile_phone: formData.get('mobile_phone') || null,
+      date_of_birth: formData.get('date_of_birth') || null,
+      hire_date: formData.get('hire_date') || null,
+    }
+
+    if (selectedUser) {
+      updateMutation.mutate({ id: selectedUser.id, data: payload })
+    } else {
+      payload.password = formData.get('password')
+      createMutation.mutate(payload)
+    }
   }
 
   const handleFileUpload = (e) => {
@@ -415,39 +436,77 @@ export default function Users() {
               </button>
             </div>
 
+            {/* Stepper */}
+            <div className="bg-gray-50/50 border-b border-gray-100 px-8 py-4">
+              <div className="flex items-center justify-between max-w-2xl mx-auto relative">
+                {/* Connector Line */}
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -translate-y-1/2 z-0"></div>
+                <div 
+                  className="absolute top-1/2 left-0 h-0.5 bg-perksu-purple -translate-y-1/2 z-0 transition-all duration-500"
+                  style={{ width: uploadStep === 'upload' ? '0%' : uploadStep === 'preview' ? '50%' : '100%' }}
+                ></div>
+
+                {/* Step 1 */}
+                <div className="relative z-10 flex flex-col items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${uploadStep === 'upload' ? 'bg-perksu-purple text-white' : 'bg-green-500 text-white'}`}>
+                    {uploadStep !== 'upload' ? '✓' : '1'}
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${uploadStep === 'upload' ? 'text-perksu-purple' : 'text-gray-400'}`}>Upload</span>
+                </div>
+
+                {/* Step 2 */}
+                <div className="relative z-10 flex flex-col items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${uploadStep === 'preview' ? 'bg-perksu-purple text-white shadow-lg shadow-perksu-purple/20' : uploadStep === 'upload' ? 'bg-white border-2 border-gray-200 text-gray-400' : 'bg-green-500 text-white'}`}>
+                    {uploadStep === 'processing' ? '✓' : '2'}
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${uploadStep === 'preview' ? 'text-perksu-purple' : 'text-gray-400'}`}>Preview</span>
+                </div>
+
+                {/* Step 3 */}
+                <div className="relative z-10 flex flex-col items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${uploadStep === 'processing' ? 'bg-perksu-purple text-white' : 'bg-white border-2 border-gray-200 text-gray-400'}`}>
+                    3
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${uploadStep === 'processing' ? 'text-perksu-purple' : 'text-gray-400'}`}>Complete</span>
+                </div>
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto p-6">
               {uploadStep === 'upload' && (
-                <div className="space-y-8 py-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50 hover:bg-gray-100 hover:border-perksu-purple/30 transition-all cursor-pointer group relative">
+                <div className="space-y-4 py-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50 hover:bg-gray-100 hover:border-perksu-purple/30 transition-all cursor-pointer group relative">
                       <input 
                         type="file" 
                         accept=".csv,.xlsx" 
                         className="absolute inset-0 opacity-0 cursor-pointer"
                         onChange={handleFileUpload}
                       />
-                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                        < HiOutlineUpload className="w-8 h-8 text-perksu-purple" />
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                        < HiOutlineUpload className="w-6 h-6 text-perksu-purple" />
                       </div>
-                      <p className="font-bold text-gray-900 mb-1">Upload CSV or XLSX</p>
-                      <p className="text-xs text-gray-500 text-center">Drag and drop your file here or click to browse</p>
+                      <p className="font-bold text-sm text-gray-900 mb-0.5">Upload CSV or XLSX</p>
+                      <p className="text-[10px] text-gray-500 text-center">Drag and drop your file here</p>
                     </div>
 
-                    <div className="flex flex-col justify-center space-y-4">
-                      <div className="card bg-purple-50 border-purple-100">
-                        <h3 className="font-bold text-perksu-purple mb-2">Instructions</h3>
-                        <ul className="text-xs space-y-2 text-perksu-purple/80">
+                    <div className="flex flex-col justify-center space-y-3">
+                      <div className="p-4 bg-purple-50 border border-purple-100 rounded-2xl">
+                        <h3 className="font-bold text-xs text-perksu-purple mb-1.5 flex items-center gap-1.5">
+                           <HiOutlineExclamationCircle className="w-4 h-4" /> Instructions
+                        </h3>
+                        <ul className="text-[10px] space-y-1 text-perksu-purple/80">
                           <li>• Use our official CSV template for formatting</li>
                           <li>• Emails must be unique within your organization</li>
                           <li>• Role must be 'manager' or 'employee'</li>
-                          <li>• Department names must match existing ones</li>
+                          <li>• Mobile must follow +91XXXXXXXXXX format</li>
                         </ul>
                       </div>
                       <button 
                         onClick={downloadTemplate}
-                        className="flex items-center justify-center gap-2 w-full py-3 border-2 border-perksu-purple/20 text-perksu-purple rounded-2xl font-bold hover:bg-perksu-purple/5 transition-all"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 border border-perksu-purple/20 text-perksu-purple rounded-xl text-sm font-bold hover:bg-perksu-purple/5 transition-all"
                       >
-                        <HiOutlineDownload className="w-5 h-5" />
+                        <HiOutlineDownload className="w-4 h-4" />
                         Download Template
                       </button>
                     </div>
@@ -487,6 +546,10 @@ export default function Users() {
                              <td className="px-4 py-3">
                                 <p className="font-bold text-gray-900">{row.raw_full_name}</p>
                                 <p className="text-xs text-gray-500">{row.raw_email}</p>
+                                <div className="mt-1 flex gap-2">
+                                  {row.raw_personal_email && <span className="text-[10px] text-gray-400">P: {row.raw_personal_email}</span>}
+                                  {row.raw_mobile_phone && <span className="text-[10px] text-gray-400">M: {row.raw_mobile_phone}</span>}
+                                </div>
                              </td>
                              <td className="px-4 py-3">
                                 <div className="flex gap-2">
@@ -514,6 +577,27 @@ export default function Users() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {uploadStep === 'processing' && (
+                <div className="py-12 flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300">
+                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                    <HiOutlineCheckCircle className="w-12 h-12 text-green-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Import Successful!</h3>
+                  <p className="text-gray-500 max-w-sm mb-8">
+                    Your employees have been provisioned and welcome invitations are being sent.
+                  </p>
+                  <button 
+                    onClick={() => {
+                        setShowUploadModal(false);
+                        setUploadStep('upload');
+                    }}
+                    className="btn-primary px-10 py-3 rounded-2xl shadow-xl shadow-perksu-purple/20"
+                  >
+                    Go back to Users
+                  </button>
                 </div>
               )}
             </div>
@@ -548,84 +632,47 @@ export default function Users() {
       {/* Update/Create User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900">
-              {selectedUser ? 'Edit Employee Details' : 'New Employee Setup'}
-            </h2>
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (selectedUser) {
-                  // TODO: Implement updateMutation
-                  toast.success('Update feature coming soon');
-                  setShowCreateModal(false);
-                } else {
-                  handleCreateUser(e);
-                }
-              }} 
-              className="space-y-5"
-            >
+          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {selectedUser ? 'Edit Employee Details' : 'New Employee Setup'}
+              </h2>
+              <button 
+                onClick={() => { setShowCreateModal(false); setSelectedUser(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <HiOutlinePlus className="w-6 h-6 rotate-45" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmitUser} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">First Name</label>
-                  <input 
-                    name="first_name" 
-                    className="input" 
-                    defaultValue={selectedUser?.first_name}
-                    placeholder="e.g. John" 
-                    required 
-                  />
+                  <input name="first_name" className="input" defaultValue={selectedUser?.first_name} placeholder="John" required />
                 </div>
                 <div>
                   <label className="label">Last Name</label>
-                  <input 
-                    name="last_name" 
-                    className="input" 
-                    defaultValue={selectedUser?.last_name}
-                    placeholder="e.g. Doe" 
-                    required 
-                  />
+                  <input name="last_name" className="input" defaultValue={selectedUser?.last_name} placeholder="Doe" required />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Work Email</label>
-                  <input 
-                    name="email" 
-                    type="email" 
-                    className="input" 
-                    defaultValue={selectedUser?.email}
-                    placeholder="john.doe@company.com" 
-                    required 
-                  />
+                  <input name="email" type="email" className="input" defaultValue={selectedUser?.email} placeholder="john@perksu.com" required />
                 </div>
                 <div>
                   <label className="label">Personal Email</label>
-                  <input 
-                    name="personal_email" 
-                    type="email" 
-                    className="input" 
-                    defaultValue={selectedUser?.personal_email}
-                    placeholder="personal@email.com" 
-                  />
+                  <input name="personal_email" type="email" className="input" defaultValue={selectedUser?.personal_email} placeholder="personal@email.com" />
                 </div>
               </div>
-              <div>
-                <label className="label">Mobile Number</label>
-                <input 
-                  name="mobile_phone" 
-                  className="input" 
-                  defaultValue={selectedUser?.mobile_phone}
-                  placeholder="+91 00000 00000" 
-                />
-              </div>
-              {!selectedUser && (
-                <div>
-                  <label className="label">Initial Password</label>
-                  <input name="password" type="password" className="input" placeholder="••••••••" required />
-                </div>
-              )}
+
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Mobile Number</label>
+                  <input name="mobile_phone" className="input" defaultValue={selectedUser?.mobile_phone} placeholder="+91 XXXXX XXXXX" />
+                </div>
                 <div>
                   <label className="label">Org Role</label>
                   <select name="role" className="input" defaultValue={selectedUser?.role || 'employee'} required>
@@ -634,6 +681,9 @@ export default function Users() {
                     <option value="hr_admin">HR Admin</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Department</label>
                   <select name="department_id" className="input" defaultValue={selectedUser?.department_id || ''}>
@@ -643,20 +693,43 @@ export default function Users() {
                     ))}
                   </select>
                 </div>
+                {!selectedUser ? (
+                  <div>
+                    <label className="label">Initial Password</label>
+                    <input name="password" type="password" className="input" placeholder="••••••••" required />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest text-center">Password cannot be edited here for security</p>
+                  </div>
+                )}
               </div>
-              <div className="pt-4 flex gap-3">
+
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                <div>
+                  <label className="label text-[10px] uppercase font-bold text-gray-400">Date of Birth</label>
+                  <input name="date_of_birth" type="date" className="input" defaultValue={selectedUser?.date_of_birth} />
+                </div>
+                <div>
+                  <label className="label text-[10px] uppercase font-bold text-gray-400">Hire Date</label>
+                  <input name="hire_date" type="date" className="input" defaultValue={selectedUser?.hire_date} />
+                </div>
+              </div>
+
+              <div className="pt-6 flex gap-3">
                 <button 
                   type="button" 
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setSelectedUser(null);
-                  }} 
+                  onClick={() => { setShowCreateModal(false); setSelectedUser(null); }}
                   className="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-2xl transition-all"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 btn-primary py-3 shadow-lg shadow-perksu-purple/20">
-                  {selectedUser ? 'Save Changes' : 'Create & Send Invite'}
+                <button 
+                  type="submit" 
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="flex-1 btn-primary py-3 rounded-2xl shadow-lg shadow-perksu-purple/20"
+                >
+                  {createMutation.isPending || updateMutation.isPending ? 'Saving...' : (selectedUser ? 'Save Changes' : 'Create & Send Invite')}
                 </button>
               </div>
             </form>
