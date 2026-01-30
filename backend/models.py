@@ -20,8 +20,13 @@ class GUID(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return value
+        if not isinstance(value, uuid.UUID):
+            try:
+                value = uuid.UUID(str(value))
+            except (ValueError, TypeError):
+                return value
         if dialect.name == 'postgresql':
-            return str(value)
+            return value
         else:
             return str(value)
 
@@ -50,6 +55,13 @@ class JSONType(TypeDecorator):
             return value
         else:
             return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name != 'postgresql' and isinstance(value, str):
+            return json.loads(value)
+        return value
 
     def process_result_value(self, value, dialect):
         if value is None:

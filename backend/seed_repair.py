@@ -26,8 +26,8 @@ def seed_master():
         # 1.1 Ensure jSpark has departments
         departments = [
             "Human Resource (HR)",
-            "Techology (IT)",
-            "Sale & Marketting",
+            "Technology (IT)",
+            "Sales & Marketing",
             "Business Unit -1",
             "Business Unit-2",
             "Business Unit-3"
@@ -114,7 +114,7 @@ def seed_master():
             if not user:
                 print(f"Creating user {u_data['email']}...")
                 # Assign to IT for Sarah, HR for HR user, else first dept
-                dept_name = "Techology (IT)" if u_data['first_name'] == "Sarah" else \
+                dept_name = "Technology (IT)" if u_data['first_name'] == "Sarah" else \
                            ("Human Resource (HR)" if u_data['role'] == "hr_admin" else "Business Unit -1")
                 
                 user = User(

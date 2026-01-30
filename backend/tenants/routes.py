@@ -60,8 +60,8 @@ async def create_tenant(
     # 3. Create Default Departments
     default_depts = [
         "Human Resource (HR)",
-        "Techology (IT)",
-        "Sale & Marketting",
+        "Technology (IT)",
+        "Sales & Marketing",
         "Business Unit -1",
         "Business Unit-2",
         "Business Unit-3"

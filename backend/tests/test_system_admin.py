@@ -57,7 +57,7 @@ def setup_database():
     # Add department
     dept = Department(
         tenant_id=tenant.id,
-        name="Techology (IT)"
+        name="Technology (IT)"
     )
     db.add(dept)
     db.commit()

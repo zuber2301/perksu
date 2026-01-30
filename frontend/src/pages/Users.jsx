@@ -21,6 +21,7 @@ import {
 export default function Users() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   
   const [uploadStep, setUploadStep] = useState('upload') // upload, preview, processing
   const [batchInfo, setBatchInfo] = useState(null)
@@ -158,6 +159,7 @@ export default function Users() {
     const file = e.target.files[0]
     if (file) {
       uploadMutation.mutate(file)
+      e.target.value = '' 
     }
   }
 
@@ -507,18 +509,34 @@ export default function Users() {
               {uploadStep === 'upload' && (
                 <div className="space-y-4 py-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50 hover:bg-gray-100 hover:border-perksu-purple/30 transition-all cursor-pointer group relative">
+                    <div 
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        const file = e.dataTransfer.files[0];
+                        if (file) uploadMutation.mutate(file);
+                      }}
+                      className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-3xl transition-all cursor-pointer group relative ${isDragging ? 'bg-perksu-purple/10 border-perksu-purple' : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-perksu-purple/30'}`}
+                    >
                       <input 
                         type="file" 
                         accept=".csv,.xlsx" 
                         className="absolute inset-0 opacity-0 cursor-pointer"
                         onChange={handleFileUpload}
                       />
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                        < HiOutlineUpload className="w-6 h-6 text-perksu-purple" />
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                        {uploadMutation.isPending ? (
+                          <div className="w-8 h-8 border-3 border-perksu-purple border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <HiOutlineUpload className="w-8 h-8 text-perksu-purple" />
+                        )}
                       </div>
-                      <p className="font-bold text-sm text-gray-900 mb-0.5">Upload CSV or XLSX</p>
-                      <p className="text-[10px] text-gray-500 text-center">Drag and drop your file here</p>
+                      <p className="font-bold text-base text-gray-900 mb-1">
+                        {uploadMutation.isPending ? 'Processing File...' : 'Upload CSV or XLSX'}
+                      </p>
+                      <p className="text-xs text-gray-500 text-center">Drag and drop your file here or click to browse</p>
                     </div>
 
                     <div className="flex flex-col justify-center space-y-3">
@@ -590,16 +608,26 @@ export default function Users() {
                              </td>
                              <td className="px-4 py-3">
                                 {row.is_valid ? (
-                                  <div className="flex items-center gap-1.5 text-green-600 text-xs font-bold">
-                                    <HiOutlineCheckCircle className="w-4 h-4" /> Valid
+                                  <div className="flex items-center gap-1.5 text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-lg w-fit">
+                                    <HiOutlineCheckCircle className="w-4 h-4" /> Ready
                                   </div>
                                 ) : (
-                                  <div className="text-red-500 text-xs">
-                                     {row.validation_errors.map((err, i) => (
-                                       <p key={i} className="flex items-center gap-1">
-                                         <HiOutlineExclamationCircle className="w-3 h-3" /> {err}
-                                       </p>
-                                     ))}
+                                  <div className="group relative">
+                                    <div className="flex items-center gap-1.5 text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded-lg w-fit cursor-help">
+                                      <HiOutlineExclamationCircle className="w-4 h-4" /> {row.validation_errors.length} Errors
+                                    </div>
+                                    <div className="absolute bottom-full left-0 mb-2 w-64 bg-gray-900 text-white text-[10px] p-3 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                                      <p className="font-bold border-b border-white/10 pb-1.5 mb-1.5 uppercase tracking-wider text-red-400">Validation Failures</p>
+                                      <div className="space-y-1.5">
+                                        {row.validation_errors.map((err, i) => (
+                                          <p key={i} className="flex items-start gap-2">
+                                            <span className="w-1 h-1 bg-red-400 rounded-full mt-1.5 shrink-0" />
+                                            {err}
+                                          </p>
+                                        ))}
+                                      </div>
+                                      <div className="absolute top-full left-4 border-8 border-transparent border-t-gray-900"></div>
+                                    </div>
                                   </div>
                                 )}
                              </td>

@@ -16,12 +16,15 @@ def process_bulk_upload(db: Session, tenant_id: uuid.UUID, file_content: bytes, 
     
     # Read file
     if file_extension == 'csv':
-        df = pd.read_csv(io.BytesIO(file_content))
+        try:
+            df = pd.read_csv(io.BytesIO(file_content))
+        except UnicodeDecodeError:
+            df = pd.read_csv(io.BytesIO(file_content), encoding='latin1')
     else:
         df = pd.read_excel(io.BytesIO(file_content))
     
-    # Normalize headers
-    df.columns = [c.strip().lower().replace(' ', '_') for c in df.columns]
+    # Normalize headers: strip, lower, replace spaces, and remove special characters
+    df.columns = [c.strip().lower().replace(' ', '_').replace('-', '_') for c in df.columns]
     
     # Required headers mapping
     # Expected: first_name, last_name, work_email, personal_email, mobile_number, department, role, manager_email, date_of_birth, hire_date
@@ -31,6 +34,24 @@ def process_bulk_upload(db: Session, tenant_id: uuid.UUID, file_content: bytes, 
     # Pre-fetch existing departments for validation
     departments = {d.name.lower(): d.id for d in db.query(Department).filter(Department.tenant_id == tenant_id).all()}
     
+    def parse_date(date_str):
+        if not date_str or str(date_str).lower() == 'nan':
+            return None
+        try:
+            # Handle pandas/numpy timestamp objects
+            if hasattr(date_str, 'strftime'):
+                return date_str.strftime('%Y-%m-%d')
+            # Common formats
+            for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y'):
+                try:
+                    from datetime import datetime
+                    return datetime.strptime(str(date_str).strip(), fmt).strftime('%Y-%m-%d')
+                except:
+                    continue
+            return str(date_str).strip()
+        except:
+            return str(date_str).strip()
+
     for index, row in df.iterrows():
         errors = []
         # Support both "full_name" (legacy) or "first_name"/"last_name"
@@ -46,11 +67,30 @@ def process_bulk_upload(db: Session, tenant_id: uuid.UUID, file_content: bytes, 
         email = str(row.get('work_email', row.get('email', ''))).strip()
         personal_email = str(row.get('personal_email', '')).strip()
         mobile_phone = str(row.get('mobile_number', row.get('mobile_phone', ''))).strip()
+        
+        # Clean mobile phone
+        if mobile_phone and mobile_phone.lower() != 'nan':
+            # Handle pandas float conversion (e.g. 919876543210.0)
+            if mobile_phone.endswith('.0'):
+                mobile_phone = mobile_phone[:-2]
+            
+            # Remove spaces, dashes, parentheses
+            mobile_phone = "".join(c for c in mobile_phone if c.isdigit() or c == '+')
+            
+            # Auto-prepend +91 if 10 digits provided
+            if len(mobile_phone) == 10 and mobile_phone.isdigit():
+                mobile_phone = '+91' + mobile_phone
+            # Prepend + if 91 provided without it
+            elif len(mobile_phone) == 12 and mobile_phone.startswith('91'):
+                mobile_phone = '+' + mobile_phone
+        else:
+            mobile_phone = None
+
         dept_name = str(row.get('department', '')).strip()
         role = str(row.get('role', 'employee')).strip().lower()
         manager_email = str(row.get('manager_email', '')).strip()
-        dob = str(row.get('date_of_birth', '')).strip()
-        hire_date = str(row.get('hire_date', '')).strip()
+        dob = parse_date(row.get('date_of_birth'))
+        hire_date = parse_date(row.get('hire_date'))
         
         # Validation
         if not first_name:
@@ -60,7 +100,7 @@ def process_bulk_upload(db: Session, tenant_id: uuid.UUID, file_content: bytes, 
         
         # Mobile number validation (Simplified +91 check)
         if mobile_phone and not (mobile_phone.startswith('+91') and len(mobile_phone) == 13):
-             errors.append("Mobile must follow +91XXXXXXXXXX format")
+             errors.append("Mobile must follow +91XXXXXXXXXX format (e.g., +919876543210)")
         
         # Check duplicate identifier in actual users (email or mobile)
         existing_user = db.query(User).filter(
@@ -106,6 +146,7 @@ def process_bulk_upload(db: Session, tenant_id: uuid.UUID, file_content: bytes, 
             department_id=dept_id
         )
         db.add(staging_user)
+        db.flush() # Insert immediately to avoid batching issues with SQLAlchemy 2.0 Identity tracking
         staging_records.append(staging_user)
     
     db.commit()

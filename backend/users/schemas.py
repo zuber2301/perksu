@@ -18,6 +18,26 @@ class UserBase(BaseModel):
     date_of_birth: Optional[date] = None
     hire_date: Optional[date] = None
 
+    @field_validator('mobile_phone')
+    @classmethod
+    def validate_mobile_phone(cls, v):
+        if not v:
+            return v
+        
+        # Strip common formatting
+        cleaned = "".join(c for c in v if c.isdigit() or c == '+')
+        
+        # Auto-fix 10 digit or 91... forms
+        if len(cleaned) == 10 and cleaned.isdigit():
+            cleaned = '+91' + cleaned
+        elif len(cleaned) == 12 and cleaned.startswith('91'):
+            cleaned = '+' + cleaned
+            
+        if not (cleaned.startswith('+91') and len(cleaned) == 13):
+            raise ValueError("Mobile must follow +91XXXXXXXXXX format (e.g., +919876543210)")
+        
+        return cleaned
+
 
 class UserCreate(UserBase):
     password: str

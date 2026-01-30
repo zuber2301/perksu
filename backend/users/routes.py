@@ -140,13 +140,13 @@ async def download_template(current_user: User = Depends(get_hr_admin)):
         "Date of Birth", "Hire Date"
     ])
     writer.writerow([
-        "John", "Doe", "john.doe@perksu.com", "john.personal@gmail.com", 
-        "+919876543210", "manager", "Sales", "", 
+        "Sarah", "Manager", "sarah.manager@perksu.com", "sarah.personal@gmail.com", 
+        "+919876543210", "manager", "Technology (IT)", "", 
         "1985-05-20", "2020-01-15"
     ])
     writer.writerow([
-        "Jane", "Smith", "jane.smith@perksu.com", "jane.s@yahoo.com", 
-        "+919876543211", "employee", "Sales", "john.doe@perksu.com", 
+        "John", "Employee", "john.employee@perksu.com", "john.e@yahoo.com", 
+        "+919876543211", "employee", "Sales & Marketing", "sarah.manager@perksu.com", 
         "1992-08-12", "2022-03-01"
     ])
     
