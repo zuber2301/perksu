@@ -69,7 +69,11 @@ async def create_user(
         last_name=user_data.last_name,
         role=user_data.role,
         department_id=user_data.department_id,
-        manager_id=user_data.manager_id
+        manager_id=user_data.manager_id,
+        personal_email=user_data.personal_email,
+        mobile_phone=user_data.mobile_phone,
+        date_of_birth=user_data.date_of_birth,
+        hire_date=user_data.hire_date
     )
     db.add(user)
     db.flush()

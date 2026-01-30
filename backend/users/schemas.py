@@ -11,8 +11,12 @@ class UserBase(BaseModel):
     first_name: str
     last_name: str
     role: Literal['platform_admin', 'hr_admin', 'manager', 'employee']
-    department_id: Optional[UUID] = None
+    department_id: UUID
     manager_id: Optional[UUID] = None
+    personal_email: Optional[EmailStr] = None
+    mobile_phone: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    hire_date: Optional[date] = None
 
 
 class UserCreate(UserBase):

@@ -149,7 +149,7 @@ class User(Base):
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     role = Column(String(50), nullable=False)
-    department_id = Column(GUID(), ForeignKey("departments.id"))
+    department_id = Column(GUID(), ForeignKey("departments.id"), nullable=False)
     manager_id = Column(GUID(), ForeignKey("users.id"))
     avatar_url = Column(String(500))
     date_of_birth = Column(Date)

@@ -55,8 +55,27 @@ async def create_tenant(
         description="Initial provisioning balance"
     )
     db.add(ledger_entry)
+    db.flush()
 
-    # 3. Create Tenant Admin User
+    # 3. Create Default Departments
+    default_depts = [
+        "Human Resource (HR)",
+        "Techology (IT)",
+        "Sale & Marketting",
+        "Business Unit -1",
+        "Business Unit-2",
+        "Business Unit-3"
+    ]
+    
+    hr_dept_id = None
+    for dept_name in default_depts:
+        new_dept = Department(tenant_id=tenant.id, name=dept_name)
+        db.add(new_dept)
+        db.flush()
+        if dept_name == "Human Resource (HR)":
+            hr_dept_id = new_dept.id
+
+    # 4. Create Tenant Admin User
     admin_user = User(
         tenant_id=tenant.id,
         email=tenant_data.admin_email,
@@ -64,6 +83,7 @@ async def create_tenant(
         first_name=tenant_data.admin_first_name,
         last_name=tenant_data.admin_last_name,
         role='hr_admin', # Usually HR Admin is the tenant admin
+        department_id=hr_dept_id,
         is_super_admin=True,
         status='active'
     )

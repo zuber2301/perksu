@@ -76,8 +76,11 @@ def process_bulk_upload(db: Session, tenant_id: uuid.UUID, file_content: bytes, 
             
         # Dept validation
         dept_id = departments.get(dept_name.lower())
-        if not dept_id and dept_name:
-            errors.append(f"Department '{dept_name}' not found")
+        if not dept_id:
+            if not dept_name:
+                errors.append("Department is required")
+            else:
+                errors.append(f"Department '{dept_name}' not found")
             
         # Role validation
         valid_roles = ['hr_admin', 'manager', 'employee', 'platform_admin']
@@ -102,8 +105,6 @@ def process_bulk_upload(db: Session, tenant_id: uuid.UUID, file_content: bytes, 
             last_name=last_name,
             department_id=dept_id
         )
-        db.add(staging_user)
-        staging_records.append(staging_user)
         db.add(staging_user)
         staging_records.append(staging_user)
     

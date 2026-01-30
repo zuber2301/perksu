@@ -10,23 +10,12 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app
-from database import Base, get_db
+from database import Base, get_db, SessionLocal as TestingSessionLocal, engine
 from models import (
     User, Tenant, Wallet, Badge, Department, SystemAdmin,
     Budget, Recognition, Notification, Redemption, AuditLog,
     Voucher, LoginOTP, WalletLedger, StagingUser
 )
-
-# Test database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def override_get_db():
     try:

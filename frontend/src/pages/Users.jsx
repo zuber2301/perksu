@@ -686,7 +686,7 @@ export default function Users() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Department</label>
-                  <select name="department_id" className="input" defaultValue={selectedUser?.department_id || ''}>
+                  <select name="department_id" className="input" defaultValue={selectedUser?.department_id || ''} required>
                     <option value="">Select department</option>
                     {departments?.data?.map((dept) => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>

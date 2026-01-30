@@ -38,12 +38,14 @@ class TestUserSchemas:
     
     def test_user_create_valid(self):
         """Test valid user creation schema"""
+        import uuid
         data = UserCreate(
             email="newuser@test.com",
             password="password123",
             first_name="New",
             last_name="User",
-            role="employee"
+            role="employee",
+            department_id=uuid.uuid4()
         )
         assert data.email == "newuser@test.com"
         assert data.role == "employee"

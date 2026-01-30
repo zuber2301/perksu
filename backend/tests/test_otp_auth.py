@@ -11,19 +11,9 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app
-from database import Base, get_db
-from models import User, Tenant, LoginOTP
+from database import Base, get_db, SessionLocal as TestingSessionLocal, engine
+from models import User, Tenant, LoginOTP, Department
 from datetime import datetime, timedelta
-
-# Test database setup (using SQLite for unit tests)
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
     try:
@@ -52,6 +42,14 @@ def setup_database():
     db.add(tenant)
     db.commit()
     
+    # Create test department
+    dept = Department(
+        tenant_id=tenant.id,
+        name="Human Resource (HR)"
+    )
+    db.add(dept)
+    db.commit()
+    
     # Create test user
     from auth.utils import get_password_hash
     user = User(
@@ -63,13 +61,16 @@ def setup_database():
         first_name="Test",
         last_name="User",
         role="employee",
+        department_id=dept.id,
         status="active"
     )
     db.add(user)
     db.commit()
-    db.close()
-    
+
     yield
+    
+    # Clean up after each test
+    db.close()
     Base.metadata.drop_all(bind=engine)
 
 class TestOTPAuth:

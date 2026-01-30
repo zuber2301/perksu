@@ -11,19 +11,9 @@ import uuid
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app
-from database import Base, get_db
-from models import User, Tenant, SystemAdmin
+from database import Base, get_db, SessionLocal as TestingSessionLocal, engine
+from models import User, Tenant, SystemAdmin, Department
 from auth.utils import get_password_hash
-
-# Test database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
     try:
@@ -63,6 +53,14 @@ def setup_database():
     )
     db.add(tenant)
     db.commit()
+
+    # Add department
+    dept = Department(
+        tenant_id=tenant.id,
+        name="Techology (IT)"
+    )
+    db.add(dept)
+    db.commit()
     
     user1 = User(
         tenant_id=tenant.id,
@@ -71,6 +69,7 @@ def setup_database():
         first_name="User",
         last_name="One",
         role="employee",
+        department_id=dept.id,
         status="active"
     )
     db.add(user1)

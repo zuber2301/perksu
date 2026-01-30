@@ -23,16 +23,28 @@ def seed_master():
             db.add(jspark)
             db.flush()
 
-        # 1.1 Ensure jSpark has a department
-        dept = db.query(Department).filter(Department.tenant_id == jspark.id).first()
-        if not dept:
-            print("Creating default department for jSpark...")
-            dept = Department(
-                tenant_id=jspark.id,
-                name="Engineering"
-            )
-            db.add(dept)
-            db.flush()
+        # 1.1 Ensure jSpark has departments
+        departments = [
+            "Human Resource (HR)",
+            "Techology (IT)",
+            "Sale & Marketting",
+            "Business Unit -1",
+            "Business Unit-2",
+            "Business Unit-3"
+        ]
+        
+        dept_map = {}
+        for dept_name in departments:
+            dept = db.query(Department).filter(
+                Department.tenant_id == jspark.id, 
+                Department.name == dept_name
+            ).first()
+            if not dept:
+                print(f"Creating department {dept_name}...")
+                dept = Department(tenant_id=jspark.id, name=dept_name)
+                db.add(dept)
+                db.flush()
+            dept_map[dept_name] = dept.id
 
         # 1.2 Ensure jSpark has a budget
         budget = db.query(Budget).filter(Budget.tenant_id == jspark.id).first()
@@ -101,6 +113,10 @@ def seed_master():
             user = db.query(User).filter(User.email == u_data["email"]).first()
             if not user:
                 print(f"Creating user {u_data['email']}...")
+                # Assign to IT for Sarah, HR for HR user, else first dept
+                dept_name = "Techology (IT)" if u_data['first_name'] == "Sarah" else \
+                           ("Human Resource (HR)" if u_data['role'] == "hr_admin" else "Business Unit -1")
+                
                 user = User(
                     tenant_id=u_data["tenant_id"],
                     email=u_data["email"],
@@ -108,6 +124,7 @@ def seed_master():
                     first_name=u_data["first_name"],
                     last_name=u_data["last_name"],
                     role=u_data["role"],
+                    department_id=dept_map[dept_name],
                     is_super_admin=u_data["is_super_admin"],
                     status="active"
                 )
