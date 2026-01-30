@@ -14,7 +14,8 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineTrash,
   HiOutlineMail,
-  HiOutlineSparkles
+  HiOutlineSparkles,
+  HiOutlineDotsVertical
 } from 'react-icons/hi'
 
 export default function Users() {
@@ -27,6 +28,7 @@ export default function Users() {
   
   const [selectedUser, setSelectedUser] = useState(null)
   const [selectedUserIds, setSelectedUserIds] = useState([])
+  const [activeDropdown, setActiveDropdown] = useState(null)
   
   const [searchQuery, setSearchQuery] = useState('')
   const [filterDepartment, setFilterDepartment] = useState('')
@@ -126,6 +128,12 @@ export default function Users() {
   const handleSubmitUser = (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
+    
+    // Combine country code and 10-digit mobile number
+    const countryCode = formData.get('country_code') || '+91'
+    const mobileNum = formData.get('mobile_number') || ''
+    const fullMobile = mobileNum ? `${countryCode}${mobileNum}` : null
+
     const payload = {
       email: formData.get('email'),
       first_name: formData.get('first_name'),
@@ -133,7 +141,7 @@ export default function Users() {
       role: formData.get('role'),
       department_id: formData.get('department_id') || null,
       personal_email: formData.get('personal_email') || null,
-      mobile_phone: formData.get('mobile_phone') || null,
+      mobile_phone: fullMobile,
       date_of_birth: formData.get('date_of_birth') || null,
       hire_date: formData.get('hire_date') || null,
     }
@@ -231,7 +239,7 @@ export default function Users() {
             className="btn-primary flex items-center gap-2"
           >
             <HiOutlinePlus className="w-5 h-5" />
-            Add Individual
+            Add User
           </button>
         </div>
       </div>
@@ -374,39 +382,62 @@ export default function Users() {
                       {user.status.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                       {/* Update User */}
-                       <button 
-                         onClick={() => {
-                           setSelectedUser(user);
-                           setShowCreateModal(true);
-                         }}
-                         className="p-2 text-gray-400 hover:text-perksu-purple hover:bg-perksu-purple/5 rounded-lg transition-all"
-                         title="Update User"
-                       >
-                         <HiOutlinePencil className="w-5 h-5" />
-                       </button>
+                  <td className="px-4 py-4 text-right relative">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDropdown(activeDropdown === user.id ? null : user.id);
+                      }}
+                      className="p-2 text-gray-400 hover:text-perksu-purple hover:bg-perksu-purple/5 rounded-lg transition-all"
+                    >
+                      <HiOutlineDotsVertical className="w-5 h-5" />
+                    </button>
 
-                       {/* Deactivate/Reactivate */}
-                       {user.status === 'deactivated' ? (
-                         <button 
-                           onClick={() => bulkActionMutation.mutate({ user_ids: [user.id], action: 'reactivate' })}
-                           className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                           title="Reactivate"
-                         >
-                           <HiOutlineCheckCircle className="w-5 h-5" />
-                         </button>
-                       ) : (
-                         <button 
-                           onClick={() => bulkActionMutation.mutate({ user_ids: [user.id], action: 'deactivate' })}
-                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                           title="Deactivate"
-                         >
-                           <HiOutlineTrash className="w-5 h-5" />
-                         </button>
-                       )}
-                    </div>
+                    {activeDropdown === user.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setActiveDropdown(null)}
+                        ></div>
+                        <div className="absolute right-4 top-12 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                          <button 
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowCreateModal(true);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                          >
+                            <HiOutlinePencil className="w-4 h-4 text-gray-400" />
+                            Edit
+                          </button>
+                          
+                          {user.status !== 'deactivated' ? (
+                            <button 
+                              onClick={() => {
+                                bulkActionMutation.mutate({ user_ids: [user.id], action: 'deactivate' });
+                                setActiveDropdown(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                            >
+                              <HiOutlineTrash className="w-4 h-4 text-red-400" />
+                              Deactivate
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => {
+                                bulkActionMutation.mutate({ user_ids: [user.id], action: 'reactivate' });
+                                setActiveDropdown(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
+                            >
+                              <HiOutlineCheckCircle className="w-4 h-4 text-green-400" />
+                              Reactivate
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -671,7 +702,21 @@ export default function Users() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Mobile Number</label>
-                  <input name="mobile_phone" className="input" defaultValue={selectedUser?.mobile_phone} placeholder="+91 XXXXX XXXXX" />
+                  <div className="flex gap-0 ring-1 ring-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-perksu-purple transition-all h-11">
+                    <div className="bg-gray-50 border-r border-gray-100 flex items-center px-3">
+                      <select name="country_code" className="bg-transparent border-none focus:ring-0 text-sm font-medium cursor-pointer" defaultValue="+91">
+                        <option value="+91">🇮🇳 +91</option>
+                      </select>
+                    </div>
+                    <input 
+                      name="mobile_number" 
+                      className="flex-1 border-none focus:ring-0 text-sm px-4" 
+                      defaultValue={selectedUser?.mobile_phone ? selectedUser.mobile_phone.replace(/^\+91/, '') : ''} 
+                      placeholder="10 digit number" 
+                      maxLength="10"
+                      onKeyPress={(e) => !/[0-9]/.test(e.key) && e.preventDefault()}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="label">Org Role</label>
