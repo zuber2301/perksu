@@ -109,4 +109,4 @@ class BulkUploadResponse(BaseModel):
 
 class BulkActionRequest(BaseModel):
     user_ids: list[UUID]
-    action: Literal['deactivate', 'activate', 'resend_invite']
+    action: Literal['deactivate', 'activate', 'resend_invite', 'reactivate']
