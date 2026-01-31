@@ -77,10 +77,34 @@ class Tenant(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     slug = Column(String(255), unique=True, nullable=False)
+    
+    # Identity & Branding
+    logo_url = Column(String(500))
+    favicon_url = Column(String(500))
+    theme_config = Column(JSONType(), default={"primary_color": "#007bff", "secondary_color": "#6c757d", "font_family": "system-ui"})
     branding_config = Column(JSONType(), default={})
+    
+    # Governance & Security
+    domain_whitelist = Column(JSONType(), default=[])  # Array of email suffixes
+    auth_method = Column(String(50), default='OTP_ONLY')  # OTP_ONLY, PASSWORD_AND_OTP, SSO_SAML
+    
+    # Point Economy
+    currency_label = Column(String(100), default='Points')
+    conversion_rate = Column(Numeric(10, 4), default=1.0)
+    auto_refill_threshold = Column(Numeric(5, 2), default=20.0)
+    
+    # Recognition Laws
+    award_tiers = Column(JSONType(), default={"Gold": 5000, "Silver": 2500, "Bronze": 1000})
+    peer_to_peer_enabled = Column(Boolean, default=True)
+    expiry_policy = Column(String(50), default='never')  # 90_days, 180_days, 1_year, never
+    
+    # Financials
     subscription_tier = Column(String(50), default='basic')
     master_budget_balance = Column(Numeric(15, 2), default=0)
-    status = Column(String(50), default='ACTIVE')
+    
+    # Status
+    status = Column(String(50), default='ACTIVE')  # ACTIVE, SUSPENDED, ARCHIVED
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -161,6 +185,7 @@ class User(Base):
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     role = Column(String(50), nullable=False)
+    org_role = Column(String(50), nullable=False, default='employee')  # platform_admin, tenant_admin, hr_admin, tenant_lead, manager, corporate_user, employee
     department_id = Column(GUID(), ForeignKey("departments.id"), nullable=False)
     manager_id = Column(GUID(), ForeignKey("users.id"))
     avatar_url = Column(String(500))

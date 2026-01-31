@@ -104,6 +104,7 @@ except Exception:
     pass
 
 import pytest
+from fastapi.testclient import TestClient
 
 # Ensure every test has the DB override, even if legacy tests try to clobber it
 @pytest.fixture(autouse=True)
@@ -111,6 +112,53 @@ def force_db_override():
     from database import get_db
     if 'main' in sys.modules:
         sys.modules['main'].app.dependency_overrides[get_db] = _override_get_db
+
+# Provide the app fixture for tests that need it
+@pytest.fixture
+def app_instance():
+    """Provide the FastAPI app instance"""
+    if 'main' in sys.modules:
+        return sys.modules['main'].app
+    else:
+        import main
+        return main.app
+
+# Provide the TestClient fixture
+@pytest.fixture
+def client(app_instance):
+    """Provide a test client for API testing"""
+    return TestClient(app_instance)
+
+# Provide a database session fixture
+@pytest.fixture
+def db():
+    """Provide a test database session"""
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+# Helper function to create test tokens
+def create_test_token(user_id, tenant_id=None, role="platform_admin"):
+    """Create a test JWT token"""
+    from datetime import datetime, timedelta
+    from auth.utils import create_access_token
+    from uuid import UUID
+    
+    if isinstance(user_id, UUID):
+        user_id = str(user_id)
+    if isinstance(tenant_id, UUID):
+        tenant_id = str(tenant_id)
+    
+    token_data = {
+        "sub": user_id,
+        "tenant_id": tenant_id,
+        "email": f"test-{user_id}@example.com",
+        "role": role,
+        "type": "tenant"
+    }
+    return create_access_token(token_data)
 
 # Keep a session-scoped fixture to drop the schema at the end of the test session
 @pytest.fixture(scope="session", autouse=True)

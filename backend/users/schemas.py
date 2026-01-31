@@ -4,6 +4,7 @@ from uuid import UUID
 from datetime import datetime, date
 
 VALID_ROLES = ['platform_admin', 'hr_admin', 'manager', 'employee']
+VALID_ORG_ROLES = ['platform_admin', 'tenant_admin', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee']
 
 
 class UserBase(BaseModel):
@@ -11,6 +12,7 @@ class UserBase(BaseModel):
     first_name: str
     last_name: str
     role: Literal['platform_admin', 'hr_admin', 'manager', 'employee']
+    org_role: Literal['platform_admin', 'tenant_admin', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee'] = 'employee'
     department_id: UUID
     manager_id: Optional[UUID] = None
     personal_email: Optional[EmailStr] = None
@@ -50,6 +52,7 @@ class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     role: Optional[Literal['platform_admin', 'hr_admin', 'manager', 'employee']] = None
+    org_role: Optional[Literal['platform_admin', 'tenant_admin', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee']] = None
     department_id: Optional[UUID] = None
     manager_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
@@ -67,6 +70,7 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
+    org_role: str = 'employee'
     department_id: Optional[UUID] = None
     manager_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
@@ -86,6 +90,7 @@ class UserListResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
+    org_role: str = 'employee'
     department_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
     status: str

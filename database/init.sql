@@ -13,10 +13,34 @@ CREATE TABLE tenants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
+    
+    -- Identity & Branding
+    logo_url VARCHAR(500),
+    favicon_url VARCHAR(500),
+    theme_config JSONB DEFAULT '{"primary_color": "#007bff", "secondary_color": "#6c757d", "font_family": "system-ui"}',
     branding_config JSONB DEFAULT '{}',
+    
+    -- Governance & Security
+    domain_whitelist TEXT[] DEFAULT ARRAY[]::TEXT[],
+    auth_method VARCHAR(50) DEFAULT 'OTP_ONLY' CHECK (auth_method IN ('OTP_ONLY', 'PASSWORD_AND_OTP', 'SSO_SAML')),
+    
+    -- Point Economy
+    currency_label VARCHAR(100) DEFAULT 'Points',
+    conversion_rate NUMERIC(10, 4) DEFAULT 1.0,
+    auto_refill_threshold NUMERIC(5, 2) DEFAULT 20.0,
+    
+    -- Recognition Laws
+    award_tiers JSONB DEFAULT '{"Gold": 5000, "Silver": 2500, "Bronze": 1000}',
+    peer_to_peer_enabled BOOLEAN DEFAULT TRUE,
+    expiry_policy VARCHAR(50) DEFAULT 'never' CHECK (expiry_policy IN ('90_days', '180_days', '1_year', 'never')),
+    
+    -- Financials
     subscription_tier VARCHAR(50) DEFAULT 'basic',
     master_budget_balance NUMERIC(15, 2) DEFAULT 0,
-    status VARCHAR(50) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'SUSPENDED', 'TRIAL')),
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'SUSPENDED', 'ARCHIVED')),
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -68,6 +92,7 @@ CREATE TABLE users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('platform_admin', 'hr_admin', 'manager', 'employee')),
+    org_role VARCHAR(50) NOT NULL CHECK (org_role IN ('platform_admin', 'tenant_admin', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee')),
     department_id UUID REFERENCES departments(id),
     manager_id UUID REFERENCES users(id),
     avatar_url VARCHAR(500),
