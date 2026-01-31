@@ -113,6 +113,9 @@ class Tenant(Base):
     users = relationship("User", back_populates="tenant")
     budgets = relationship("Budget", back_populates="tenant")
     master_budget_ledger = relationship("MasterBudgetLedger", back_populates="tenant")
+    merchandise_catalog = relationship("MerchandiseCatalog", back_populates="tenant")
+    voucher_catalog = relationship("VoucherCatalog", back_populates="tenant")
+    redemptions = relationship("Redemption", back_populates="tenant")
 
 
 class SystemAdmin(Base):
@@ -204,6 +207,7 @@ class User(Base):
     recognitions_given = relationship("Recognition", foreign_keys="Recognition.from_user_id", back_populates="from_user")
     recognitions_received = relationship("Recognition", foreign_keys="Recognition.to_user_id", back_populates="to_user")
     lead_allocations = relationship("LeadAllocation", back_populates="lead")
+    redemptions = relationship("Redemption", back_populates="user")
     
     @property
     def full_name(self):
@@ -561,3 +565,110 @@ class Notification(Base):
     
     # Relationships
     user = relationship("User")
+
+
+# =====================================================
+# REDEMPTION & CATALOG MODELS
+# =====================================================
+
+class MerchandiseCatalog(Base):
+    __tablename__ = "merchandise_catalog"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    category = Column(String(50), nullable=False)  # apparel, tech, accessories, wellness, home, other
+    image_url = Column(String(500))
+    point_cost = Column(Integer, nullable=False)
+    markup_percentage = Column(Numeric(5, 2), default=0.0)  # Convenience fee
+    stock_quantity = Column(Integer, default=0)
+    status = Column(String(20), default='active')  # active, inactive, discontinued
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    tenant = relationship("Tenant", back_populates="merchandise_catalog")
+
+
+class VoucherCatalog(Base):
+    __tablename__ = "voucher_catalog"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    vendor_name = Column(String(100), nullable=False)  # Amazon, Swiggy, Zomato, Movies
+    vendor_code = Column(String(50), nullable=False)
+    voucher_denomination = Column(Integer, nullable=False)  # Amount in INR
+    point_cost = Column(Integer, nullable=False)
+    markup_percentage = Column(Numeric(5, 2), default=0.0)
+    image_url = Column(String(500))
+    api_partner = Column(String(50))  # Xoxoday, EGifting, etc.
+    status = Column(String(20), default='active')  # active, inactive, soldout
+    vendor_balance = Column(Numeric(15, 2), default=0.0)  # Credit with vendor
+    last_synced_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    tenant = relationship("Tenant", back_populates="voucher_catalog")
+
+
+class Redemption(Base):
+    __tablename__ = "redemptions"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    item_type = Column(String(20), nullable=False)  # VOUCHER or MERCH
+    item_id = Column(GUID())  # References voucher_catalog or merchandise_catalog
+    item_name = Column(String(255), nullable=False)
+    point_cost = Column(Integer, nullable=False)
+    actual_cost = Column(Numeric(15, 2), nullable=False)  # Vendor cost
+    markup_amount = Column(Numeric(15, 2), default=0.0)  # Profit margin
+    status = Column(String(20), default='PENDING')  # PENDING, OTP_VERIFIED, PROCESSING, COMPLETED, SHIPPED, FAILED, CANCELLED
+    
+    # OTP & Security
+    otp_code = Column(String(6), nullable=True)
+    otp_expires_at = Column(DateTime(timezone=True), nullable=True)
+    otp_verified_at = Column(DateTime(timezone=True), nullable=True)
+    otp_attempts = Column(Integer, default=0)
+    
+    # Delivery Details
+    delivery_details = Column(JSONType, default={})
+    voucher_code = Column(String(255))
+    tracking_number = Column(String(255))
+    
+    # Audit Trail
+    processed_at = Column(DateTime(timezone=True))
+    shipped_at = Column(DateTime(timezone=True))
+    failed_reason = Column(Text)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User", back_populates="redemptions")
+    tenant = relationship("Tenant", back_populates="redemptions")
+    ledger_entries = relationship("RedemptionLedger", back_populates="redemption")
+
+
+class RedemptionLedger(Base):
+    __tablename__ = "redemption_ledger"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    redemption_id = Column(GUID(), ForeignKey("redemptions.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    action = Column(String(50), nullable=False)  # CREATED, OTP_VERIFIED, PROCESSING, COMPLETED, FAILED
+    status_before = Column(String(20))
+    status_after = Column(String(20))
+    metadata = Column(JSONType, default={})  # Additional context
+    created_by = Column(GUID(), ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    redemption = relationship("Redemption", back_populates="ledger_entries")
+    tenant = relationship("Tenant")
+    user = relationship("User", foreign_keys=[user_id])
+    created_by_user = relationship("User", foreign_keys=[created_by])
+

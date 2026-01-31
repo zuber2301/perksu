@@ -547,4 +547,96 @@ SELECT
     jsonb_build_object('points', points, 'message', message)
 FROM recognitions;
 
+-- =====================================================
+-- REDEMPTION & CATALOG TABLES
+-- =====================================================
+
+-- Merchandise Catalog (Physical Items)
+CREATE TABLE merchandise_catalog (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('apparel', 'tech', 'accessories', 'wellness', 'home', 'other')),
+    image_url VARCHAR(500),
+    point_cost INTEGER NOT NULL,
+    markup_percentage DECIMAL(5, 2) DEFAULT 0.0, -- Convenience fee (e.g., 10.0 for 10%)
+    stock_quantity INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'discontinued')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Digital Vouchers Catalog
+CREATE TABLE voucher_catalog (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    vendor_name VARCHAR(100) NOT NULL, -- 'Amazon', 'Swiggy', 'Zomato', 'Movies'
+    vendor_code VARCHAR(50) NOT NULL, -- API vendor identifier
+    voucher_denomination INTEGER NOT NULL, -- Amount in INR (e.g., 500, 1000)
+    point_cost INTEGER NOT NULL,
+    markup_percentage DECIMAL(5, 2) DEFAULT 0.0,
+    image_url VARCHAR(500),
+    api_partner VARCHAR(50), -- 'Xoxoday', 'EGifting', etc.
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'soldout')),
+    vendor_balance DECIMAL(15, 2) DEFAULT 0.0, -- Credit left with vendor
+    last_synced_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Redemption Requests (Atomic Transaction Log)
+CREATE TABLE redemptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    item_type VARCHAR(20) NOT NULL CHECK (item_type IN ('VOUCHER', 'MERCH')), -- Type of redemption
+    item_id UUID, -- References voucher_catalog.id or merchandise_catalog.id
+    item_name VARCHAR(255) NOT NULL, -- 'Amazon $500' or 'SparkNode Mug'
+    point_cost INTEGER NOT NULL,
+    actual_cost DECIMAL(15, 2) NOT NULL, -- Vendor cost (for analytics)
+    markup_amount DECIMAL(15, 2) DEFAULT 0.0, -- Profit margin
+    status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'OTP_VERIFIED', 'PROCESSING', 'COMPLETED', 'SHIPPED', 'FAILED', 'CANCELLED')),
+    
+    -- Delivery Details (different for vouchers vs merch)
+    delivery_details JSONB, -- Contains voucher_code + url OR shipping address
+    voucher_code VARCHAR(255), -- For digital vouchers
+    tracking_number VARCHAR(255), -- For physical merchandise
+    
+    -- Audit Trail
+    otp_verified_at TIMESTAMP WITH TIME ZONE,
+    otp_attempts INTEGER DEFAULT 0,
+    processed_at TIMESTAMP WITH TIME ZONE,
+    shipped_at TIMESTAMP WITH TIME ZONE,
+    failed_reason TEXT,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(id)
+);
+
+-- Redemption Ledger (immutable audit log)
+CREATE TABLE redemption_ledger (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    redemption_id UUID NOT NULL REFERENCES redemptions(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action VARCHAR(50) NOT NULL, -- 'CREATED', 'OTP_VERIFIED', 'PROCESSING', 'COMPLETED', 'FAILED'
+    status_before VARCHAR(20),
+    status_after VARCHAR(20),
+    metadata JSONB, -- Additional context (OTP details, API response, errors)
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for redemption queries
+CREATE INDEX idx_redemptions_user_id ON redemptions(user_id);
+CREATE INDEX idx_redemptions_tenant_id ON redemptions(tenant_id);
+CREATE INDEX idx_redemptions_status ON redemptions(status);
+CREATE INDEX idx_redemptions_created_at ON redemptions(created_at);
+CREATE INDEX idx_redemption_ledger_redemption_id ON redemption_ledger(redemption_id);
+CREATE INDEX idx_merchandise_catalog_tenant_id ON merchandise_catalog(tenant_id);
+CREATE INDEX idx_voucher_catalog_tenant_id ON voucher_catalog(tenant_id);
+
 COMMIT;
