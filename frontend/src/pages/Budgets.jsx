@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { budgetsAPI, tenantsAPI, usersAPI, walletsAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -21,6 +21,10 @@ export default function Budgets() {
   const [showPointAllocationModal, setShowPointAllocationModal] = useState(false)
   const [selectedBudget, setSelectedBudget] = useState(null)
   const [selectedLead, setSelectedLead] = useState(null)
+  const [showEmployeeTopUpModal, setShowEmployeeTopUpModal] = useState(false)
+  const [topUpDepartment, setTopUpDepartment] = useState(null)
+  const [topUpUser, setTopUpUser] = useState(null)
+  const [topUpPoints, setTopUpPoints] = useState(0)
   
   const queryClient = useQueryClient()
   const { isHRAdmin } = useAuthStore()
@@ -35,6 +39,18 @@ export default function Budgets() {
     queryFn: () => usersAPI.getAll({ role: 'manager' }),
     enabled: activeTab === 'allocations' || activeTab === 'insights',
   })
+
+  const { data: employees } = useQuery({
+    queryKey: ['users', { department_id: topUpDepartment, role: 'employee' }],
+    queryFn: () => usersAPI.getAll({ department_id: topUpDepartment, role: 'employee', status: 'active' }),
+    enabled: showEmployeeTopUpModal && !!topUpDepartment,
+  })
+
+  useEffect(() => {
+    // Reset selected employee & points when department changes
+    setTopUpUser(null)
+    setTopUpPoints(0)
+  }, [topUpDepartment])
 
   const { data: leadAllocations } = useQuery({
     queryKey: ['leadAllocations', selectedBudget?.id],
@@ -101,6 +117,22 @@ export default function Budgets() {
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Failed to allocate points')
     },
+  })
+
+  const allocateEmployeeMutation = useMutation({
+    mutationFn: ({ budgetId, departmentId, data }) => budgetsAPI.allocateToEmployee(budgetId, departmentId, data),
+    onSuccess: () => {
+      toast.success('Employee topped up successfully')
+      queryClient.invalidateQueries(['departmentBudgets'])
+      queryClient.invalidateQueries(['budgets'])
+      setShowEmployeeTopUpModal(false)
+      setTopUpDepartment(null)
+      setTopUpUser(null)
+      setTopUpPoints(0)
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to top-up employee')
+    }
   })
 
   const handleCreateBudget = (e) => {
@@ -184,6 +216,15 @@ export default function Budgets() {
           >
             <HiOutlinePlus className="w-5 h-5" />
             Create Budget
+          </button>
+        )}
+        {activeTab === 'allocations' && (
+          <button
+            onClick={() => setShowEmployeeTopUpModal(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <HiOutlineCash className="w-4 h-4" />
+            Top-up Employee
           </button>
         )}
       </div>
@@ -728,6 +769,98 @@ export default function Budgets() {
                 >
                   {leadPointAllocationMutation.isPending ? 'Processing...' : 'Confirm Allocation'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Employee Top-up Modal */}
+      {showEmployeeTopUpModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <HiOutlineCash className="w-7 h-7 text-perksu-purple" />
+                Top-up Employee Wallet
+              </h2>
+              <button 
+                onClick={() => setShowEmployeeTopUpModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <HiOutlinePlus className="w-6 h-6 rotate-45" />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => {
+                e.preventDefault()
+                if (!selectedBudget) {
+                  toast.error('Select a budget first')
+                  return
+                }
+                if (!topUpDepartment || !topUpUser || !topUpPoints) {
+                  toast.error('Please select department, user and points')
+                  return
+                }
+                allocateEmployeeMutation.mutate({
+                  budgetId: selectedBudget.id,
+                  departmentId: topUpDepartment,
+                  data: { user_id: topUpUser, points: parseFloat(topUpPoints) }
+                })
+              }} className="space-y-4">
+
+              <div>
+                <label className="label">Source Budget</label>
+                <select 
+                  name="budget_id" 
+                  className="input" 
+                  required
+                  value={selectedBudget?.id || ''}
+                  onChange={(e) => {
+                    const b = budgets?.data?.find(x => x.id === e.target.value)
+                    setSelectedBudget(b)
+                  }}
+                >
+                  <option value="">Select a budget</option>
+                  {budgets?.data?.filter(b => b.status === 'active').map(b => (
+                    <option key={b.id} value={b.id}>{b.name} - {b.remaining_points} left</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Department</label>
+                <select className="input" value={topUpDepartment || ''} onChange={(e) => setTopUpDepartment(e.target.value)} required>
+                  <option value="">Select a department</option>
+                  {departments?.data?.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Employee</label>
+                <select className="input" value={topUpUser || ''} onChange={(e) => setTopUpUser(e.target.value)} required>
+                  <option value="">Select an employee</option>
+                  {/** fetch all users and filter client-side for selected department **/}
+                  {/** Reuse leads query if needed; using usersAPI.getAll may be heavier but acceptable for admin screens. */}
+                  {/** Here we use departments + an existing users query (leads) — keep simple and show all users. */}
+                  {/** We'll lazy-load users via usersAPI.getAll when modal shows; but budgets page already fetched leads earlier. */}
+                  {/** For simplicity show leads + others by calling usersAPI.getAll when needed in next iteration. */}
+                  {employees?.data?.map(u => (
+                    <option key={u.id} value={u.id}>{u.first_name} {u.last_name} — {u.email}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Points</label>
+                <input type="number" className="input" min="1" value={topUpPoints} onChange={(e) => setTopUpPoints(e.target.value)} required />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setShowEmployeeTopUpModal(false)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all">Cancel</button>
+                <button type="submit" disabled={allocateEmployeeMutation.isPending} className="flex-1 btn-primary py-3 rounded-2xl">{allocateEmployeeMutation.isPending ? 'Processing...' : 'Confirm Top-up'}</button>
               </div>
             </form>
           </div>

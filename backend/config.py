@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port: int = int(os.getenv("SMTP_PORT", "465"))
 
+    # Aggregator / Voucher provider settings
+    aggregator_provider: str = os.getenv("AGGREGATOR_PROVIDER", "mock")  # mock | tangocard | xoxoday
+    tango_api_base: str = os.getenv("TANGO_API_BASE", "https://api.tangocard.com")
+    tango_api_key: str = os.getenv("TANGO_API_KEY", "")
+    tango_account_identifier: str = os.getenv("TANGO_ACCOUNT_ID", "")
+    # Celery / Redis
+    celery_broker_url: str = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+    celery_result_backend: str = os.getenv('CELERY_RESULT_BACKEND', celery_broker_url)
+
     @field_validator('cors_origins', mode='before')
     @classmethod
     def parse_cors_origins(cls, v):

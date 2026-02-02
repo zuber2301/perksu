@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc, func
 
 from database import get_db
-from auth.utils import get_current_user
+from auth.utils import get_current_user, require_tenant_user
 from models import (
     User, Tenant, Redemption, VoucherCatalog, MerchandiseCatalog,
     Wallet, WalletLedger, RedemptionLedger
@@ -23,6 +23,7 @@ from .schemas import (
     RedemptionAnalytics, MarkupManagementUpdate
 )
 from auth.utils import verify_admin
+from .aggregator import get_aggregator_client
 
 
 router = APIRouter()
@@ -228,6 +229,11 @@ async def initiate_redemption(
 ):
     """Initiate redemption request - returns OTP"""
     
+    # Ensure caller is a tenant user (not a SystemAdmin)
+    from models import SystemAdmin
+    if isinstance(current_user, SystemAdmin):
+        raise HTTPException(status_code=403, detail="Tenant user required")
+
     # Check wallet balance
     wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
     if not wallet or wallet.balance < data.point_cost:
@@ -304,6 +310,9 @@ async def verify_otp(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    from models import SystemAdmin
+    if isinstance(current_user, SystemAdmin):
+        raise HTTPException(status_code=403, detail="Tenant user required")
     """Verify OTP and lock points"""
     
     redemption = db.query(Redemption).filter(
@@ -385,6 +394,9 @@ async def submit_delivery_details(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    from models import SystemAdmin
+    if isinstance(current_user, SystemAdmin):
+        raise HTTPException(status_code=403, detail="Tenant user required")
     """Submit delivery details for redemption"""
     
     redemption = db.query(Redemption).filter(
@@ -435,6 +447,29 @@ async def submit_delivery_details(
     db.commit()
     db.refresh(redemption)
     
+    # If voucher, enqueue background task to issue voucher asynchronously
+    if redemption.item_type == "VOUCHER":
+        try:
+            # import here to avoid circular imports at module load
+            from .tasks import issue_voucher_task
+            issue_voucher_task.delay(str(redemption.id))
+        except Exception as e:
+            # If enqueue fails, mark redemption failed and log
+            redemption.status = "FAILED"
+            redemption.failed_reason = f"enqueue_failed: {e}"
+            db.add(redemption)
+            ledger = RedemptionLedger(
+                redemption_id=redemption.id,
+                tenant_id=redemption.tenant_id,
+                user_id=redemption.user_id,
+                action="FAILED",
+                status_before="PROCESSING",
+                status_after="FAILED",
+                metadata={"error": str(e)}
+            )
+            db.add(ledger)
+            db.commit()
+
     return RedemptionResponse.model_validate(redemption)
 
 
@@ -445,6 +480,9 @@ async def get_redemption_history(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100)
 ):
+    from models import SystemAdmin
+    if isinstance(current_user, SystemAdmin):
+        raise HTTPException(status_code=403, detail="Tenant user required")
     """Get user's redemption history"""
     
     query = db.query(Redemption).filter(
@@ -662,3 +700,64 @@ async def update_markup(
     db.commit()
     
     return {"message": "Markup updated successfully"}
+
+
+
+@router.post('/webhook/aggregator')
+async def aggregator_webhook(payload: dict, db: Session = Depends(get_db)):
+    """Simple webhook endpoint for aggregator callbacks.
+
+    Expected payload (example):
+    {
+      "vendor_reference": "...",
+      "status": "success|failed",
+      "voucher_code": "...",
+      "redemption_id": "<uuid>"
+    }
+    """
+    vendor_ref = payload.get('vendor_reference')
+    status = payload.get('status')
+    redemption_id = payload.get('redemption_id')
+
+    if not (vendor_ref or redemption_id):
+        raise HTTPException(status_code=400, detail='Missing vendor_reference or redemption_id')
+
+    # Try to find redemption
+    query = db.query(Redemption)
+    if redemption_id:
+        redemption = query.filter(Redemption.id == redemption_id).first()
+    else:
+        redemption = query.filter(Redemption.delivery_details['vendor_reference'].astext == vendor_ref).first()
+
+    if not redemption:
+        raise HTTPException(status_code=404, detail='Redemption not found')
+
+    # Update according to status
+    if status == 'success':
+        redemption.status = 'COMPLETED'
+        redemption.voucher_code = payload.get('voucher_code')
+        redemption.processed_at = datetime.utcnow()
+        ledger = RedemptionLedger(
+            redemption_id=redemption.id,
+            tenant_id=redemption.tenant_id,
+            user_id=redemption.user_id,
+            action='COMPLETED',
+            status_before=redemption.status,
+            status_after='COMPLETED'
+        )
+        db.add(ledger)
+    else:
+        redemption.status = 'FAILED'
+        redemption.failed_reason = payload.get('error') or 'aggregator failure'
+        ledger = RedemptionLedger(
+            redemption_id=redemption.id,
+            tenant_id=redemption.tenant_id,
+            user_id=redemption.user_id,
+            action='FAILED',
+            status_before=redemption.status,
+            status_after='FAILED'
+        )
+        db.add(ledger)
+
+    db.commit()
+    return {"message": "ok"}

@@ -46,7 +46,11 @@ export default function TenantGrid({ tenants, onTenantSelect }) {
         <tbody>
           {tenants.map((tenant) => (
             <tr key={tenant.tenant_id} className="tenant-row">
-              <td className="tenant-name">{tenant.tenant_name}</td>
+              <td className="tenant-name">
+                <button className="tenant-link" onClick={() => onTenantSelect(tenant)}>
+                  {tenant.tenant_name}
+                </button>
+              </td>
               <td className="tenant-slug">
                 <code>{tenant.slug}</code>
               </td>

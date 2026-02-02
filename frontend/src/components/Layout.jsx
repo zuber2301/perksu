@@ -209,9 +209,7 @@ export default function Layout() {
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {user?.first_name} {user?.last_name}
                 </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {ROLE_DISPLAY_NAMES[user?.role] || user?.role?.replace('_', ' ')}
-                </p>
+                  {/* role display removed per design request */}
               </div>
             </div>
           </div>

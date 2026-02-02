@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 from datetime import datetime
+import re
+import uuid
 
 
 # ==================== Identity & Branding Schemas ====================
@@ -45,7 +47,32 @@ class RecognitionRules(BaseModel):
 # ==================== Core Tenant Schemas ====================
 class TenantBase(BaseModel):
     name: str
-    slug: str
+    slug: Optional[str] = None
+
+    @staticmethod
+    def _slugify(value: str) -> str:
+        if not value:
+            return ''
+        s = value.strip().lower()
+        s = re.sub(r"[^a-z0-9]+", '-', s)
+        s = re.sub(r"-+", '-', s)
+        s = s.strip('-')
+        return s or str(uuid.uuid4())[:8]
+
+    @field_validator('slug', mode='before')
+    @classmethod
+    def normalize_slug(cls, v):
+        # If slug provided, normalize it; allow None (will be filled from name)
+        if v is None:
+            return v
+        return cls._slugify(str(v))
+
+    @model_validator(mode='after')
+    def ensure_slug(self):
+        # If slug wasn't provided, generate it from the name
+        if not self.slug and self.name:
+            object.__setattr__(self, 'slug', self._slugify(self.name))
+        return self
 
 
 class TenantCreate(TenantBase):

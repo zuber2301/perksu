@@ -1,16 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 
 from database import get_db
-from models import Budget, DepartmentBudget, User, AuditLog
-from auth.utils import get_current_user, get_hr_admin
+from models import Budget, DepartmentBudget, User, AuditLog, Wallet, WalletLedger
+from auth.utils import get_current_user, get_hr_admin, get_platform_admin
 from budgets.schemas import (
     BudgetCreate, BudgetUpdate, BudgetResponse,
     DepartmentBudgetCreate, DepartmentBudgetUpdate, DepartmentBudgetResponse,
     BudgetAllocationRequest, LeadAllocationResponse, LeadPointAllocationRequest
+    , EmployeeAllocationRequest, EmployeeAllocationResponse
 )
 from models import Budget, DepartmentBudget, User, AuditLog, LeadAllocation
 
@@ -59,7 +61,7 @@ async def get_budgets(
 @router.post("/", response_model=BudgetResponse)
 async def create_budget(
     budget_data: BudgetCreate,
-    current_user: User = Depends(get_hr_admin),
+    current_user: User = Depends(get_platform_admin),
     db: Session = Depends(get_db)
 ):
     """Create a new budget (HR Admin only)"""
@@ -210,7 +212,7 @@ async def allocate_budget_to_departments(
     current_allocated = db.query(DepartmentBudget).filter(
         DepartmentBudget.budget_id == budget_id
     ).with_entities(
-        db.func.coalesce(db.func.sum(DepartmentBudget.allocated_points), 0)
+        func.coalesce(func.sum(DepartmentBudget.allocated_points), 0)
     ).scalar()
     
     available = Decimal(str(budget.total_points)) - Decimal(str(current_allocated))
@@ -293,6 +295,103 @@ async def get_department_budgets(
         })
     
     return result
+
+
+@router.post("/{budget_id}/departments/{department_id}/allocate_employee")
+async def allocate_to_employee(
+    budget_id: UUID,
+    department_id: UUID,
+    allocation: EmployeeAllocationRequest,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """Allocate points from a department budget to a specific employee wallet (HR Admin only)
+
+    This updates the DepartmentBudget.spent_points and creates a WalletLedger entry.
+    """
+    # Ensure department budget exists and belongs to tenant
+    dept_budget = db.query(DepartmentBudget).filter(
+        DepartmentBudget.budget_id == budget_id,
+        DepartmentBudget.department_id == department_id,
+        DepartmentBudget.tenant_id == current_user.tenant_id
+    ).first()
+    if not dept_budget:
+        raise HTTPException(status_code=404, detail="Department budget not found")
+
+    # Ensure there are enough remaining points in the department budget
+    remaining = Decimal(str(dept_budget.allocated_points)) - Decimal(str(dept_budget.spent_points))
+    if Decimal(str(allocation.points)) > remaining:
+        raise HTTPException(status_code=400, detail=f"Insufficient department budget. Available: {remaining}")
+
+    # Validate target user
+    user = db.query(User).filter(
+        User.id == allocation.user_id,
+        User.tenant_id == current_user.tenant_id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.department_id != department_id:
+        raise HTTPException(status_code=400, detail="User does not belong to the specified department")
+
+    # Get or create wallet
+    wallet = db.query(Wallet).filter(
+        Wallet.user_id == user.id,
+        Wallet.tenant_id == current_user.tenant_id
+    ).first()
+    if not wallet:
+        wallet = Wallet(
+            tenant_id=current_user.tenant_id,
+            user_id=user.id,
+            balance=0,
+            lifetime_earned=0,
+            lifetime_spent=0
+        )
+        db.add(wallet)
+        db.flush()  # ensure wallet.id is available
+
+    # Credit wallet
+    old_balance = Decimal(str(wallet.balance))
+    wallet.balance = old_balance + Decimal(str(allocation.points))
+    wallet.lifetime_earned = Decimal(str(wallet.lifetime_earned)) + Decimal(str(allocation.points))
+
+    # Create ledger entry
+    ledger = WalletLedger(
+        tenant_id=current_user.tenant_id,
+        wallet_id=wallet.id,
+        transaction_type='credit',
+        source='hr_allocation',
+        points=allocation.points,
+        balance_after=wallet.balance,
+        description=f"HR allocation from dept {department_id}",
+        created_by=current_user.id
+    )
+    db.add(ledger)
+
+    # Update department budget spent points
+    dept_budget.spent_points = Decimal(str(dept_budget.spent_points)) + Decimal(str(allocation.points))
+
+    # Audit
+    audit = AuditLog(
+        tenant_id=current_user.tenant_id,
+        actor_id=current_user.id,
+        action='department_employee_allocation',
+        entity_type='department_budget',
+        entity_id=dept_budget.id,
+        old_values={'spent_points': str(Decimal(str(dept_budget.spent_points)) - Decimal(str(allocation.points)))},
+        new_values={'spent_points': str(dept_budget.spent_points), 'user_id': str(user.id), 'points': str(allocation.points)}
+    )
+    db.add(audit)
+
+    db.commit()
+    db.refresh(wallet)
+
+    return {
+        'wallet_id': wallet.id,
+        'user_id': user.id,
+        'points_allocated': allocation.points,
+        'new_balance': wallet.balance,
+        'created_at': ledger.created_at
+    }
 
 
 @router.put("/{budget_id}/activate")

@@ -11,7 +11,7 @@ from models import (
     DepartmentBudget, Feed, Notification, AuditLog,
     RecognitionComment, RecognitionReaction, LeadAllocation
 )
-from auth.utils import get_current_user, get_manager_or_above
+from auth.utils import get_current_user, get_manager_or_above, require_tenant_user
 from recognition.schemas import (
     BadgeResponse, RecognitionCreate, RecognitionResponse,
     RecognitionDetailResponse, RecognitionCommentCreate, RecognitionCommentResponse,
@@ -23,7 +23,7 @@ router = APIRouter()
 
 @router.get("/badges", response_model=List[BadgeResponse])
 async def get_badges(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get all available badges"""
@@ -38,7 +38,7 @@ async def get_recognitions(
     skip: int = 0,
     limit: int = 20,
     user_id: Optional[UUID] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get recognitions feed"""
@@ -101,7 +101,7 @@ async def get_recognitions(
 @router.post("/", response_model=RecognitionResponse)
 async def create_recognition(
     recognition_data: RecognitionCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Create a new recognition with multi-workflow support"""
@@ -343,7 +343,7 @@ async def create_recognition(
 @router.get("/{recognition_id}", response_model=RecognitionDetailResponse)
 async def get_recognition(
     recognition_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get a specific recognition"""
@@ -395,7 +395,7 @@ async def get_recognition(
 @router.post("/{recognition_id}/react")
 async def toggle_reaction(
     recognition_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Toggle reaction (like) on a recognition"""
@@ -430,7 +430,7 @@ async def toggle_reaction(
 @router.get("/{recognition_id}/comments", response_model=List[RecognitionCommentResponse])
 async def get_comments(
     recognition_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get comments on a recognition"""
@@ -457,7 +457,7 @@ async def get_comments(
 async def add_comment(
     recognition_id: UUID,
     comment_data: RecognitionCommentCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Add a comment to a recognition"""
@@ -490,7 +490,7 @@ async def add_comment(
 
 @router.get("/stats/me", response_model=RecognitionStats)
 async def get_my_recognition_stats(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get current user's recognition statistics"""

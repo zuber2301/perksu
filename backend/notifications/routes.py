@@ -5,7 +5,7 @@ from uuid import UUID
 
 from database import get_db
 from models import Notification, User
-from auth.utils import get_current_user
+from auth.utils import get_current_user, require_tenant_user
 from notifications.schemas import NotificationResponse, NotificationCountResponse
 
 router = APIRouter()
@@ -16,7 +16,7 @@ async def get_notifications(
     skip: int = 0,
     limit: int = 50,
     unread_only: bool = False,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get current user's notifications"""
@@ -33,7 +33,7 @@ async def get_notifications(
 
 @router.get("/count", response_model=NotificationCountResponse)
 async def get_notification_count(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get notification counts"""
@@ -52,7 +52,7 @@ async def get_notification_count(
 @router.put("/{notification_id}/read")
 async def mark_as_read(
     notification_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Mark a notification as read"""
@@ -72,7 +72,7 @@ async def mark_as_read(
 
 @router.put("/read-all")
 async def mark_all_as_read(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Mark all notifications as read"""
@@ -89,7 +89,7 @@ async def mark_all_as_read(
 @router.delete("/{notification_id}")
 async def delete_notification(
     notification_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Delete a notification"""

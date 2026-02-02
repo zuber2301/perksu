@@ -97,3 +97,19 @@ class LeadPointAllocationRequest(BaseModel):
     lead_id: UUID
     budget_id: UUID
     points: Decimal
+
+
+class EmployeeAllocationRequest(BaseModel):
+    user_id: UUID
+    points: Decimal
+
+
+class EmployeeAllocationResponse(BaseModel):
+    wallet_id: UUID
+    user_id: UUID
+    points_allocated: Decimal
+    new_balance: Decimal
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

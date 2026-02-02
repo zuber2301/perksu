@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tenantsAPI } from '../lib/api'
 import toast from 'react-hot-toast'
+import TenantControlPanel from '../components/TenantControlPanel'
 import { 
   HiOutlineOfficeBuilding, 
   HiOutlinePlus, 
@@ -23,6 +24,9 @@ export default function Tenants() {
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState(null)
   const [activeDropdown, setActiveDropdown] = useState(null)
+  const [provName, setProvName] = useState('')
+  const [provSlug, setProvSlug] = useState('')
+  const [slugTouched, setSlugTouched] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: tenants, isLoading } = useQuery({
@@ -83,12 +87,51 @@ export default function Tenants() {
 
   const handleProvisionSubmit = (e) => {
     e.preventDefault()
-    const formData = new FormData(e.target)
-    const data = Object.fromEntries(formData.entries())
-    provisionMutation.mutate({
-      ...data,
-      initial_balance: parseFloat(data.initial_balance)
-    })
+    const payload = {
+      name: provName,
+      slug: provSlug,
+      subscription_tier: e.target.subscription_tier.value,
+      initial_balance: parseFloat(e.target.initial_balance.value),
+      admin_first_name: e.target.admin_first_name.value,
+      admin_last_name: e.target.admin_last_name.value,
+      admin_email: e.target.admin_email.value,
+      admin_password: e.target.admin_password.value
+    }
+    provisionMutation.mutate(payload)
+  }
+
+  const slugify = (s) => {
+    return s
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+
+  const handleTenantOpen = (tenant) => {
+    const panelTenant = {
+      tenant_name: tenant.name || tenant.tenant_name,
+      slug: tenant.slug,
+      tenant_id: tenant.id || tenant.tenant_id,
+      id: tenant.id || tenant.tenant_id,
+      name: tenant.name
+    }
+    setSelectedTenant(panelTenant)
+  }
+
+  const handlePanelUpdate = () => {
+    queryClient.invalidateQueries(['tenants'])
+    setSelectedTenant(null)
+  }
+
+  if (selectedTenant && !isBudgetModalOpen) {
+    return (
+      <TenantControlPanel
+        tenant={selectedTenant}
+        onClose={() => setSelectedTenant(null)}
+        onUpdate={handlePanelUpdate}
+      />
+    )
   }
 
   return (
@@ -201,7 +244,9 @@ export default function Tenants() {
                         {tenant.name.charAt(0)}
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-gray-900">{tenant.name}</div>
+                        <div className="text-sm font-bold text-gray-900">
+                          <button className="text-left p-0 m-0 font-bold text-inherit" onClick={() => handleTenantOpen(tenant)}>{tenant.name}</button>
+                        </div>
                         <div className="text-xs text-gray-500">ID: {tenant.id.substring(0, 8)}...</div>
                       </div>
                     </div>
@@ -293,11 +338,32 @@ export default function Tenants() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="label">Organization Name</label>
-                  <input name="name" type="text" className="input" placeholder="Acme Corp" required />
+                  <input
+                    name="name"
+                    type="text"
+                    className="input"
+                    placeholder="Acme Corp"
+                    required
+                    value={provName}
+                    onChange={(e) => {
+                      setProvName(e.target.value)
+                      if (!slugTouched) setProvSlug(slugify(e.target.value))
+                    }}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="label">Organization Slug</label>
-                  <input name="slug" type="text" className="input" placeholder="acme" required />
+                  <input
+                    name="slug"
+                    type="text"
+                    className="input"
+                    placeholder="acme"
+                    required
+                    value={provSlug}
+                    onChange={(e) => { setProvSlug(slugify(e.target.value)); setSlugTouched(true) }}
+                    onFocus={() => setSlugTouched(true)}
+                  />
+                  <p className="text-xs text-gray-500">Canonical slug: <span className="font-mono">{provSlug || slugify(provName)}</span></p>
                 </div>
               </div>
 

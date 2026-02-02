@@ -160,6 +160,22 @@ async def get_manager_or_above(current_user: User = Depends(get_current_user)) -
     return current_user
 
 
+async def require_tenant_user(current_user=Depends(get_current_user)) -> User:
+    """Ensure the current actor is a tenant `User`, not a `SystemAdmin`.
+
+    SystemAdmin objects live in a separate table and their IDs are not valid
+    foreign keys for tenant-scoped tables like `recognitions`. Reject requests
+    from system tokens when a tenant user is required.
+    """
+    from models import SystemAdmin
+    if isinstance(current_user, SystemAdmin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant user required"
+        )
+    return current_user
+
+
 def verify_admin(current_user: User):
     """Raise if current_user is not HR admin or platform admin."""
     if current_user.role not in ['hr_admin', 'platform_admin']:

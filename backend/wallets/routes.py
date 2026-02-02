@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from database import get_db
 from models import Wallet, WalletLedger, User, AuditLog
-from auth.utils import get_current_user, get_hr_admin
+from auth.utils import get_current_user, get_hr_admin, require_tenant_user
 from wallets.schemas import (
     WalletResponse, WalletLedgerResponse,
     PointsAllocationRequest, BulkPointsAllocationRequest, PointsAdjustmentRequest
@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("/me", response_model=WalletResponse)
 async def get_my_wallet(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get current user's wallet"""
@@ -42,7 +42,7 @@ async def get_my_wallet_ledger(
     skip: int = 0,
     limit: int = 50,
     source: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get current user's wallet transaction history"""

@@ -66,9 +66,46 @@ services:
       - app-network
     command: sh -c "npm ci --prefer-offline --no-audit --silent || npm install --silent && npm run dev -- --host 0.0.0.0"
 
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME:-perksu}-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${PROJECT_NAME:-perksu}-worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://perksu:perksu_secret_2024@postgres:5432/perksu}
+      SECRET_KEY: ${SECRET_KEY:-perksu-super-secret-key-change-in-production}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: celery -A celery_app.celery_app worker --loglevel=info --concurrency=1
+    restart: always
+
 volumes:
   postgres_data:
     name: ${PROJECT_NAME:-perksu}_postgres_data
+  redis_data:
+    name: ${PROJECT_NAME:-perksu}_redis_data
 
 networks:
   app-network:

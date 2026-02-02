@@ -536,7 +536,13 @@ async def reset_admin_permissions(
     ).first()
     if not admin:
         raise HTTPException(status_code=404, detail="Admin not found")
-    
+    # Only allow resetting tenant admins who are HR Admins
+    if admin.role != 'hr_admin':
+        raise HTTPException(
+            status_code=403,
+            detail="Platform Admins can only reset permissions for tenant HR Admins (role='hr_admin')."
+        )
+
     # Reset to base permissions
     admin.is_super_admin = False
     admin.role = 'manager'

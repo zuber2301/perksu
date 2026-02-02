@@ -5,7 +5,7 @@ from uuid import UUID
 
 from database import get_db
 from models import Feed, User, Recognition, Badge
-from auth.utils import get_current_user
+from auth.utils import get_current_user, require_tenant_user
 from feed.schemas import FeedItemResponse
 
 router = APIRouter()
@@ -16,7 +16,7 @@ async def get_feed(
     skip: int = 0,
     limit: int = 20,
     event_type: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get the social feed for current tenant"""
@@ -86,7 +86,7 @@ async def get_feed(
 async def get_my_feed(
     skip: int = 0,
     limit: int = 20,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get feed items related to current user"""
@@ -152,7 +152,7 @@ async def get_my_feed(
 async def get_department_feed(
     skip: int = 0,
     limit: int = 20,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_tenant_user),
     db: Session = Depends(get_db)
 ):
     """Get feed items for current user's department"""
