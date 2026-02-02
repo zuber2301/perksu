@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { authAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -336,6 +336,16 @@ export default function Login() {
               ))}
             </div>
             <p className="text-[9px] text-gray-400 mt-2 text-center italic">Default password: <span className="font-mono not-italic">jspark123</span></p>
+          </div>
+
+          {/* Sign up link */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm text-gray-600 text-center">
+              New to Perksu?{' '}
+              <Link to="/signup" className="font-semibold text-perksu-purple hover:text-perksu-blue transition-colors">
+                Sign up here
+              </Link>
+            </p>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, UploadFile, File
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -7,8 +7,9 @@ import io
 import csv
 
 from database import get_db
-from models import User, Wallet, StagingUser
-from auth.utils import get_current_user, get_hr_admin, get_password_hash, verify_password
+from models import User, Wallet, StagingUser, Tenant
+from auth.utils import get_current_user, get_hr_admin, get_password_hash, verify_password, get_platform_admin
+from auth.tenant_utils import TenantFilter
 from users.schemas import UserCreate, UserUpdate, UserResponse, UserListResponse, PasswordChange, StagingUserResponse, BulkUploadResponse, BulkActionRequest
 from users.service import process_bulk_upload, commit_staging_batch
 
@@ -17,22 +18,93 @@ router = APIRouter()
 
 @router.get("/", response_model=List[UserListResponse])
 async def get_users(
-    tenant_id: Optional[UUID] = None,
-    department_id: Optional[UUID] = None,
-    role: Optional[str] = None,
-    status: Optional[str] = Query(default="active"),
-    skip: int = 0,
-    limit: int = 100,
+    tenant_id: Optional[UUID] = Query(
+        None, 
+        description="Filter by tenant_id (Platform Admin only). Omit to get current tenant users."
+    ),
+    department_id: Optional[UUID] = Query(None, description="Filter by department_id"),
+    role: Optional[str] = Query(None, description="Filter by role"),
+    status: Optional[str] = Query(
+        default="active", 
+        description="Filter by status (active, deactivated, pending_invite)"
+    ),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get users with optional filters (platform admin can view all tenants)"""
+    """
+    Get users with tenant-aware filtering.
+    
+    Tenant Isolation:
+    - Regular users: Can only see users from their own tenant
+    - Platform Admins: Can view all tenants, or filter by specific tenant_id
+    
+    The "Tenant-Aware" Query Pattern:
+    Every SELECT query automatically includes tenant_id filter for non-admins.
+    This ensures data isolation at the database layer.
+    
+    Example queries:
+    - GET /users -> Returns all active users in current user's tenant
+    - GET /users?tenant_id=UUID -> (Admin only) Returns users from specified tenant
+    - GET /users?department_id=UUID -> Returns active users in department (auto-scoped to tenant)
+    """
     query = db.query(User)
 
-    if current_user.role != 'platform_admin':
+    # Apply tenant filter based on user role
+    if current_user.role == 'platform_admin':
+        # Platform admin can view any tenant, or filter by tenant_id
+        if tenant_id:
+            query = query.filter(User.tenant_id == tenant_id)
+    else:
+        # Regular users only see their own tenant (Tenant Isolation)
         query = query.filter(User.tenant_id == current_user.tenant_id)
-    elif tenant_id:
-        query = query.filter(User.tenant_id == tenant_id)
+    
+    # Apply additional filters
+    if department_id:
+        query = query.filter(User.department_id == department_id)
+    if role:
+        query = query.filter(User.role == role)
+    if status:
+        query = query.filter(User.status == status)
+    
+    users = query.offset(skip).limit(limit).all()
+    return users
+
+
+@router.get("/admin/by-tenant/{tenant_id}", response_model=List[UserListResponse])
+async def get_users_by_tenant(
+    tenant_id: UUID = Path(..., description="The tenant_id to query users from"),
+    department_id: Optional[UUID] = Query(None, description="Optional department filter"),
+    role: Optional[str] = Query(None, description="Optional role filter"),
+    status: Optional[str] = Query(None, description="Optional status filter"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    current_user: User = Depends(get_platform_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Platform Admin endpoint: View all users for a specific tenant.
+    
+    This is the "Platform Admin View" mentioned in the spec:
+    "In your Tenant Manager section, when you click on a tenant, your UI should call: 
+    GET /users?tenant_id=XYZ"
+    
+    This allows platform admins to see all users associated with a specific tenant_id,
+    effectively giving them a "window" into that organization.
+    
+    Permission: Platform Admin only
+    """
+    # Verify tenant exists
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not found"
+        )
+    
+    # Query users for this specific tenant
+    query = db.query(User).filter(User.tenant_id == tenant_id)
     
     if department_id:
         query = query.filter(User.department_id == department_id)
@@ -42,6 +114,7 @@ async def get_users(
         query = query.filter(User.status == status)
     
     users = query.offset(skip).limit(limit).all()
+    
     return users
 
 

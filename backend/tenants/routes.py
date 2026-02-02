@@ -5,10 +5,12 @@ from typing import List
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
+from config import settings
 
 from database import get_db
 from models import Tenant, Department, User, MasterBudgetLedger, Wallet, SystemAdmin
 from auth.utils import get_current_user, get_hr_admin, get_platform_admin, get_password_hash
+from auth.tenant_utils import TenantResolver
 from tenants.schemas import (
     TenantCreate, TenantUpdate, TenantResponse, TenantProvisionCreate,
     DepartmentCreate, DepartmentUpdate, DepartmentResponse, TenantLoadBudget,
@@ -30,14 +32,79 @@ async def get_current_tenant(
     return tenant
 
 
-@router.post("/", response_model=TenantResponse)
+@router.post("/invite-link", response_model=dict)
+async def generate_invite_link(
+    hours: int = Query(default=168, description="Link expiry in hours (default: 7 days)"),
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate an invite link for users to join the current tenant.
+    
+    The Invite-Link Method:
+    - Creates a secure JWT token with embedded tenant_id
+    - Token expires after specified hours (default: 7 days)
+    - Users can share this link or distribute to new employees
+    
+    Usage:
+    - Share link: {frontend_url}/signup?invite_token={token}
+    - Users access endpoint: POST /auth/signup with invite_token parameter
+    """
+    if hours < 1 or hours > 8760:  # Max 1 year
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Hours must be between 1 and 8760"
+        )
+    
+    # Get tenant details
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Generate invite token
+    invite_token = TenantResolver.create_invite_token(
+        tenant_id=current_user.tenant_id,
+        expires_in_hours=hours
+    )
+    
+    # Construct invite URL
+    frontend_url = settings.frontend_url or "http://localhost:5173"
+    invite_url = f"{frontend_url}/signup?invite_token={invite_token}"
+    
+    return {
+        "invite_url": invite_url,
+        "invite_token": invite_token,
+        "expires_in_hours": hours,
+        "tenant_id": str(current_user.tenant_id),
+        "message": f"Share this link with new employees. Valid for {hours} hours."
+    }
+
+
+@router.post("/", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     tenant_data: TenantProvisionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_platform_admin)
 ):
     """Provision a new tenant (Platform Admin only)"""
-    # 1. Create Tenant
+    # 1. Validation
+    # Check if slug already exists
+    existing_tenant = db.query(Tenant).filter(Tenant.slug == tenant_data.slug).first()
+    if existing_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Organization with slug '{tenant_data.slug}' already exists."
+        )
+
+    # Check if admin email already exists globally
+    existing_user = db.query(User).filter(User.email == tenant_data.admin_email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Admin email '{tenant_data.admin_email}' is already registered."
+        )
+
+    # 2. Create Tenant
     tenant = Tenant(
         name=tenant_data.name,
         slug=tenant_data.slug,
@@ -49,7 +116,7 @@ async def create_tenant(
     db.add(tenant)
     db.flush()
 
-    # 2. Initialize Master Budget Ledger
+    # 3. Initialize Master Budget Ledger
     ledger_entry = MasterBudgetLedger(
         tenant_id=tenant.id,
         transaction_type='credit',
@@ -60,7 +127,7 @@ async def create_tenant(
     db.add(ledger_entry)
     db.flush()
 
-    # 3. Create Default Departments
+    # 4. Create Default Departments
     default_depts = [
         "Human Resource (HR)",
         "Technology (IT)",
@@ -71,14 +138,19 @@ async def create_tenant(
     ]
     
     hr_dept_id = None
+    last_dept_id = None
     for dept_name in default_depts:
         new_dept = Department(tenant_id=tenant.id, name=dept_name)
         db.add(new_dept)
         db.flush()
+        last_dept_id = new_dept.id
         if dept_name == "Human Resource (HR)":
             hr_dept_id = new_dept.id
+    
+    # Ensure we have a department ID for the admin user
+    hr_dept_id = hr_dept_id or last_dept_id
 
-    # 4. Create Tenant Admin User
+    # 5. Create Tenant Admin User
     admin_user = User(
         tenant_id=tenant.id,
         email=tenant_data.admin_email,
@@ -86,6 +158,7 @@ async def create_tenant(
         first_name=tenant_data.admin_first_name,
         last_name=tenant_data.admin_last_name,
         role='hr_admin', # Usually HR Admin is the tenant admin
+        org_role='tenant_admin',
         department_id=hr_dept_id,
         is_super_admin=True,
         status='active'
@@ -93,7 +166,7 @@ async def create_tenant(
     db.add(admin_user)
     db.flush()
 
-    # Create wallet for admin
+    # 6. Create wallet for admin
     admin_wallet = Wallet(
         tenant_id=tenant.id,
         user_id=admin_user.id,

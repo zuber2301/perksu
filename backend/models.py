@@ -510,29 +510,6 @@ class TenantVoucher(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class Redemption(Base):
-    __tablename__ = "redemptions"
-    
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(GUID(), ForeignKey("users.id"), nullable=False)
-    voucher_id = Column(GUID(), ForeignKey("vouchers.id"), nullable=False)
-    points_used = Column(Numeric(15, 2), nullable=False)
-    copay_amount = Column(Numeric(15, 2), default=0)
-    voucher_code = Column(String(255))
-    voucher_pin = Column(String(100))
-    status = Column(String(50), default='pending')  # pending/processing/completed/failed/cancelled/expired
-    provider_reference = Column(String(255))
-    fulfilled_at = Column(DateTime(timezone=True))
-    expires_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    
-    # Relationships
-    user = relationship("User")
-    voucher = relationship("Voucher", back_populates="redemptions")
-
-
 class AuditLog(Base):
     __tablename__ = "audit_log"
     
@@ -637,6 +614,9 @@ class Redemption(Base):
     delivery_details = Column(JSONType, default={})
     voucher_code = Column(String(255))
     tracking_number = Column(String(255))
+
+    # Optional link to voucher (if this redemption is for a voucher)
+    voucher_id = Column(GUID(), ForeignKey("vouchers.id", ondelete="SET NULL"), nullable=True)
     
     # Audit Trail
     processed_at = Column(DateTime(timezone=True))
@@ -650,6 +630,7 @@ class Redemption(Base):
     user = relationship("User", back_populates="redemptions")
     tenant = relationship("Tenant", back_populates="redemptions")
     ledger_entries = relationship("RedemptionLedger", back_populates="redemption")
+    voucher = relationship("Voucher", back_populates="redemptions")
 
 
 class RedemptionLedger(Base):
@@ -662,7 +643,9 @@ class RedemptionLedger(Base):
     action = Column(String(50), nullable=False)  # CREATED, OTP_VERIFIED, PROCESSING, COMPLETED, FAILED
     status_before = Column(String(20))
     status_after = Column(String(20))
-    metadata = Column(JSONType, default={})  # Additional context
+    # 'metadata' is a reserved attribute name on the Declarative base.
+    # Keep the DB column named 'metadata' but use attribute `meta`.
+    meta = Column("metadata", JSONType, default={})  # Additional context
     created_by = Column(GUID(), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

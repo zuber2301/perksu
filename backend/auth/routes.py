@@ -4,11 +4,15 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from database import get_db
-from models import User
+from models import User, Wallet
 from config import settings
-from auth.schemas import Token, LoginRequest, LoginResponse, UserResponse, OTPRequest, OTPVerify, SystemAdminResponse
-from auth.utils import verify_password, create_access_token, get_current_user, generate_otp, get_system_admin
+from auth.schemas import (
+    Token, LoginRequest, LoginResponse, UserResponse, OTPRequest, OTPVerify, 
+    SystemAdminResponse, SignUpRequest, SignUpResponse, InviteLinkResponse
+)
+from auth.utils import verify_password, create_access_token, get_current_user, generate_otp, get_system_admin, get_password_hash
 from auth.email_service import send_otp_email
+from auth.tenant_utils import TenantResolver, TenantContext
 from models import User, LoginOTP, SystemAdmin, Tenant
 from datetime import datetime, timedelta
 from uuid import UUID
@@ -16,7 +20,123 @@ from uuid import UUID
 router = APIRouter()
 
 
-@router.post("/request-otp")
+@router.post("/signup", response_model=SignUpResponse)
+async def signup(
+    signup_data: SignUpRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    User sign-up with automatic tenant resolution.
+    
+    Flow:
+    1. Resolve tenant_id (via invite token or email domain matching)
+    2. Validate no existing user with same email
+    3. Create user with resolved tenant_id and initialize wallet
+    4. Return JWT token for immediate authentication
+    
+    Raises:
+        - 400: Email already registered or no associated organization found
+        - 422: Invalid email format
+    """
+    # Step 1: Resolve Tenant ID
+    tenant_id = TenantResolver.resolve_tenant(
+        email=signup_data.email,
+        invite_token=signup_data.invite_token,
+        db=db
+    )
+    
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No associated organization found for this domain. Please use an invite link or contact your administrator."
+        )
+    
+    # Step 2: Check if user already exists (globally, not just in tenant)
+    existing_user = db.query(User).filter(
+        User.email == signup_data.email
+    ).first()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered. Please log in or use a different email."
+        )
+    
+    # Step 3: Get tenant to determine department structure
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tenant validation failed"
+        )
+    
+    # Get or create default department
+    default_dept = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    from models import Department
+    default_dept_record = db.query(Department).filter(
+        Department.tenant_id == tenant_id,
+        Department.name == "General"
+    ).first()
+    
+    if not default_dept_record:
+        default_dept_record = Department(
+            tenant_id=tenant_id,
+            name="General"
+        )
+        db.add(default_dept_record)
+        db.flush()
+    
+    # Step 4: Create the user with tenant_id (The "Magic Link")
+    new_user = User(
+        tenant_id=tenant_id,
+        email=signup_data.email,
+        password_hash=get_password_hash(signup_data.password),
+        first_name=signup_data.first_name,
+        last_name=signup_data.last_name,
+        personal_email=signup_data.personal_email,
+        mobile_phone=signup_data.mobile_phone,
+        department_id=default_dept_record.id,
+        role='employee',
+        org_role='employee',
+        status='active'
+    )
+    db.add(new_user)
+    db.flush()
+    
+    # Step 5: Initialize wallet
+    wallet = Wallet(
+        tenant_id=tenant_id,
+        user_id=new_user.id,
+        balance=0,
+        lifetime_earned=0,
+        lifetime_spent=0
+    )
+    db.add(wallet)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Step 6: Create JWT token
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={
+            "sub": str(new_user.id),
+            "tenant_id": str(new_user.tenant_id),
+            "email": new_user.email,
+            "role": new_user.role,
+            "type": "tenant"
+        },
+        expires_delta=access_token_expires
+    )
+    
+    return SignUpResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse.from_orm(new_user),
+        message="Account created successfully"
+    )
+
+
+
 async def request_otp(
     otp_data: OTPRequest,
     db: Session = Depends(get_db)

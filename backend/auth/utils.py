@@ -135,8 +135,15 @@ async def get_hr_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-async def get_platform_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != 'platform_admin':
+async def get_platform_admin(current_user=Depends(get_current_user)):
+    # Handle both User and SystemAdmin objects
+    role = getattr(current_user, 'role', None)
+    
+    # If it's a SystemAdmin, the role is in token_data
+    if role is None and hasattr(current_user, 'token_data'):
+        role = current_user.token_data.role
+        
+    if role != 'platform_admin':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Platform Admin access required"
@@ -151,3 +158,13 @@ async def get_manager_or_above(current_user: User = Depends(get_current_user)) -
             detail="Manager access required"
         )
     return current_user
+
+
+def verify_admin(current_user: User):
+    """Raise if current_user is not HR admin or platform admin."""
+    if current_user.role not in ['hr_admin', 'platform_admin']:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return True

@@ -67,3 +67,36 @@ class LoginResponse(BaseModel):
     token_type: str
     user: Optional[UserResponse] = None
     system_admin: Optional[SystemAdminResponse] = None
+
+
+class SignUpRequest(BaseModel):
+    """
+    User sign-up with automatic tenant resolution.
+    
+    Tenant resolution happens in this order:
+    1. If invite_token provided: extract tenant_id from token
+    2. If email provided: match domain against tenant whitelist
+    """
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    invite_token: Optional[str] = None
+    personal_email: Optional[EmailStr] = None
+    mobile_phone: Optional[str] = None
+
+
+class SignUpResponse(BaseModel):
+    """Response after successful sign-up"""
+    access_token: str
+    token_type: str
+    user: UserResponse
+    message: str = "Account created successfully"
+
+
+class InviteLinkResponse(BaseModel):
+    """Response containing invite token for a user to join a tenant"""
+    invite_url: str
+    invite_token: str
+    expires_in_hours: int
+    tenant_id: UUID

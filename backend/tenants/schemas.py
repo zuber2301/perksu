@@ -102,29 +102,29 @@ class TenantResponse(TenantBase):
     # Identity & Branding
     logo_url: Optional[str] = None
     favicon_url: Optional[str] = None
-    theme_config: Dict[str, Any]
-    branding_config: Dict[str, Any]
+    theme_config: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    branding_config: Optional[Dict[str, Any]] = Field(default_factory=dict)
     
     # Governance & Security
-    domain_whitelist: List[str]
-    auth_method: str
+    domain_whitelist: Optional[List[str]] = Field(default_factory=list)
+    auth_method: Optional[str] = "OTP_ONLY"
     
     # Point Economy
-    currency_label: str
-    conversion_rate: float
-    auto_refill_threshold: float
+    currency_label: Optional[str] = "Points"
+    conversion_rate: Optional[float] = 1.0
+    auto_refill_threshold: Optional[float] = 20.0
     
     # Recognition Laws
-    award_tiers: Dict[str, float]
-    peer_to_peer_enabled: bool
-    expiry_policy: str
+    award_tiers: Optional[Dict[str, float]] = Field(default_factory=lambda: {"Gold": 5000, "Silver": 2500, "Bronze": 1000})
+    peer_to_peer_enabled: Optional[bool] = True
+    expiry_policy: Optional[str] = "never"
     
     # Financials
-    subscription_tier: str
-    master_budget_balance: float
+    subscription_tier: Optional[str] = "basic"
+    master_budget_balance: Optional[float] = 0.0
     
     # Status
-    status: str
+    status: Optional[str] = "ACTIVE"
     
     created_at: datetime
     updated_at: datetime

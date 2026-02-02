@@ -11,10 +11,16 @@ class Settings(BaseSettings):
     # Database
     database_url: str = os.getenv("DATABASE_URL", "postgresql://perksu:perksu_secret_2024@localhost:5432/perksu")
     
+    # Frontend URL (for constructing invite links)
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    
     # JWT Settings
     secret_key: str = os.getenv("SECRET_KEY", "perksu-super-secret-key-change-in-production")
     algorithm: str = os.getenv("ALGORITHM", "HS256")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+    
+    # Tenant Settings
+    default_invite_expiry_hours: int = int(os.getenv("DEFAULT_INVITE_EXPIRY_HOURS", "168"))
     
     # CORS - accept string or list
     cors_origins: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://localhost:5180"

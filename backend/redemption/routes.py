@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc, func
 
 from database import get_db
-from auth.context import get_current_user
+from auth.utils import get_current_user
 from models import (
     User, Tenant, Redemption, VoucherCatalog, MerchandiseCatalog,
     Wallet, WalletLedger, RedemptionLedger
@@ -25,7 +25,7 @@ from .schemas import (
 from auth.utils import verify_admin
 
 
-router = APIRouter(prefix="/api/redemption", tags=["Redemption"])
+router = APIRouter()
 
 
 # =====================================================
