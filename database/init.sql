@@ -92,7 +92,7 @@ CREATE TABLE users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('platform_admin', 'hr_admin', 'manager', 'employee')),
-    org_role VARCHAR(50) NOT NULL CHECK (org_role IN ('platform_admin', 'tenant_manager', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee')),
+    org_role VARCHAR(50) DEFAULT 'employee' CHECK (org_role IN ('platform_admin', 'tenant_manager', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee')),
     department_id UUID REFERENCES departments(id),
     manager_id UUID REFERENCES users(id),
     avatar_url VARCHAR(500),
@@ -291,7 +291,6 @@ CREATE TABLE vouchers (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Tenant Voucher Settings (Which vouchers available to which tenant)
 CREATE TABLE tenant_vouchers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -302,23 +301,6 @@ CREATE TABLE tenant_vouchers (
     UNIQUE(tenant_id, voucher_id)
 );
 
--- Redemptions
-CREATE TABLE redemptions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id),
-    voucher_id UUID NOT NULL REFERENCES vouchers(id),
-    points_used DECIMAL(15, 2) NOT NULL,
-    copay_amount DECIMAL(15, 2) DEFAULT 0,
-    voucher_code VARCHAR(255),
-    voucher_pin VARCHAR(100),
-    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled', 'expired')),
-    provider_reference VARCHAR(255),
-    fulfilled_at TIMESTAMP WITH TIME ZONE,
-    expires_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
 
 -- =====================================================
 -- AUDIT & COMPLIANCE TABLES

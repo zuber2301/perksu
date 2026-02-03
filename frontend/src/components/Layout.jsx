@@ -231,43 +231,58 @@ export default function Layout() {
               <div className="flex items-center gap-6">
                 <NavLink
                   to="/recognize"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
-                    }`
+                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
                 >
                   Recognize
                 </NavLink>
 
                 <NavLink
                   to="/feed"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
-                    }`
+                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
                 >
                   Feed 📱
                 </NavLink>
 
                 <NavLink
                   to="/wallet"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
-                    }`
+                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
                 >
                   Wallet
                 </NavLink>
 
                 <NavLink
                   to="/redeem"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
-                    }`
+                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
                 >
                   Redeem
                 </NavLink>
+
+                {/* Notifications Bell */}
+                <div className="relative">
+                  <button className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors">
+                    <HiOutlineBell className="w-5 h-5" />
+                    {notificationCount?.data?.count > 0 && (
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Profile Link */}
+                <NavLink
+                  to="/profile"
+                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
+                >
+                  <HiOutlineUser className="w-5 h-5" />
+                </NavLink>
+
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors"
+                  title="Logout"
+                >
+                  <HiOutlineLogout className="w-5 h-5" />
+                </button>
               </div>
             </div>
           )}
