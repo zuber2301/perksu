@@ -330,12 +330,12 @@ async def list_all_tenants_admin(
 
 
 @router.get("/admin/tenants/{tenant_id}", response_model=TenantResponse)
-async def get_tenant_admin(
+async def get_tenant_manager(
     tenant_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_platform_admin),
 ):
-    """Get full tenant details for admin panel (Platform Admin only)"""
+    """Get full tenant details for manager panel (Platform Admin only)"""
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -343,7 +343,7 @@ async def get_tenant_admin(
 
 
 @router.put("/admin/tenants/{tenant_id}", response_model=TenantResponse)
-async def update_tenant_admin(
+async def update_tenant_manager(
     tenant_id: UUID,
     tenant_data: TenantUpdate,
     db: Session = Depends(get_db),
@@ -512,7 +512,7 @@ async def get_tenant_transactions(
 
 
 @router.get("/admin/tenants/{tenant_id}/users")
-async def get_tenant_admins(
+async def get_tenant_managers(
     tenant_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_platform_admin),
@@ -525,7 +525,7 @@ async def get_tenant_admins(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    admins = (
+    managers = (
         db.query(User)
         .filter(
             User.tenant_id == tenant_id,
@@ -536,21 +536,21 @@ async def get_tenant_admins(
 
     return [
         {
-            "id": str(admin.id),
-            "email": admin.email,
-            "name": admin.full_name,
-            "role": admin.role,
-            "is_super_admin": admin.is_super_admin,
-            "status": admin.status,
+            "id": str(manager.id),
+            "email": manager.email,
+            "name": manager.full_name,
+            "role": manager.role,
+            "is_super_admin": manager.is_super_admin,
+            "status": manager.status,
         }
-        for admin in admins
+        for manager in managers
     ]
 
 
-@router.post("/admin/tenants/{tenant_id}/reset-admin-permissions")
-async def reset_admin_permissions(
+@router.post("/admin/tenants/{tenant_id}/reset-manager-permissions")
+async def reset_manager_permissions(
     tenant_id: UUID,
-    admin_id: UUID = Query(...),
+    manager_id: UUID = Query(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_platform_admin),
 ):
@@ -559,25 +559,25 @@ async def reset_admin_permissions(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    admin = (
-        db.query(User).filter(User.id == admin_id, User.tenant_id == tenant_id).first()
+    manager = (
+        db.query(User).filter(User.id == manager_id, User.tenant_id == tenant_id).first()
     )
-    if not admin:
-        raise HTTPException(status_code=404, detail="Admin not found")
-    # Only allow resetting tenant admins who are HR Admins
-    if admin.role != "hr_admin":
+    if not manager:
+        raise HTTPException(status_code=404, detail="Manager not found")
+    # Only allow resetting tenant managers who are HR Admins
+    if manager.role != "hr_admin":
         raise HTTPException(
             status_code=403,
             detail="Platform Admins can only reset permissions for tenant HR Admins (role='hr_admin').",
         )
 
     # Reset to base permissions
-    admin.is_super_admin = False
-    admin.role = "manager"
+    manager.is_super_admin = False
+    manager.role = "manager"
     db.commit()
-    db.refresh(admin)
+    db.refresh(manager)
 
-    return {"message": f"Permissions reset for {admin.full_name}", "user": admin}
+    return {"message": f"Permissions reset for {manager.full_name}", "user": manager}
 
 
 @router.get("/admin/platform/health")

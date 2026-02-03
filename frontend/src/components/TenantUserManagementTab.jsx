@@ -37,7 +37,7 @@ export default function TenantUserManagementTab({ tenant, setMessage }) {
 
     try {
       await api.post(
-        `/tenants/admin/tenants/${tenant.tenant_id}/reset-admin-permissions?admin_id=${managerId}`
+        `/tenants/admin/tenants/${tenant.tenant_id}/reset-manager-permissions?manager_id=${managerId}`
       );
 
       setMessage({

@@ -128,7 +128,7 @@ class TestTenantProvisioning:
     def test_provision_creates_admin_user(
         self, client: TestClient, platform_admin_token: str, db: Session
     ):
-        """Test that provisioning creates tenant admin user"""
+        """Test that provisioning creates tenant manager user"""
         provision_data = {
             "name": "Beta Inc",
             "slug": f"beta-{uuid4().hex[:8]}",
@@ -348,7 +348,7 @@ def test_tenant(db: Session):
 
 
 @pytest.fixture
-def test_tenant_admin_department(db: Session, test_tenant: Tenant):
+def test_tenant_manager_department(db: Session, test_tenant: Tenant):
     """Create an admin department for the test tenant"""
     dept = Department(id=uuid4(), tenant_id=test_tenant.id, name="Admin")
     db.add(dept)

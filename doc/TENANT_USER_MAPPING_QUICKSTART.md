@@ -113,7 +113,7 @@ domain_whitelist = ["@triton.com", "@triton.energy.org"]
 
 **Flow:**
 ```
-Tenant Admin → Generate Link → Share Link → Employee Clicks → Auto-Assigned → Active
+Tenant Manager → Generate Link → Share Link → Employee Clicks → Auto-Assigned → Active
 ```
 
 ## Database Schema

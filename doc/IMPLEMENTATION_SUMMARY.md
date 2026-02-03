@@ -85,7 +85,7 @@ A comprehensive multi-tenant administration system has been fully implemented fo
 
 #### Admin User Management
 - `GET /tenants/admin/tenants/{tenant_id}/users` - List tenant managers
-- `POST /tenants/admin/tenants/{tenant_id}/reset-admin-permissions` - Reset user permissions
+- `POST /tenants/admin/tenants/{tenant_id}/reset-manager-permissions` - Reset user permissions
 
 #### Platform Administration
 - `GET /tenants/admin/platform/health` - Global health metrics (total points, tenant count, user count)
@@ -175,7 +175,7 @@ Master-detail layout with 5 tabbed sections:
 **Location:** `/frontend/src/components/TenantFinancialsTab.jsx` (200 lines)
 
 #### Tab 4: User Management (`TenantUserManagementTab.jsx`)
-- Tenant admins list table
+- Tenant managers list table
 - Email, name, role, status columns
 - Super admin status indicator
 - "Reset Permissions" button per admin
@@ -201,7 +201,7 @@ Master-detail layout with 5 tabbed sections:
 
 ---
 
-### 6. Root Tenant Admin Dashboard ✅
+### 6. Root Tenant Manager Dashboard ✅
 
 **Page:** `/frontend/src/pages/RootAdminDashboard.jsx` (280 lines)
 
@@ -260,7 +260,7 @@ Master-detail layout with 5 tabbed sections:
 
 ### 8. Comprehensive Test Suite ✅
 
-**Location:** `/backend/tests/test_tenant_admin.py` (500+ lines)
+**Location:** `/backend/tests/test_tenant_manager.py` (500+ lines)
 
 **Test Coverage:**
 
@@ -291,7 +291,7 @@ Master-detail layout with 5 tabbed sections:
    - Prevent invalid state transitions
 
 5. **Admin User Management**
-   - Retrieve tenant admins
+   - Retrieve tenant managers
    - Reset admin permissions
    - Verify permission state changes
 
@@ -387,10 +387,10 @@ Master-detail layout with 5 tabbed sections:
 - ✅ `/backend/models.py` - Tenant model enhanced (40 lines)
 - ✅ `/backend/tenants/schemas.py` - Schemas refactored (192 lines)
 - ✅ `/backend/tenants/routes.py` - 26 new endpoints (500+ lines)
-- ✅ `/backend/tests/test_tenant_admin.py` - Test suite (500+ lines)
+- ✅ `/backend/tests/test_tenant_manager.py` - Test suite (500+ lines)
 
 ### Frontend Files
-- ✅ `/frontend/src/pages/TenantAdmin.jsx` - Admin listing page (120 lines)
+- ✅ `/frontend/src/pages/TenantManager.jsx` - Manager listing page (120 lines)
 - ✅ `/frontend/src/pages/RootAdminDashboard.jsx` - Platform dashboard (280 lines)
 - ✅ `/frontend/src/components/TenantGrid.jsx` - Grid component (78 lines)
 - ✅ `/frontend/src/components/TenantControlPanel.jsx` - Master panel (103 lines)
@@ -416,11 +416,11 @@ Master-detail layout with 5 tabbed sections:
 2. **Backend Testing**: Run test suite to verify all endpoints
 3. **Frontend Routing**: Add routes to App.jsx:
    ```jsx
-   import TenantAdmin from './pages/TenantAdmin';
+   import TenantManager from './pages/TenantManager';
    import RootAdminDashboard from './pages/RootAdminDashboard';
    
    // In routing configuration:
-   { path: '/admin/tenants', element: <TenantAdmin /> },
+   { path: '/admin/tenants', element: <TenantManager /> },
    { path: '/admin/platform', element: <RootAdminDashboard /> }
    ```
 4. **API Integration**: Configure API base URL and authentication headers

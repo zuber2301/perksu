@@ -512,7 +512,7 @@ class TestTenantStatusManagement:
 class TestAdminUserManagement:
     """Test tenant manager user management"""
 
-    def test_get_tenant_admins(
+    def test_get_tenant_managers(
         self,
         client: TestClient,
         platform_admin_token: str,
@@ -539,7 +539,7 @@ class TestAdminUserManagement:
     ):
         """Test resetting manager permissions"""
         response = client.post(
-            f"/api/tenants/admin/tenants/{test_tenant.id}/reset-admin-permissions?admin_id={test_tenant_manager.id}",
+            f"/api/tenants/admin/tenants/{test_tenant.id}/reset-manager-permissions?manager_id={test_tenant_manager.id}",
             headers={"Authorization": f"Bearer {platform_admin_token}"},
         )
         assert response.status_code == 200

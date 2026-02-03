@@ -4,7 +4,7 @@ import TenantGrid from '../components/TenantGrid';
 import TenantControlPanel from '../components/TenantControlPanel';
 import '../../styles/admin.css';
 
-export default function TenantAdmin() {
+export default function TenantManager() {
   const [tenants, setTenants] = useState([]);
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [loading, setLoading] = useState(true);

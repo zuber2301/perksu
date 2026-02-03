@@ -404,7 +404,7 @@ DEFAULT_INVITE_EXPIRY_HOURS=168  # 7 days
 - [ ] SSO/SAML support with tenant mapping
 - [ ] Bulk user import with automatic tenanting
 - [ ] Tenant merging/migration tools
-- [ ] Advanced analytics for tenant admins
+- [ ] Advanced analytics for tenant managers
 - [ ] IP-based tenant assignment
 - [ ] Mobile app deep linking for invite tokens
 

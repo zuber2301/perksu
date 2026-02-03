@@ -56,7 +56,7 @@ File: `/backend/tenants/schemas.py`
 ### 4. Test Backend
 ```bash
 # Run test suite
-pytest backend/tests/test_tenant_admin.py -v
+pytest backend/tests/test_tenant_manager.py -v
 
 # Expected: All tests pass, 50+ test cases
 ```
@@ -67,13 +67,13 @@ pytest backend/tests/test_tenant_admin.py -v
 
 ### 1. Add Routes to App.jsx
 ```jsx
-import TenantAdmin from './pages/TenantAdmin';
+import TenantManager from './pages/TenantManager';
 import RootAdminDashboard from './pages/RootAdminDashboard';
 
 // In your router configuration:
 {
   path: '/admin/tenants',
-  element: <TenantAdmin />,
+  element: <TenantManager />,
   meta: { requiresAuth: true, role: 'platform_admin' }
 },
 {
@@ -88,7 +88,7 @@ Add links in your main layout/navigation:
 ```jsx
 {isAdmin && (
   <>
-    <Link to="/admin/tenants">👥 Tenant Admin</Link>
+    <Link to="/admin/tenants">👥 Tenant Manager</Link>
     <Link to="/admin/platform">🌍 Platform Admin</Link>
   </>
 )}
@@ -114,14 +114,14 @@ npm run dev
 
 ### Backend Testing
 ```bash
-# Run all tenant admin tests
-pytest backend/tests/test_tenant_admin.py
+# Run all tenant manager tests
+pytest backend/tests/test_tenant_manager.py
 
 # Run specific test class
-pytest backend/tests/test_tenant_admin.py::TestTenantListingAndFiltering -v
+pytest backend/tests/test_tenant_manager.py::TestTenantListingAndFiltering -v
 
 # Run with coverage
-pytest backend/tests/test_tenant_admin.py --cov=tenants --cov-report=html
+pytest backend/tests/test_tenant_manager.py --cov=tenants --cov-report=html
 ```
 
 ### Frontend Testing (Manual)
@@ -227,7 +227,7 @@ app.include_router(tenants.routes.router, prefix="/tenants", tags=["tenants"])
 - [ ] Tenants can be suspended/resumed/archived
 
 ### Admin Features
-- [ ] Tenant admins can be viewed
+- [ ] Tenant managers can be viewed
 - [ ] Admin permissions can be reset
 - [ ] Platform health metrics display
 - [ ] System admins can be listed
@@ -299,7 +299,7 @@ app.include_router(tenants.routes.router, prefix="/tenants", tags=["tenants"])
 For detailed documentation, refer to:
 - **API Reference**: API docstrings in `/backend/tenants/routes.py`
 - **Component Props**: JSDoc comments in component files
-- **Test Cases**: Usage examples in `/backend/tests/test_tenant_admin.py`
+- **Test Cases**: Usage examples in `/backend/tests/test_tenant_manager.py`
 - **Implementation Guide**: `/TENANT_MANAGEMENT_GUIDE.md`
 
 ---

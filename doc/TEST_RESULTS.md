@@ -39,7 +39,7 @@ Successfully fixed and expanded the test infrastructure for the Perksu tenant ma
    - Prevent suspending already-suspended tenant
 
 5. **Admin User Management** (2 tests)
-   - Get tenant admins
+   - Get tenant managers
    - Reset admin permissions
 
 6. **Platform Admin Features** (4 tests)
@@ -83,7 +83,7 @@ Successfully fixed and expanded the test infrastructure for the Perksu tenant ma
 **Problem**: Tests were using plain user IDs as auth tokens, causing 401 errors
 **Solution**:
 - Created JWT token generation in test fixtures
-- Added `platform_admin_token` and `test_tenant_admin_token` fixtures
+- Added `platform_admin_token` and `test_tenant_manager_token` fixtures
 - Properly sign tokens using auth.utils.create_access_token()
 
 ### 3. Database Constraints
@@ -91,7 +91,7 @@ Successfully fixed and expanded the test infrastructure for the Perksu tenant ma
 **Solution**:
 - Created department fixtures for both platform and test tenants
 - Updated all user fixtures to include valid department_id
-- Platform admins and tenant admins now have proper department associations
+- Platform admins and tenant managers now have proper department associations
 
 ### 4. API Routes
 **Problem**: Tests were using incorrect URL paths (missing `/api` prefix)
@@ -109,7 +109,7 @@ Successfully fixed and expanded the test infrastructure for the Perksu tenant ma
 
 ### Backend Tests
 1. **conftest.py** - Added missing test fixtures and token creation helper
-2. **test_tenant_admin.py** - Fixed 27 comprehensive admin API tests
+2. **test_tenant_manager.py** - Fixed 27 comprehensive manager API tests
 3. **test_tenant_provisioning.py** - Created 9 new tenant provisioning tests
 
 ### Test Infrastructure Components
@@ -123,7 +123,7 @@ Successfully fixed and expanded the test infrastructure for the Perksu tenant ma
 The tenant provisioning endpoint (`POST /api/tenants/`) is **working correctly**:
 - ✓ Creates tenant with all configurations
 - ✓ Creates default departments (HR, IT, Sales, Business Units)
-- ✓ Creates tenant admin user
+- ✓ Creates tenant manager user
 - ✓ Initializes wallet for admin user
 - ✓ Creates master budget ledger entry
 - ✓ Sets initial balance correctly
@@ -137,13 +137,13 @@ To run the test suite:
 
 ```bash
 # Run all tenant tests
-python3 -m pytest backend/tests/test_tenant_admin.py backend/tests/test_tenant_provisioning.py -v
+python3 -m pytest backend/tests/test_tenant_manager.py backend/tests/test_tenant_provisioning.py -v
 
 # Run specific test class
-python3 -m pytest backend/tests/test_tenant_admin.py::TestTenantProvisioning -v
+python3 -m pytest backend/tests/test_tenant_manager.py::TestTenantProvisioning -v
 
 # Run with coverage
-python3 -m pytest backend/tests/test_tenant_admin.py backend/tests/test_tenant_provisioning.py --cov=backend --cov-report=html
+python3 -m pytest backend/tests/test_tenant_manager.py backend/tests/test_tenant_provisioning.py --cov=backend --cov-report=html
 ```
 
 ## Known Limitations

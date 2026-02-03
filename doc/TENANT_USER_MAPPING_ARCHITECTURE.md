@@ -127,7 +127,7 @@
 │ USER SIGN-UP FLOW (Invite-Link Method)                             │
 └─────────────────────────────────────────────────────────────────────┘
 
-1. TENANT ADMIN GENERATES LINK
+1. TENANT MANAGER GENERATES LINK
    ┌──────────────────────────────────────────┐
    │ POST /tenants/invite-link                │
    │ (As HR Admin, tenant A)                  │

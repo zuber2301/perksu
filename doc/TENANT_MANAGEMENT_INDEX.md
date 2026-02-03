@@ -55,7 +55,7 @@ This document indexes all files created and modified for the comprehensive tenan
   7. `POST /tenants/admin/tenants/{tenant_id}/resume` - Resume tenant
   8. `POST /tenants/admin/tenants/{tenant_id}/archive` - Archive tenant
   9. `GET /tenants/admin/tenants/{tenant_id}/users` - Get admin users
-  10. `POST /tenants/admin/tenants/{tenant_id}/reset-admin-permissions` - Reset permissions
+  10. `POST /tenants/admin/tenants/{tenant_id}/reset-manager-permissions` - Reset permissions
   11. `GET /tenants/admin/platform/health` - Platform health
   12. `GET /tenants/admin/platform/system-admins` - List system admins
   13. `POST /tenants/admin/platform/system-admins/{admin_id}/toggle-super-admin` - Toggle super admin
@@ -85,8 +85,8 @@ This document indexes all files created and modified for the comprehensive tenan
 
 #### Pages
 
-**1. TenantAdmin.jsx**
-- **Path**: `/frontend/src/pages/TenantAdmin.jsx`
+**1. TenantManager.jsx**
+- **Path**: `/frontend/src/pages/TenantManager.jsx`
 - **Lines**: 120
 - **Purpose**: Main tenant manager listing page
 - **Features**:
@@ -221,7 +221,7 @@ This document indexes all files created and modified for the comprehensive tenan
 **6. TenantUserManagementTab.jsx**
 - **Path**: `/frontend/src/components/TenantUserManagementTab.jsx`
 - **Lines**: 160
-- **Purpose**: Tenant admin management
+- **Purpose**: Tenant manager management
 - **Features**:
   - Admin users list table
   - Email, name, role, status columns
@@ -399,7 +399,7 @@ This document indexes all files created and modified for the comprehensive tenan
 - **Implementation Guide**: `/TENANT_MANAGEMENT_GUIDE.md`
 - **Implementation Summary**: `/IMPLEMENTATION_SUMMARY.md`
 - **Backend Routes**: `/backend/tenants/routes.py`
-- **Backend Tests**: `/backend/tests/test_tenant_admin.py`
+- **Backend Tests**: `/backend/tests/test_tenant_manager.py`
 
 ### For DevOps/Database
 - **Database Schema**: `/database/init.sql` (lines 14-46)
@@ -420,7 +420,7 @@ This document indexes all files created and modified for the comprehensive tenan
 - [ ] Models.py imports and uses new Tenant fields
 - [ ] Routes.py contains all 26+ endpoints
 - [ ] Schemas.py has all validation models
-- [ ] Tests run without errors: `pytest backend/tests/test_tenant_admin.py`
+- [ ] Tests run without errors: `pytest backend/tests/test_tenant_manager.py`
 - [ ] Authorization checks work correctly
 
 ### Frontend Verification

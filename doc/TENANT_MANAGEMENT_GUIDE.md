@@ -144,15 +144,15 @@ Response: Updated TenantResponse
 
 ```
 GET /tenants/admin/tenants/{tenant_id}/users
-Response: List of tenant admins with roles and permissions
+Response: List of tenant managers with roles and permissions
 
-POST /tenants/admin/tenants/{tenant_id}/reset-admin-permissions?admin_id=UUID
+POST /tenants/admin/tenants/{tenant_id}/reset-manager-permissions?manager_id=UUID
 Response: Confirmation with updated user record
 ```
 
 ### Frontend UI Components
 
-#### 1. TenantAdmin Page (`/pages/TenantAdmin.jsx`)
+#### 1. TenantManager Page (`/pages/TenantManager.jsx`)
 
 **Global Tenant Grid**
 - High-fidelity table showing all companies in ecosystem
@@ -190,7 +190,7 @@ Master-detail layout with tabbed interface:
 - Invoice records section (placeholder for billing integration)
 
 **Tab 4: User Management**
-- Tenant admins list with email, name, role
+- Tenant managers list with email, name, role
 - SUPER_ADMIN status indicator
 - "Reset Permissions" button per admin
 - Admin access policies reference
@@ -354,7 +354,7 @@ status VARCHAR(50) CHECK (status IN ('ACTIVE', 'SUSPENDED', 'ARCHIVED'))
 
 ### With Existing Systems
 
-1. **User Management**: Tenant admins can be queried and their permissions reset
+1. **User Management**: Tenant managers can be queried and their permissions reset
 2. **Budget System**: Master budget balance updated with transactions
 3. **Ledger System**: All financial transactions recorded in audit trail
 4. **Recognition System**: Award tiers configure recognition values
@@ -417,7 +417,7 @@ backend/
 │   └── schemas.py (Updated schemas)
 ├── database.py
 ├── tests/
-│   └── test_tenant_admin.py (Comprehensive test suite)
+│   └── test_tenant_manager.py (Comprehensive test suite)
 
 frontend/
 ├── src/
@@ -460,4 +460,4 @@ database/
 For questions or additional features, refer to:
 - API endpoint documentation in routes.py docstrings
 - Frontend component prop documentation in JSX files
-- Test cases in test_tenant_admin.py for usage examples
+- Test cases in test_tenant_manager.py for usage examples
