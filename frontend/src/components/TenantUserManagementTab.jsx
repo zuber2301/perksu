@@ -3,49 +3,49 @@ import { api } from '../lib/api';
 import './TenantTabs.css';
 
 export default function TenantUserManagementTab({ tenant, setMessage }) {
-  const [admins, setAdmins] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resettingId, setResettingId] = useState(null);
 
   useEffect(() => {
-    fetchTenantAdmins();
+    fetchTenantManagers();
   }, [tenant.tenant_id]);
 
-  const fetchTenantAdmins = async () => {
+  const fetchTenantManagers = async () => {
     try {
       setLoading(true);
       const response = await api.get(
         `/tenants/admin/tenants/${tenant.tenant_id}/users`
       );
-      setAdmins(response.data);
+      setManagers(response.data);
     } catch (err) {
       setMessage({
         type: 'error',
-        text: 'Failed to load admins',
+        text: 'Failed to load managers',
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResetPermissions = async (adminId) => {
-    if (!window.confirm('Reset permissions for this admin?')) {
+  const handleResetPermissions = async (managerId) => {
+    if (!window.confirm('Reset permissions for this manager?')) {
       return;
     }
 
-    setResettingId(adminId);
+    setResettingId(managerId);
 
     try {
       await api.post(
-        `/tenants/admin/tenants/${tenant.tenant_id}/reset-admin-permissions?admin_id=${adminId}`
+        `/tenants/admin/tenants/${tenant.tenant_id}/reset-admin-permissions?admin_id=${managerId}`
       );
 
       setMessage({
         type: 'success',
-        text: 'Admin permissions reset successfully',
+        text: 'Manager permissions reset successfully',
       });
 
-      fetchTenantAdmins();
+      fetchTenantManagers();
     } catch (err) {
       setMessage({
         type: 'error',
@@ -69,21 +69,21 @@ export default function TenantUserManagementTab({ tenant, setMessage }) {
   return (
     <div className="tab-user-management">
       <div className="user-management-header">
-        <h2>Tenant Admins & Permissions</h2>
+        <h2>Tenant Managers & Permissions</h2>
         <p className="subtitle">
           Manage administrative access and permissions for this tenant
         </p>
       </div>
 
       {loading ? (
-        <div className="loading-state">Loading admins...</div>
-      ) : admins.length === 0 ? (
+        <div className="loading-state">Loading managers...</div>
+      ) : managers.length === 0 ? (
         <div className="empty-state">
-          <p>No admins found for this tenant</p>
+          <p>No managers found for this tenant</p>
         </div>
       ) : (
-        <div className="admins-table-wrapper">
-          <table className="admins-table">
+        <div className="managers-table-wrapper">
+          <table className="managers-table">
             <thead>
               <tr>
                 <th>Email</th>
@@ -95,33 +95,33 @@ export default function TenantUserManagementTab({ tenant, setMessage }) {
               </tr>
             </thead>
             <tbody>
-              {admins.map((admin) => (
-                <tr key={admin.id} className="admin-row">
+              {managers.map((manager) => (
+                <tr key={manager.id} className="admin-row">
                   <td className="email">
-                    <code>{admin.email}</code>
+                    <code>{manager.email}</code>
                   </td>
-                  <td className="name">{admin.name}</td>
+                  <td className="name">{manager.name}</td>
                   <td className="role">
-                    <span className="role-badge">{admin.role}</span>
+                    <span className="role-badge">{manager.role}</span>
                   </td>
                   <td className="status">
-                    <span className={`badge ${getStatusBadgeClass(admin.status)}`}>
-                      {admin.status}
+                    <span className={`badge ${getStatusBadgeClass(manager.status)}`}>
+                      {manager.status}
                     </span>
                   </td>
                   <td className="super-admin">
-                    <span className={admin.is_super_admin ? 'badge-success' : 'badge-gray'}>
-                      {admin.is_super_admin ? '✓ Yes' : '✗ No'}
+                    <span className={manager.is_super_admin ? 'badge-success' : 'badge-gray'}>
+                      {manager.is_super_admin ? '✓ Yes' : '✗ No'}
                     </span>
                   </td>
                   <td className="action">
                     <button
-                      onClick={() => handleResetPermissions(admin.id)}
+                      onClick={() => handleResetPermissions(manager.id)}
                       className="btn-reset"
-                      disabled={resettingId === admin.id}
-                      title="Reset this admin to default permissions"
+                      disabled={resettingId === manager.id}
+                      title="Reset this manager to default permissions"
                     >
-                      {resettingId === admin.id ? 'Resetting...' : 'Reset'}
+                      {resettingId === manager.id ? 'Resetting...' : 'Reset'}
                     </button>
                   </td>
                 </tr>
@@ -150,15 +150,15 @@ export default function TenantUserManagementTab({ tenant, setMessage }) {
         </div>
       </div>
 
-      {/* Invite New Admin */}
+      {/* Invite New Manager */}
       <div className="invite-admin-section">
-        <h3>Add New Admin</h3>
+        <h3>Add New Manager</h3>
         <p className="note">
-          To add a new admin, invite them through the user management system.
+          To add a new manager, invite them through the user management system.
           They will be created with manager role and can be elevated by a Super Admin.
         </p>
         <button className="btn-secondary" disabled>
-          Invite New Admin (Coming Soon)
+          Invite New Manager (Coming Soon)
         </button>
       </div>
     </div>

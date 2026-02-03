@@ -1,11 +1,11 @@
 """
-Tests for Tenant Admin Management API Endpoints
+Tests for Tenant Manager Management API Endpoints
 Tests the comprehensive tenant management features including:
 - Tenant listing with pagination and filtering
 - Tenant details and updates
 - Point injection and transaction history
 - Tenant status management (suspend, resume, archive)
-- Admin user management
+- Manager user management
 - Platform-wide health metrics
 """
 
@@ -131,8 +131,8 @@ def test_tenant(db: Session):
 
 
 @pytest.fixture
-def test_tenant_admin_department(db: Session, test_tenant: Tenant):
-    """Create an admin department for the test tenant"""
+def test_tenant_manager_department(db: Session, test_tenant: Tenant):
+    """Create a manager department for the test tenant"""
     dept = Department(id=uuid4(), tenant_id=test_tenant.id, name="Admin")
     db.add(dept)
     db.commit()
@@ -140,19 +140,19 @@ def test_tenant_admin_department(db: Session, test_tenant: Tenant):
 
 
 @pytest.fixture
-def test_tenant_admin(
-    db: Session, test_tenant: Tenant, test_tenant_admin_department: Department
+def test_tenant_manager(
+    db: Session, test_tenant: Tenant, test_tenant_manager_department: Department
 ):
-    """Create a tenant admin user"""
+    """Create a tenant manager user"""
     admin = User(
         id=uuid4(),
         tenant_id=test_tenant.id,
         email="admin@test-company.com",
         password_hash="hashed_password",
         first_name="Tenant",
-        last_name="Admin",
+        last_name="Manager",
         role="hr_admin",
-        department_id=test_tenant_admin_department.id,
+        department_id=test_tenant_manager_department.id,
         is_super_admin=True,
         status="active",
     )
@@ -162,12 +162,12 @@ def test_tenant_admin(
 
 
 @pytest.fixture
-def test_tenant_admin_token(test_tenant_admin: User):
-    """Create a JWT token for the test tenant admin user"""
+def test_tenant_manager_token(test_tenant_manager: User):
+    """Create a JWT token for the test tenant manager user"""
     token_data = {
-        "sub": str(test_tenant_admin.id),
-        "tenant_id": str(test_tenant_admin.tenant_id),
-        "email": test_tenant_admin.email,
+        "sub": str(test_tenant_manager.id),
+        "tenant_id": str(test_tenant_manager.tenant_id),
+        "email": test_tenant_manager.email,
         "role": "hr_admin",
         "type": "tenant",
     }
@@ -510,16 +510,16 @@ class TestTenantStatusManagement:
 
 
 class TestAdminUserManagement:
-    """Test tenant admin user management"""
+    """Test tenant manager user management"""
 
     def test_get_tenant_admins(
         self,
         client: TestClient,
         platform_admin_token: str,
         test_tenant: Tenant,
-        test_tenant_admin: User,
+        test_tenant_manager: User,
     ):
-        """Test retrieving tenant admins"""
+        """Test retrieving tenant managers"""
         response = client.get(
             f"/api/tenants/admin/tenants/{test_tenant.id}/users",
             headers={"Authorization": f"Bearer {platform_admin_token}"},
@@ -529,25 +529,25 @@ class TestAdminUserManagement:
         assert len(data) > 0
         assert data[0]["email"] == "admin@test-company.com"
 
-    def test_reset_admin_permissions(
+    def test_reset_manager_permissions(
         self,
         client: TestClient,
         platform_admin_token: str,
         test_tenant: Tenant,
-        test_tenant_admin: User,
+        test_tenant_manager: User,
         db: Session,
     ):
-        """Test resetting admin permissions"""
+        """Test resetting manager permissions"""
         response = client.post(
-            f"/api/tenants/admin/tenants/{test_tenant.id}/reset-admin-permissions?admin_id={test_tenant_admin.id}",
+            f"/api/tenants/admin/tenants/{test_tenant.id}/reset-admin-permissions?admin_id={test_tenant_manager.id}",
             headers={"Authorization": f"Bearer {platform_admin_token}"},
         )
         assert response.status_code == 200
 
         # Verify permissions were reset
-        db.refresh(test_tenant_admin)
-        assert test_tenant_admin.is_super_admin is False
-        assert test_tenant_admin.role == "manager"
+        db.refresh(test_tenant_manager)
+        assert test_tenant_manager.is_super_admin is False
+        assert test_tenant_manager.role == "manager"
 
 
 class TestPlatformAdminFeatures:
@@ -631,34 +631,34 @@ class TestAuthorizationAndSecurity:
     """Test authorization and security for admin endpoints"""
 
     def test_non_admin_cannot_list_tenants(
-        self, client: TestClient, test_tenant: Tenant, test_tenant_admin_token: str
+        self, client: TestClient, test_tenant: Tenant, test_tenant_manager_token: str
     ):
         """Test that non-platform admins cannot list all tenants"""
         response = client.get(
             "/api/tenants/admin/tenants",
-            headers={"Authorization": f"Bearer {test_tenant_admin_token}"},
+            headers={"Authorization": f"Bearer {test_tenant_manager_token}"},
         )
         # Should fail or only return filtered results
         assert response.status_code == 403 or response.status_code == 200
 
     def test_non_admin_cannot_inject_points(
-        self, client: TestClient, test_tenant: Tenant, test_tenant_admin_token: str
+        self, client: TestClient, test_tenant: Tenant, test_tenant_manager_token: str
     ):
         """Test that non-platform admins cannot inject points"""
         inject_data = {"amount": 5000.00, "description": "Unauthorized injection"}
         response = client.post(
             f"/api/tenants/admin/tenants/{test_tenant.id}/inject-points",
             json=inject_data,
-            headers={"Authorization": f"Bearer {test_tenant_admin_token}"},
+            headers={"Authorization": f"Bearer {test_tenant_manager_token}"},
         )
         assert response.status_code == 403
 
     def test_non_admin_cannot_suspend_tenant(
-        self, client: TestClient, test_tenant: Tenant, test_tenant_admin_token: str
+        self, client: TestClient, test_tenant: Tenant, test_tenant_manager_token: str
     ):
         """Test that non-platform admins cannot suspend tenants"""
         response = client.post(
             f"/api/tenants/admin/tenants/{test_tenant.id}/suspend",
-            headers={"Authorization": f"Bearer {test_tenant_admin_token}"},
+            headers={"Authorization": f"Bearer {test_tenant_manager_token}"},
         )
         assert response.status_code == 403

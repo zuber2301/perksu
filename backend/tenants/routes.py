@@ -164,15 +164,15 @@ async def create_tenant(
     # Ensure we have a department ID for the admin user
     hr_dept_id = hr_dept_id or last_dept_id
 
-    # 5. Create Tenant Admin User
+    # 5. Create Tenant Manager User
     admin_user = User(
         tenant_id=tenant.id,
         email=tenant_data.admin_email,
         password_hash=get_password_hash(tenant_data.admin_password),
         first_name=tenant_data.admin_first_name,
         last_name=tenant_data.admin_last_name,
-        role="hr_admin",  # Usually HR Admin is the tenant admin
-        org_role="tenant_admin",
+        role="hr_admin",  # Usually HR Admin is the tenant manager
+        org_role="tenant_manager",
         department_id=hr_dept_id,
         is_super_admin=True,
         status="active",
@@ -267,7 +267,7 @@ async def toggle_tenant_status(
     return tenant
 
 
-# ==================== TENANT ADMIN ENDPOINTS ====================
+# ==================== TENANT MANAGER ENDPOINTS ====================
 
 
 @router.get("/admin/tenants", response_model=TenantListResponse)
@@ -518,7 +518,7 @@ async def get_tenant_admins(
     current_user: User = Depends(get_platform_admin),
 ):
     """
-    Get high-level view of tenant admins (Platform Admin only).
+    Get high-level view of tenant managers (Platform Admin only).
     Returns users with hr_admin or is_super_admin flags.
     """
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
@@ -554,7 +554,7 @@ async def reset_admin_permissions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_platform_admin),
 ):
-    """Reset a tenant admin's permissions (Platform Admin only)"""
+    """Reset a tenant manager's permissions (Platform Admin only)"""
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")

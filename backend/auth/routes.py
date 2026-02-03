@@ -401,8 +401,8 @@ async def impersonate_tenant(
     db: Session = Depends(get_db),
     current_admin: SystemAdmin = Depends(get_system_admin),
 ):
-    """Allows a system admin to impersonate a tenant admin"""
-    # Find the tenant admin for this tenant
+    """Allows a system admin to impersonate a tenant manager"""
+    # Find the tenant manager for this tenant
     user = (
         db.query(User).filter(User.tenant_id == tenant_id, User.role == "admin").first()
     )

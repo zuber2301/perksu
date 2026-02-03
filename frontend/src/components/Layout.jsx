@@ -224,95 +224,66 @@ export default function Layout() {
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
           {/* Primary navigation tabs */}
           {personaTabs && (
-            <div className="flex items-center h-14 px-4 lg:px-8 border-b border-gray-100">
-              <div className="flex items-center gap-6 flex-1">
-                {personaTabs.map((tab) => (
-                  <NavLink
-                    key={tab.href}
-                    to={tab.href}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                        isActive
-                          ? 'text-perksu-purple border-b-2 border-perksu-purple'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`
-                    }
-                  >
-                    {tab.label}
-                  </NavLink>
-                ))}
+            <div className="flex items-center justify-between h-16 px-4 lg:px-8 border-b border-gray-100">
+              {/* Navigation tabs */}
+              <div className="flex items-center gap-6">
+                <NavLink
+                  to="/recognize"
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
+                    }`
+                >
+                  Recognize
+                </NavLink>
 
-                {/* Admin Dropdown - Tenant Admin only */}
-                {adminDropdownItems && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
-                      className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                      <span>Admin</span>
-                      <HiOutlineChevronDown
-                        className={`w-4 h-4 transition-transform ${
-                          adminDropdownOpen ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
+                <NavLink
+                  to="/feed"
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
+                    }`
+                >
+                  Feed 📱
+                </NavLink>
 
-                    {/* Dropdown menu */}
-                    {adminDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                        {adminDropdownItems.map((item) => (
-                          <NavLink
-                            key={item.href}
-                            to={item.href}
-                            onClick={() => setAdminDropdownOpen(false)}
-                            className={({ isActive }) =>
-                              `flex items-center gap-2 px-4 py-2 text-sm ${
-                                isActive
-                                  ? 'bg-perksu-purple text-white'
-                                  : 'text-gray-700 hover:bg-gray-50'
-                              } first:rounded-t-lg last:rounded-b-lg`
-                            }
-                          >
-                            <item.icon className="w-4 h-4" />
-                            {item.label}
-                          </NavLink>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <NavLink
+                  to="/wallet"
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
+                    }`
+                >
+                  Wallet
+                </NavLink>
+
+                <NavLink
+                  to="/redeem"
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                      isActive ? 'text-perksu-purple border-b-2 border-perksu-purple' : 'text-gray-600 hover:text-gray-900'
+                    }`
+                >
+                  Redeem
+                </NavLink>
               </div>
-            </div>
-          )}
 
-          {/* Top right section with notifications and profile */}
-          <div className="flex items-center justify-between h-16 px-4 lg:px-8">
-            <button
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <HiOutlineMenu className="w-6 h-6" />
-            </button>
+              {/* Top right controls: alerts, profile, logout */}
+              <div className="flex items-center gap-3">
+                <button className="relative p-2 rounded-lg hover:bg-gray-100">
+                  <HiOutlineBell className="w-6 h-6 text-gray-600" />
+                  {notificationCount?.data?.unread > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 text-xs font-medium text-white bg-red-500 rounded-full flex items-center justify-center">
+                      {notificationCount.data.unread > 9 ? '9+' : notificationCount.data.unread}
+                    </span>
+                  )}
+                </button>
 
-            <div className="flex-1" />
-
-            <div className="flex items-center gap-4">
-              {/* Notifications */}
-              <button className="relative p-2 rounded-lg hover:bg-gray-100">
-                <HiOutlineBell className="w-6 h-6 text-gray-600" />
-                {notificationCount?.data?.unread > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 text-xs font-medium text-white bg-red-500 rounded-full flex items-center justify-center">
-                    {notificationCount.data.unread > 9 ? '9+' : notificationCount.data.unread}
-                  </span>
-                )}
-              </button>
-
-              {/* Profile dropdown */}
-              <div className="flex items-center gap-2">
                 <NavLink to="/profile" className="p-2 rounded-lg hover:bg-gray-100">
                   <HiOutlineUser className="w-6 h-6 text-gray-600" />
                 </NavLink>
-                <button 
+
+                <button
                   onClick={handleLogout}
                   className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-600"
                 >
@@ -320,7 +291,7 @@ export default function Layout() {
                 </button>
               </div>
             </div>
-          </div>
+          )}
         </header>
 
         {/* Page content */}

@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 VALID_ROLES = ["platform_admin", "hr_admin", "manager", "employee"]
 VALID_ORG_ROLES = [
     "platform_admin",
-    "tenant_admin",
+    "tenant_manager",
     "hr_admin",
     "tenant_lead",
     "manager",
@@ -23,7 +23,7 @@ class UserBase(BaseModel):
     role: Literal["platform_admin", "hr_admin", "manager", "employee"]
     org_role: Literal[
         "platform_admin",
-        "tenant_admin",
+        "tenant_manager",
         "hr_admin",
         "tenant_lead",
         "manager",
@@ -74,7 +74,7 @@ class UserUpdate(BaseModel):
     org_role: Optional[
         Literal[
             "platform_admin",
-            "tenant_admin",
+            "tenant_manager",
             "hr_admin",
             "tenant_lead",
             "manager",

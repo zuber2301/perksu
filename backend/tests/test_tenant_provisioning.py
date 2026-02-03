@@ -194,7 +194,7 @@ class TestTenantProvisioning:
         assert response.status_code in (200, 201)
 
     def test_provision_requires_platform_admin(
-        self, client: TestClient, test_tenant, test_tenant_admin_token: str
+        self, client: TestClient, test_tenant, test_tenant_manager_token: str
     ):
         """Test that non-admin users cannot provision tenants"""
         provision_data = {
@@ -210,7 +210,7 @@ class TestTenantProvisioning:
         response = client.post(
             "/api/tenants/",
             json=provision_data,
-            headers={"Authorization": f"Bearer {test_tenant_admin_token}"},
+            headers={"Authorization": f"Bearer {test_tenant_manager_token}"},
         )
         assert response.status_code == 403
 
@@ -357,19 +357,19 @@ def test_tenant_admin_department(db: Session, test_tenant: Tenant):
 
 
 @pytest.fixture
-def test_tenant_admin(
-    db: Session, test_tenant: Tenant, test_tenant_admin_department: Department
+def test_tenant_manager(
+    db: Session, test_tenant: Tenant, test_tenant_manager_department: Department
 ):
-    """Create a tenant admin user"""
+    """Create a tenant manager user"""
     admin = User(
         id=uuid4(),
         tenant_id=test_tenant.id,
         email="admin@test-company.com",
         password_hash="hashed_password",
         first_name="Tenant",
-        last_name="Admin",
+        last_name="Manager",
         role="hr_admin",
-        department_id=test_tenant_admin_department.id,
+        department_id=test_tenant_manager_department.id,
         is_super_admin=True,
         status="active",
     )
@@ -379,12 +379,12 @@ def test_tenant_admin(
 
 
 @pytest.fixture
-def test_tenant_admin_token(test_tenant_admin: User):
-    """Create a JWT token for the test tenant admin user"""
+def test_tenant_manager_token(test_tenant_manager: User):
+    """Create a JWT token for the test tenant manager user"""
     token_data = {
-        "sub": str(test_tenant_admin.id),
-        "tenant_id": str(test_tenant_admin.tenant_id),
-        "email": test_tenant_admin.email,
+        "sub": str(test_tenant_manager.id),
+        "tenant_id": str(test_tenant_manager.tenant_id),
+        "email": test_tenant_manager.email,
         "role": "hr_admin",
         "type": "tenant",
     }
