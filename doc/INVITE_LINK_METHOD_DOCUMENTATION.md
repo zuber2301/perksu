@@ -7,7 +7,7 @@
 
 ## Overview
 
-The **Invite-Link Method** allows Tenant Admins to generate unique links that automatically assign new users to their organization during sign-up.
+The **Invite-Link Method** allows Tenant Managers to generate unique links that automatically assign new users to their organization during sign-up.
 
 ### Two Approaches Implemented
 

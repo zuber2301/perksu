@@ -65,7 +65,7 @@ This document indexes all files created and modified for the comprehensive tenan
 - **Status**: ✅ Complete
 
 #### Tests
-- **File**: `/backend/tests/test_tenant_admin.py`
+- **File**: `/backend/tests/test_tenant_manager.py`
 - **Total Lines**: 500+
 - **Test Cases**: 50+
 - **Test Classes**:
@@ -88,7 +88,7 @@ This document indexes all files created and modified for the comprehensive tenan
 **1. TenantAdmin.jsx**
 - **Path**: `/frontend/src/pages/TenantAdmin.jsx`
 - **Lines**: 120
-- **Purpose**: Main tenant admin listing page
+- **Purpose**: Main tenant manager listing page
 - **Features**:
   - Global tenant grid with search/filter
   - Pagination controls
@@ -392,7 +392,7 @@ This document indexes all files created and modified for the comprehensive tenan
 
 ### For Platform Administrators
 - **Getting Started**: `/QUICK_START.md`
-- **Tenant Admin Page**: `/frontend/src/pages/TenantAdmin.jsx`
+- **Tenant Manager Page**: `/frontend/src/pages/TenantManager.jsx`
 - **Platform Dashboard**: `/frontend/src/pages/RootAdminDashboard.jsx`
 
 ### For Developers

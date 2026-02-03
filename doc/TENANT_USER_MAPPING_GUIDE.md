@@ -119,7 +119,7 @@ async def signup(signup_data: SignUpRequest, db: Session):
 
 **How It Works:**
 
-1. Tenant Admin generates invite link
+1. Tenant Manager generates invite link
 2. Link contains secure JWT token with embedded `tenant_id`
 3. Link expires after specified time (default: 7 days)
 4. User clicks link and signs up, tenant is pre-assigned
@@ -143,7 +143,7 @@ https://app.sparknode.io/signup?invite_token=eyJ0eXAiOiJKV1QiLCJhbGc...
 **Implementation:**
 
 ```python
-# POST /tenants/invite-link (Tenant Admin)
+# POST /tenants/invite-link (Tenant Manager)
 @router.post("/invite-link")
 async def generate_invite_link(
     hours: int = 168,  # 7 days
@@ -677,10 +677,10 @@ except IntegrityError:
     db.rollback()
 ```
 
-### 8. Tenant Admin Settings
+### 8. Tenant Manager Settings
 
 ```python
-# Allow tenant admins to configure domain whitelist
+# Allow tenant managers to configure domain whitelist
 @router.put("/current/domain-whitelist")
 async def update_domain_whitelist(
     domains: List[str],

@@ -59,7 +59,7 @@ curl -X POST http://localhost:8000/api/auth/signup \
 
 ### 3. **Invite Link Generation** (`POST /tenants/invite-link`)
 
-Tenant admins can generate shareable invite links:
+Tenant managers can generate shareable invite links:
 
 ```bash
 curl -X POST http://localhost:8000/api/tenants/invite-link?hours=168 \
@@ -105,7 +105,7 @@ domain_whitelist = ["@triton.com", "@triton.energy.org"]
 
 ### Method B: Invite-Link Method
 
-1. Tenant Admin clicks "Generate Invite Link"
+1. Tenant Manager clicks "Generate Invite Link"
 2. System creates JWT token with embedded `tenant_id`
 3. Link expires after specified hours (default: 7 days)
 4. Admin shares link with new employee

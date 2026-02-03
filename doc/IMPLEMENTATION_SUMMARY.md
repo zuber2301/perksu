@@ -84,7 +84,7 @@ A comprehensive multi-tenant administration system has been fully implemented fo
 - `POST /tenants/admin/tenants/{tenant_id}/archive` - Permanent read-only
 
 #### Admin User Management
-- `GET /tenants/admin/tenants/{tenant_id}/users` - List tenant admins
+- `GET /tenants/admin/tenants/{tenant_id}/users` - List tenant managers
 - `POST /tenants/admin/tenants/{tenant_id}/reset-admin-permissions` - Reset user permissions
 
 #### Platform Administration

@@ -1,11 +1,11 @@
 # Test Suite Summary - Tenant Management System
 
 ## Overview
-Successfully fixed and expanded the test infrastructure for the Perksu tenant management system. All tests for tenant admin management and provisioning are now passing.
+Successfully fixed and expanded the test infrastructure for the Perksu tenant management system. All tests for tenant manager management and provisioning are now passing.
 
 ## Test Results
 
-### Tenant Admin Management Tests (test_tenant_admin.py)
+### Tenant Manager Management Tests (test_tenant_manager.py)
 - **Total Tests**: 27
 - **Passed**: 27 ✓
 - **Failed**: 0

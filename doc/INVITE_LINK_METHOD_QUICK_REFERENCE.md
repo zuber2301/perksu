@@ -2,7 +2,7 @@
 
 ## 🎯 The Invite-Link Concept
 
-**What:** Tenant Admins generate secure "Join Links" that automatically assign new users to their organization.
+**What:** Tenant Managers generate secure "Join Links" that automatically assign new users to their organization.
 
 **Why:** 
 - Zero friction onboarding
