@@ -91,10 +91,19 @@ async def create_budget(
     )
     db.add(budget)
 
-    # Audit log
+    # Audit log (only set actor_id if user exists in users table)
+    actor_id = None
+    try:
+        if hasattr(current_user, "id"):
+            existing_actor = db.query(User).filter(User.id == current_user.id).first()
+            if existing_actor:
+                actor_id = current_user.id
+    except Exception:
+        actor_id = None
+
     audit = AuditLog(
         tenant_id=current_user.tenant_id,
-        actor_id=current_user.id,
+        actor_id=actor_id,
         action="budget_created",
         entity_type="budget",
         entity_id=budget.id,
@@ -180,10 +189,19 @@ async def update_budget(
     for key, value in update_data.items():
         setattr(budget, key, value)
 
-    # Audit log
+    # Audit log (only set actor_id if user exists in users table)
+    actor_id = None
+    try:
+        if hasattr(current_user, "id"):
+            existing_actor = db.query(User).filter(User.id == current_user.id).first()
+            if existing_actor:
+                actor_id = current_user.id
+    except Exception:
+        actor_id = None
+
     audit = AuditLog(
         tenant_id=current_user.tenant_id,
-        actor_id=current_user.id,
+        actor_id=actor_id,
         action="budget_updated",
         entity_type="budget",
         entity_id=budget.id,
@@ -282,10 +300,19 @@ async def allocate_budget_to_departments(
     # Update budget allocated points
     budget.allocated_points = Decimal(str(budget.allocated_points)) + total_allocation
 
-    # Audit log
+    # Audit log (only set actor_id if user exists in users table)
+    actor_id = None
+    try:
+        if hasattr(current_user, "id"):
+            existing_actor = db.query(User).filter(User.id == current_user.id).first()
+            if existing_actor:
+                actor_id = current_user.id
+    except Exception:
+        actor_id = None
+
     audit = AuditLog(
         tenant_id=current_user.tenant_id,
-        actor_id=current_user.id,
+        actor_id=actor_id,
         action="budget_allocated",
         entity_type="budget",
         entity_id=budget_id,
@@ -435,10 +462,19 @@ async def allocate_to_employee(
         str(allocation.points)
     )
 
-    # Audit
+    # Audit (only set actor_id if user exists in users table)
+    actor_id = None
+    try:
+        if hasattr(current_user, "id"):
+            existing_actor = db.query(User).filter(User.id == current_user.id).first()
+            if existing_actor:
+                actor_id = current_user.id
+    except Exception:
+        actor_id = None
+
     audit = AuditLog(
         tenant_id=current_user.tenant_id,
-        actor_id=current_user.id,
+        actor_id=actor_id,
         action="department_employee_allocation",
         entity_type="department_budget",
         entity_id=dept_budget.id,
@@ -489,10 +525,19 @@ async def activate_budget(
 
     budget.status = "active"
 
-    # Audit log
+    # Audit log (only set actor_id if user exists in users table)
+    actor_id = None
+    try:
+        if hasattr(current_user, "id"):
+            existing_actor = db.query(User).filter(User.id == current_user.id).first()
+            if existing_actor:
+                actor_id = current_user.id
+    except Exception:
+        actor_id = None
+
     audit = AuditLog(
         tenant_id=current_user.tenant_id,
-        actor_id=current_user.id,
+        actor_id=actor_id,
         action="budget_activated",
         entity_type="budget",
         entity_id=budget_id,
