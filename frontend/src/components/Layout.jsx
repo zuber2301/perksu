@@ -222,9 +222,34 @@ export default function Layout() {
       <div className="lg:pl-64 flex flex-col">
         {/* Top bar with persona-aware tabs */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
+          {/* Slim top bar (right-side controls: alerts, profile, logout) */}
+          <div className="flex items-center justify-end h-12 px-4 lg:px-8 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <button className="relative p-2 rounded-lg hover:bg-gray-100">
+                <HiOutlineBell className="w-6 h-6 text-gray-600" />
+                {notificationCount?.data?.unread > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 text-xs font-medium text-white bg-red-500 rounded-full flex items-center justify-center">
+                    {notificationCount.data.unread > 9 ? '9+' : notificationCount.data.unread}
+                  </span>
+                )}
+              </button>
+
+              <NavLink to="/profile" className="p-2 rounded-lg hover:bg-gray-100">
+                <HiOutlineUser className="w-6 h-6 text-gray-600" />
+              </NavLink>
+
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-600"
+              >
+                <HiOutlineLogout className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
           {/* Primary navigation tabs */}
           {personaTabs && (
-            <div className="flex items-center justify-between h-16 px-4 lg:px-8 border-b border-gray-100">
+            <div className="flex items-center h-16 px-4 lg:px-8">
               {/* Navigation tabs */}
               <div className="flex items-center gap-6">
                 <NavLink
@@ -266,29 +291,6 @@ export default function Layout() {
                 >
                   Redeem
                 </NavLink>
-              </div>
-
-              {/* Top right controls: alerts, profile, logout */}
-              <div className="flex items-center gap-3">
-                <button className="relative p-2 rounded-lg hover:bg-gray-100">
-                  <HiOutlineBell className="w-6 h-6 text-gray-600" />
-                  {notificationCount?.data?.unread > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 text-xs font-medium text-white bg-red-500 rounded-full flex items-center justify-center">
-                      {notificationCount.data.unread > 9 ? '9+' : notificationCount.data.unread}
-                    </span>
-                  )}
-                </button>
-
-                <NavLink to="/profile" className="p-2 rounded-lg hover:bg-gray-100">
-                  <HiOutlineUser className="w-6 h-6 text-gray-600" />
-                </NavLink>
-
-                <button
-                  onClick={handleLogout}
-                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-600"
-                >
-                  <HiOutlineLogout className="w-6 h-6" />
-                </button>
               </div>
             </div>
           )}
