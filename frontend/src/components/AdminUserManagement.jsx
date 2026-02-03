@@ -8,7 +8,7 @@ import {
   HiOutlineFilter,
   HiOutlineChevronDown,
   HiOutlineEye,
-  HiOutlineEnvelope,
+  HiOutlineMail,
   HiOutlinePhone,
   HiOutlineCalendar,
   HiOutlineCheck,
@@ -294,7 +294,7 @@ export default function AdminUserManagement({ tenantId }) {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <HiOutlineEnvelope className="h-4 w-4 flex-shrink-0" />
+                      <HiOutlineMail className="h-4 w-4 flex-shrink-0" />
                       {user.email}
                     </div>
                   </td>

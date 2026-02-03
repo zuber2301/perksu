@@ -1,17 +1,18 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 from uuid import UUID
 
-from config import settings
-from database import get_db
-from models import User, SystemAdmin
-from auth.schemas import TokenData
 from auth.context import TenantContext
+from auth.schemas import TokenData
+from config import settings
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from models import SystemAdmin, User
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+
+from database import get_db
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -20,6 +21,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 def generate_otp():
     """Generate a random 6-digit OTP"""
     import random
+
     return str(random.randint(100000, 999999))
 
 
@@ -36,22 +38,28 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.utcnow() + timedelta(
+            minutes=settings.access_token_expire_minutes
+        )
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.secret_key, algorithm=settings.algorithm
+    )
     return encoded_jwt
 
 
 def decode_token(token: str) -> TokenData:
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
         user_id: str = payload.get("sub")
         tenant_id: str = payload.get("tenant_id")
         email: str = payload.get("email")
         role: str = payload.get("role")
         token_type: str = payload.get("type", "tenant")
         impersonator_id: str = payload.get("impersonator_id")
-        
+
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,7 +72,7 @@ def decode_token(token: str) -> TokenData:
             email=email,
             role=role,
             type=token_type,
-            impersonator_id=UUID(impersonator_id) if impersonator_id else None
+            impersonator_id=UUID(impersonator_id) if impersonator_id else None,
         )
     except JWTError:
         raise HTTPException(
@@ -75,16 +83,17 @@ def decode_token(token: str) -> TokenData:
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ):
     token_data = decode_token(token)
-    
+
     if token_data.type == "system":
-        admin = db.query(SystemAdmin).filter(SystemAdmin.id == token_data.user_id).first()
+        admin = (
+            db.query(SystemAdmin).filter(SystemAdmin.id == token_data.user_id).first()
+        )
         if admin is None:
             raise HTTPException(status_code=401, detail="System Admin not found")
-        
+
         # Set Global Access context
         TenantContext.set(tenant_id=token_data.tenant_id, global_access=True)
         admin.token_data = token_data
@@ -93,69 +102,66 @@ async def get_current_user(
         user = db.query(User).filter(User.id == token_data.user_id).first()
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
-        if user.status != 'active':
+        if user.status != "active":
             raise HTTPException(status_code=403, detail="User account is not active")
-        
+
         # Set Tenant Restricted context
         TenantContext.set(tenant_id=user.tenant_id, global_access=False)
         user.token_data = token_data
         return user
 
 
-async def get_system_admin(
-    current_user = Depends(get_current_user)
-) -> SystemAdmin:
+async def get_system_admin(current_user=Depends(get_current_user)) -> SystemAdmin:
     if not isinstance(current_user, SystemAdmin):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="System Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="System Admin access required"
         )
     return current_user
 
 
 def require_role(*allowed_roles):
     """Dependency to check if user has required role"""
+
     async def role_checker(current_user: User = Depends(get_current_user)):
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Required roles: {', '.join(allowed_roles)}"
+                detail=f"Access denied. Required roles: {', '.join(allowed_roles)}",
             )
         return current_user
+
     return role_checker
 
 
 # Role-based dependencies for convenience
 async def get_hr_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in ['hr_admin', 'platform_admin']:
+    if current_user.role not in ["hr_admin", "platform_admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="HR Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="HR Admin access required"
         )
     return current_user
 
 
 async def get_platform_admin(current_user=Depends(get_current_user)):
     # Handle both User and SystemAdmin objects
-    role = getattr(current_user, 'role', None)
-    
+    role = getattr(current_user, "role", None)
+
     # If it's a SystemAdmin, the role is in token_data
-    if role is None and hasattr(current_user, 'token_data'):
+    if role is None and hasattr(current_user, "token_data"):
         role = current_user.token_data.role
-        
-    if role != 'platform_admin':
+
+    if role != "platform_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Platform Admin access required"
+            detail="Platform Admin access required",
         )
     return current_user
 
 
 async def get_manager_or_above(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in ['manager', 'hr_admin', 'platform_admin']:
+    if current_user.role not in ["manager", "hr_admin", "platform_admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Manager access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Manager access required"
         )
     return current_user
 
@@ -168,19 +174,18 @@ async def require_tenant_user(current_user=Depends(get_current_user)) -> User:
     from system tokens when a tenant user is required.
     """
     from models import SystemAdmin
+
     if isinstance(current_user, SystemAdmin):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tenant user required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Tenant user required"
         )
     return current_user
 
 
 def verify_admin(current_user: User):
     """Raise if current_user is not HR admin or platform admin."""
-    if current_user.role not in ['hr_admin', 'platform_admin']:
+    if current_user.role not in ["hr_admin", "platform_admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
     return True

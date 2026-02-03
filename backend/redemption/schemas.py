@@ -1,14 +1,16 @@
 """Redemption System Schemas"""
-from pydantic import BaseModel, field_validator
-from typing import Optional, Literal
-from uuid import UUID
+
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal, Optional
+from uuid import UUID
 
+from pydantic import BaseModel, field_validator
 
 # =====================================================
 # VOUCHER CATALOG SCHEMAS
 # =====================================================
+
 
 class VoucherCatalogBase(BaseModel):
     vendor_name: str  # Amazon, Swiggy, Zomato, Movies
@@ -17,7 +19,7 @@ class VoucherCatalogBase(BaseModel):
     point_cost: int
     markup_percentage: Decimal = Decimal("0.0")
     api_partner: Optional[str] = None  # Xoxoday, EGifting
-    status: Literal['active', 'inactive', 'soldout'] = 'active'
+    status: Literal["active", "inactive", "soldout"] = "active"
 
 
 class VoucherCatalogCreate(VoucherCatalogBase):
@@ -28,7 +30,7 @@ class VoucherCatalogUpdate(BaseModel):
     vendor_name: Optional[str] = None
     point_cost: Optional[int] = None
     markup_percentage: Optional[Decimal] = None
-    status: Optional[Literal['active', 'inactive', 'soldout']] = None
+    status: Optional[Literal["active", "inactive", "soldout"]] = None
     image_url: Optional[str] = None
     vendor_balance: Optional[Decimal] = None
 
@@ -50,13 +52,14 @@ class VoucherCatalogResponse(VoucherCatalogBase):
 # MERCHANDISE CATALOG SCHEMAS
 # =====================================================
 
+
 class MerchandiseCatalogBase(BaseModel):
     name: str
-    category: Literal['apparel', 'tech', 'accessories', 'wellness', 'home', 'other']
+    category: Literal["apparel", "tech", "accessories", "wellness", "home", "other"]
     point_cost: int
     markup_percentage: Decimal = Decimal("0.0")
     stock_quantity: int = 0
-    status: Literal['active', 'inactive', 'discontinued'] = 'active'
+    status: Literal["active", "inactive", "discontinued"] = "active"
 
 
 class MerchandiseCatalogCreate(MerchandiseCatalogBase):
@@ -70,7 +73,7 @@ class MerchandiseCatalogUpdate(BaseModel):
     point_cost: Optional[int] = None
     markup_percentage: Optional[Decimal] = None
     stock_quantity: Optional[int] = None
-    status: Optional[Literal['active', 'inactive', 'discontinued']] = None
+    status: Optional[Literal["active", "inactive", "discontinued"]] = None
     image_url: Optional[str] = None
 
 
@@ -90,9 +93,11 @@ class MerchandiseCatalogResponse(MerchandiseCatalogBase):
 # REDEMPTION SCHEMAS
 # =====================================================
 
+
 class RedemptionInitiate(BaseModel):
     """Initial redemption request"""
-    item_type: Literal['VOUCHER', 'MERCH']
+
+    item_type: Literal["VOUCHER", "MERCH"]
     item_id: UUID
     item_name: str
     point_cost: int
@@ -101,16 +106,18 @@ class RedemptionInitiate(BaseModel):
 
 class RedemptionOTPVerify(BaseModel):
     """OTP verification for redemption"""
+
     redemption_id: UUID
     otp_code: str
 
 
 class RedemptionDeliveryDetails(BaseModel):
     """Delivery details for redemption"""
+
     # For vouchers
     voucher_code: Optional[str] = None
     voucher_url: Optional[str] = None
-    
+
     # For merchandise
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
@@ -126,7 +133,7 @@ class RedemptionResponse(BaseModel):
     id: UUID
     user_id: UUID
     tenant_id: UUID
-    item_type: Literal['VOUCHER', 'MERCH']
+    item_type: Literal["VOUCHER", "MERCH"]
     item_name: str
     point_cost: int
     actual_cost: Decimal
@@ -143,6 +150,7 @@ class RedemptionResponse(BaseModel):
 
 class RedemptionHistoryResponse(BaseModel):
     """Redemption history for user"""
+
     id: UUID
     item_name: str
     item_type: str
@@ -158,6 +166,7 @@ class RedemptionHistoryResponse(BaseModel):
 
 class RedemptionListResponse(BaseModel):
     """List of redemptions with pagination"""
+
     items: list[RedemptionHistoryResponse]
     total: int
     page: int
@@ -169,8 +178,10 @@ class RedemptionListResponse(BaseModel):
 # ADMIN SCHEMAS
 # =====================================================
 
+
 class RedemptionRequestAdmin(BaseModel):
     """Admin view of redemption request"""
+
     id: UUID
     user_email: str
     user_name: str
@@ -183,13 +194,15 @@ class RedemptionRequestAdmin(BaseModel):
 
 class RedemptionRequestUpdate(BaseModel):
     """Update redemption request (mark as shipped, add tracking)"""
-    status: Literal['PROCESSING', 'SHIPPED', 'COMPLETED', 'FAILED']
+
+    status: Literal["PROCESSING", "SHIPPED", "COMPLETED", "FAILED"]
     tracking_number: Optional[str] = None
     failed_reason: Optional[str] = None
 
 
 class VendorBalanceResponse(BaseModel):
     """Vendor balance monitor for admins"""
+
     vendor_name: str
     api_partner: str
     current_balance: Decimal
@@ -200,6 +213,7 @@ class VendorBalanceResponse(BaseModel):
 
 class RedemptionAnalytics(BaseModel):
     """Analytics for redemption dashboard"""
+
     total_redemptions: int
     total_points_redeemed: int
     total_revenue: Decimal
@@ -210,11 +224,12 @@ class RedemptionAnalytics(BaseModel):
 
 class MarkupManagementUpdate(BaseModel):
     """Update markup/convenience fees"""
-    item_type: Literal['VOUCHER', 'MERCH']
+
+    item_type: Literal["VOUCHER", "MERCH"]
     item_id: UUID
     markup_percentage: Decimal
 
-    @field_validator('markup_percentage')
+    @field_validator("markup_percentage")
     @classmethod
     def validate_markup(cls, v):
         if v < Decimal("0") or v > Decimal("100"):

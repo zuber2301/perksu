@@ -1,10 +1,11 @@
+from contextvars import ContextVar
 from typing import Optional
 from uuid import UUID
-from contextvars import ContextVar
 
 # Context variables for multi-tenancy
 tenant_id_var: ContextVar[Optional[UUID]] = ContextVar("tenant_id", default=None)
 global_access_var: ContextVar[bool] = ContextVar("global_access", default=False)
+
 
 class TenantContext:
     @staticmethod

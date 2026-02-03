@@ -1,35 +1,51 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
-from decimal import Decimal
+
+from auth.utils import require_tenant_user
+from fastapi import APIRouter, Depends, HTTPException
+from models import (
+    AuditLog,
+    Badge,
+    Budget,
+    DepartmentBudget,
+    Feed,
+    LeadAllocation,
+    Notification,
+    Recognition,
+    RecognitionComment,
+    RecognitionReaction,
+    User,
+    Wallet,
+    WalletLedger,
+)
+from recognition.schemas import (
+    BadgeResponse,
+    RecognitionCommentCreate,
+    RecognitionCommentResponse,
+    RecognitionCreate,
+    RecognitionDetailResponse,
+    RecognitionResponse,
+    RecognitionStats,
+)
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from database import get_db
-from models import (
-    Recognition, Badge, User, Wallet, WalletLedger, Budget,
-    DepartmentBudget, Feed, Notification, AuditLog,
-    RecognitionComment, RecognitionReaction, LeadAllocation
-)
-from auth.utils import get_current_user, get_manager_or_above, require_tenant_user
-from recognition.schemas import (
-    BadgeResponse, RecognitionCreate, RecognitionResponse,
-    RecognitionDetailResponse, RecognitionCommentCreate, RecognitionCommentResponse,
-    RecognitionStats
-)
 
 router = APIRouter()
 
 
 @router.get("/badges", response_model=List[BadgeResponse])
 async def get_badges(
-    current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(require_tenant_user), db: Session = Depends(get_db)
 ):
     """Get all available badges"""
-    badges = db.query(Badge).filter(
-        (Badge.tenant_id == current_user.tenant_id) | (Badge.is_system == True)
-    ).all()
+    badges = (
+        db.query(Badge)
+        .filter((Badge.tenant_id == current_user.tenant_id) | (Badge.is_system == True))
+        .all()
+    )
     return badges
 
 
@@ -39,62 +55,87 @@ async def get_recognitions(
     limit: int = 20,
     user_id: Optional[UUID] = None,
     current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get recognitions feed"""
     query = db.query(Recognition).filter(
         Recognition.tenant_id == current_user.tenant_id,
-        Recognition.status == 'active',
-        Recognition.visibility == 'public'
+        Recognition.status == "active",
+        Recognition.visibility == "public",
     )
-    
+
     if user_id:
         query = query.filter(
             (Recognition.from_user_id == user_id) | (Recognition.to_user_id == user_id)
         )
-    
-    recognitions = query.order_by(Recognition.created_at.desc()).offset(skip).limit(limit).all()
-    
+
+    recognitions = (
+        query.order_by(Recognition.created_at.desc()).offset(skip).limit(limit).all()
+    )
+
     result = []
     for rec in recognitions:
         from_user = db.query(User).filter(User.id == rec.from_user_id).first()
         to_user = db.query(User).filter(User.id == rec.to_user_id).first()
-        badge = db.query(Badge).filter(Badge.id == rec.badge_id).first() if rec.badge_id else None
-        
-        comments_count = db.query(RecognitionComment).filter(
-            RecognitionComment.recognition_id == rec.id
-        ).count()
-        
-        reactions_count = db.query(RecognitionReaction).filter(
-            RecognitionReaction.recognition_id == rec.id
-        ).count()
-        
-        user_reacted = db.query(RecognitionReaction).filter(
-            RecognitionReaction.recognition_id == rec.id,
-            RecognitionReaction.user_id == current_user.id
-        ).first() is not None
-        
-        result.append(RecognitionDetailResponse(
-            id=rec.id,
-            tenant_id=rec.tenant_id,
-            from_user_id=rec.from_user_id,
-            to_user_id=rec.to_user_id,
-            badge_id=rec.badge_id,
-            recognition_type=rec.recognition_type or 'standard',
-            points=rec.points,
-            message=rec.message,
-            ecard_template=rec.ecard_template,
-            visibility=rec.visibility,
-            status=rec.status,
-            created_at=rec.created_at,
-            from_user_name=f"{from_user.first_name} {from_user.last_name}" if from_user else "Unknown",
-            to_user_name=f"{to_user.first_name} {to_user.last_name}" if to_user else "Unknown",
-            badge_name=badge.name if badge else None,
-            comments_count=comments_count,
-            reactions_count=reactions_count,
-            user_reacted=user_reacted
-        ))
-    
+        badge = (
+            db.query(Badge).filter(Badge.id == rec.badge_id).first()
+            if rec.badge_id
+            else None
+        )
+
+        comments_count = (
+            db.query(RecognitionComment)
+            .filter(RecognitionComment.recognition_id == rec.id)
+            .count()
+        )
+
+        reactions_count = (
+            db.query(RecognitionReaction)
+            .filter(RecognitionReaction.recognition_id == rec.id)
+            .count()
+        )
+
+        user_reacted = (
+            db.query(RecognitionReaction)
+            .filter(
+                RecognitionReaction.recognition_id == rec.id,
+                RecognitionReaction.user_id == current_user.id,
+            )
+            .first()
+            is not None
+        )
+
+        result.append(
+            RecognitionDetailResponse(
+                id=rec.id,
+                tenant_id=rec.tenant_id,
+                from_user_id=rec.from_user_id,
+                to_user_id=rec.to_user_id,
+                badge_id=rec.badge_id,
+                recognition_type=rec.recognition_type or "standard",
+                points=rec.points,
+                message=rec.message,
+                ecard_template=rec.ecard_template,
+                visibility=rec.visibility,
+                status=rec.status,
+                created_at=rec.created_at,
+                from_user_name=(
+                    f"{from_user.first_name} {from_user.last_name}"
+                    if from_user
+                    else "Unknown"
+                ),
+                to_user_name=(
+                    f"{to_user.first_name} {to_user.last_name}"
+                    if to_user
+                    else "Unknown"
+                ),
+                badge_name=badge.name if badge else None,
+                comments_count=comments_count,
+                reactions_count=reactions_count,
+                user_reacted=user_reacted,
+            )
+        )
+
     return result
 
 
@@ -102,29 +143,39 @@ async def get_recognitions(
 async def create_recognition(
     recognition_data: RecognitionCreate,
     current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Create a new recognition with multi-workflow support"""
     rec_type = recognition_data.recognition_type
-    
+
     # 1. Validation & Recipient Selection
     recipients = []
-    if rec_type == 'group_award':
+    if rec_type == "group_award":
         if not recognition_data.to_user_ids:
-            raise HTTPException(status_code=400, detail="Recipients required for group award")
-        recipients = db.query(User).filter(
-            User.id.in_(recognition_data.to_user_ids),
-            User.tenant_id == current_user.tenant_id
-        ).all()
+            raise HTTPException(
+                status_code=400, detail="Recipients required for group award"
+            )
+        recipients = (
+            db.query(User)
+            .filter(
+                User.id.in_(recognition_data.to_user_ids),
+                User.tenant_id == current_user.tenant_id,
+            )
+            .all()
+        )
         if len(recipients) != len(recognition_data.to_user_ids):
             raise HTTPException(status_code=404, detail="Some recipients not found")
     else:
         if not recognition_data.to_user_id:
-             raise HTTPException(status_code=400, detail="Recipient required")
-        recipient = db.query(User).filter(
-            User.id == recognition_data.to_user_id,
-            User.tenant_id == current_user.tenant_id
-        ).first()
+            raise HTTPException(status_code=400, detail="Recipient required")
+        recipient = (
+            db.query(User)
+            .filter(
+                User.id == recognition_data.to_user_id,
+                User.tenant_id == current_user.tenant_id,
+            )
+            .first()
+        )
         if not recipient:
             raise HTTPException(status_code=404, detail="Recipient not found")
         if recipient.id == current_user.id:
@@ -134,7 +185,7 @@ async def create_recognition(
     # Calculate points logic
     total_points = Decimal(str(recognition_data.points))
     points_per_user = total_points
-    if rec_type == 'group_award':
+    if rec_type == "group_award":
         if recognition_data.is_equal_split:
             # Total pot is divided equally
             points_per_user = total_points / Decimal(str(len(recipients)))
@@ -148,66 +199,100 @@ async def create_recognition(
     lead_allocation = None
 
     if total_points > 0:
-        if rec_type == 'individual_award':
+        if rec_type == "individual_award":
             # Manager Wallet or Lead Allocation Validation
-            active_budget = db.query(Budget).filter(
-                Budget.tenant_id == current_user.tenant_id,
-                Budget.status == 'active'
-            ).first()
-            
+            active_budget = (
+                db.query(Budget)
+                .filter(
+                    Budget.tenant_id == current_user.tenant_id,
+                    Budget.status == "active",
+                )
+                .first()
+            )
+
             if active_budget:
-                lead_allocation = db.query(LeadAllocation).filter(
-                    LeadAllocation.budget_id == active_budget.id,
-                    LeadAllocation.lead_id == current_user.id
-                ).first()
-            
+                lead_allocation = (
+                    db.query(LeadAllocation)
+                    .filter(
+                        LeadAllocation.budget_id == active_budget.id,
+                        LeadAllocation.lead_id == current_user.id,
+                    )
+                    .first()
+                )
+
             if lead_allocation:
                 if lead_allocation.remaining_points < float(total_points):
                     raise HTTPException(
-                        status_code=400, 
-                        detail=f"Insufficient lead budget. Remaining: {lead_allocation.remaining_points}"
+                        status_code=400,
+                        detail=f"Insufficient lead budget. Remaining: {lead_allocation.remaining_points}",
                     )
             else:
                 # Fallback to wallet if no budget allocation exists
-                manager_wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
+                manager_wallet = (
+                    db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
+                )
                 if not manager_wallet or manager_wallet.balance < total_points:
                     raise HTTPException(
-                        status_code=400, 
-                        detail="Insufficient wallet balance or lead budget allocation. Please contact your Admin."
+                        status_code=400,
+                        detail="Insufficient wallet balance or lead budget allocation. Please contact your Admin.",
                     )
         else:
             # Budget Validation
-            active_budget = db.query(Budget).filter(
-                Budget.tenant_id == current_user.tenant_id,
-                Budget.status == 'active'
-            ).first()
-            
+            active_budget = (
+                db.query(Budget)
+                .filter(
+                    Budget.tenant_id == current_user.tenant_id,
+                    Budget.status == "active",
+                )
+                .first()
+            )
+
             if active_budget and current_user.department_id:
-                dept_budget = db.query(DepartmentBudget).filter(
-                    DepartmentBudget.budget_id == active_budget.id,
-                    DepartmentBudget.department_id == current_user.department_id
-                ).first()
-                
-                if not dept_budget or (Decimal(str(dept_budget.allocated_points)) - Decimal(str(dept_budget.spent_points))) < total_points:
-                     raise HTTPException(
+                dept_budget = (
+                    db.query(DepartmentBudget)
+                    .filter(
+                        DepartmentBudget.budget_id == active_budget.id,
+                        DepartmentBudget.department_id == current_user.department_id,
+                    )
+                    .first()
+                )
+
+                if (
+                    not dept_budget
+                    or (
+                        Decimal(str(dept_budget.allocated_points))
+                        - Decimal(str(dept_budget.spent_points))
+                    )
+                    < total_points
+                ):
+                    raise HTTPException(
                         status_code=400,
-                        detail=f"Insufficient department budget. Required: {total_points}"
+                        detail=f"Insufficient department budget. Required: {total_points}",
                     )
             else:
-                 raise HTTPException(status_code=400, detail="No active budget or department found for point allocation")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No active budget or department found for point allocation",
+                )
 
     # 3. Create Recognition(s) & Process Ledger
     created_recognitions = []
-    
+
     # Financial debits
     if total_points > 0:
         if lead_allocation:
-            lead_allocation.spent_points = Decimal(str(lead_allocation.spent_points)) + total_points
+            lead_allocation.spent_points = (
+                Decimal(str(lead_allocation.spent_points)) + total_points
+            )
         elif manager_wallet:
             manager_wallet.balance = Decimal(str(manager_wallet.balance)) - total_points
-            manager_wallet.lifetime_spent = Decimal(str(manager_wallet.lifetime_spent)) + total_points
+            manager_wallet.lifetime_spent = (
+                Decimal(str(manager_wallet.lifetime_spent)) + total_points
+            )
         elif dept_budget:
-            dept_budget.spent_points = Decimal(str(dept_budget.spent_points)) + total_points
+            dept_budget.spent_points = (
+                Decimal(str(dept_budget.spent_points)) + total_points
+            )
 
     for recipient in recipients:
         recognition = Recognition(
@@ -220,120 +305,154 @@ async def create_recognition(
             message=recognition_data.message,
             ecard_template=recognition_data.ecard_template,
             visibility=recognition_data.visibility,
-            status='active',
-            department_budget_id=dept_budget.id if dept_budget else None
+            status="active",
+            department_budget_id=dept_budget.id if dept_budget else None,
         )
         db.add(recognition)
-        db.flush() # Get ID
+        db.flush()  # Get ID
         created_recognitions.append(recognition)
-        
+
         # Credit Recipient
         if points_per_user > 0:
-            recipient_wallet = db.query(Wallet).filter(Wallet.user_id == recipient.id).first()
+            recipient_wallet = (
+                db.query(Wallet).filter(Wallet.user_id == recipient.id).first()
+            )
             if recipient_wallet:
-                recipient_wallet.balance = Decimal(str(recipient_wallet.balance)) + points_per_user
-                recipient_wallet.lifetime_earned = Decimal(str(recipient_wallet.lifetime_earned)) + points_per_user
-                
-                db.add(WalletLedger(
-                    tenant_id=current_user.tenant_id,
-                    wallet_id=recipient_wallet.id,
-                    transaction_type='credit' if rec_type != 'individual_award' else 'AWARD',
-                    source='recognition' if rec_type != 'individual_award' else 'award',
-                    points=points_per_user,
-                    balance_after=recipient_wallet.balance,
-                    reference_type='recognition',
-                    reference_id=recognition.id,
-                    description=f"Recognition from {current_user.full_name}",
-                    created_by=current_user.id
-                ))
+                recipient_wallet.balance = (
+                    Decimal(str(recipient_wallet.balance)) + points_per_user
+                )
+                recipient_wallet.lifetime_earned = (
+                    Decimal(str(recipient_wallet.lifetime_earned)) + points_per_user
+                )
+
+                db.add(
+                    WalletLedger(
+                        tenant_id=current_user.tenant_id,
+                        wallet_id=recipient_wallet.id,
+                        transaction_type=(
+                            "credit" if rec_type != "individual_award" else "AWARD"
+                        ),
+                        source=(
+                            "recognition" if rec_type != "individual_award" else "award"
+                        ),
+                        points=points_per_user,
+                        balance_after=recipient_wallet.balance,
+                        reference_type="recognition",
+                        reference_id=recognition.id,
+                        description=f"Recognition from {current_user.full_name}",
+                        created_by=current_user.id,
+                    )
+                )
 
     # Debit ledger for manager if applicable
     if manager_wallet and total_points > 0:
-        db.add(WalletLedger(
-            tenant_id=current_user.tenant_id,
-            wallet_id=manager_wallet.id,
-            transaction_type='debit' if rec_type != 'individual_award' else 'AWARD',
-            source='recognition' if rec_type != 'individual_award' else 'award',
-            points=total_points,
-            balance_after=manager_wallet.balance,
-            reference_type='recognition_bulk',
-            reference_id=created_recognitions[0].id,
-            description=f"Awarded points to {len(recipients)} recipient(s)",
-            created_by=current_user.id
-        ))
+        db.add(
+            WalletLedger(
+                tenant_id=current_user.tenant_id,
+                wallet_id=manager_wallet.id,
+                transaction_type="debit" if rec_type != "individual_award" else "AWARD",
+                source="recognition" if rec_type != "individual_award" else "award",
+                points=total_points,
+                balance_after=manager_wallet.balance,
+                reference_type="recognition_bulk",
+                reference_id=created_recognitions[0].id,
+                description=f"Awarded points to {len(recipients)} recipient(s)",
+                created_by=current_user.id,
+            )
+        )
 
     # 4. Social & Feed
-    if rec_type == 'group_award':
-        db.add(Feed(
-            tenant_id=current_user.tenant_id,
-            event_type='team_spotlight',
-            reference_type='recognition_bulk',
-            reference_id=created_recognitions[0].id,
-            actor_id=current_user.id,
-            visibility=recognition_data.visibility,
-            metadata={
-                "points": str(total_points),
-                "recipient_count": len(recipients),
-                "recipient_names": [r.full_name for r in recipients],
-                "message": recognition_data.message
-            }
-        ))
-    elif rec_type == 'ecard':
-         db.add(Feed(
-            tenant_id=current_user.tenant_id,
-            event_type='milestone',
-            reference_type='recognition',
-            reference_id=created_recognitions[0].id,
-            actor_id=current_user.id,
-            target_id=recipients[0].id,
-            visibility=recognition_data.visibility,
-            metadata={
-                "template": recognition_data.ecard_template,
-                "message": recognition_data.message
-            }
-        ))
+    if rec_type == "group_award":
+        db.add(
+            Feed(
+                tenant_id=current_user.tenant_id,
+                event_type="team_spotlight",
+                reference_type="recognition_bulk",
+                reference_id=created_recognitions[0].id,
+                actor_id=current_user.id,
+                visibility=recognition_data.visibility,
+                metadata={
+                    "points": str(total_points),
+                    "recipient_count": len(recipients),
+                    "recipient_names": [r.full_name for r in recipients],
+                    "message": recognition_data.message,
+                },
+            )
+        )
+    elif rec_type == "ecard":
+        db.add(
+            Feed(
+                tenant_id=current_user.tenant_id,
+                event_type="milestone",
+                reference_type="recognition",
+                reference_id=created_recognitions[0].id,
+                actor_id=current_user.id,
+                target_id=recipients[0].id,
+                visibility=recognition_data.visibility,
+                metadata={
+                    "template": recognition_data.ecard_template,
+                    "message": recognition_data.message,
+                },
+            )
+        )
     else:
-        db.add(Feed(
-            tenant_id=current_user.tenant_id,
-            event_type='recognition',
-            reference_type='recognition',
-            reference_id=created_recognitions[0].id,
-            actor_id=current_user.id,
-            target_id=recipients[0].id,
-            visibility=recognition_data.visibility,
-            metadata={
-                "points": str(points_per_user),
-                "message": recognition_data.message[:100],
-                "is_award": rec_type == 'individual_award'
-            }
-        ))
+        db.add(
+            Feed(
+                tenant_id=current_user.tenant_id,
+                event_type="recognition",
+                reference_type="recognition",
+                reference_id=created_recognitions[0].id,
+                actor_id=current_user.id,
+                target_id=recipients[0].id,
+                visibility=recognition_data.visibility,
+                metadata={
+                    "points": str(points_per_user),
+                    "message": recognition_data.message[:100],
+                    "is_award": rec_type == "individual_award",
+                },
+            )
+        )
 
     # 5. Notifications
     for recipient in recipients:
-        db.add(Notification(
-            tenant_id=current_user.tenant_id,
-            user_id=recipient.id,
-            type='recognition_received' if rec_type != 'ecard' else 'ecard_received',
-            title='You received recognition!' if rec_type != 'ecard' else 'You received an E-Card!',
-            message=f"{current_user.full_name} recognized you with {points_per_user} points" if points_per_user > 0 else f"{current_user.full_name} sent you an E-Card!",
-            reference_type='recognition',
-            reference_id=created_recognitions[recipients.index(recipient)].id
-        ))
+        db.add(
+            Notification(
+                tenant_id=current_user.tenant_id,
+                user_id=recipient.id,
+                type=(
+                    "recognition_received" if rec_type != "ecard" else "ecard_received"
+                ),
+                title=(
+                    "You received recognition!"
+                    if rec_type != "ecard"
+                    else "You received an E-Card!"
+                ),
+                message=(
+                    f"{current_user.full_name} recognized you with {points_per_user} points"
+                    if points_per_user > 0
+                    else f"{current_user.full_name} sent you an E-Card!"
+                ),
+                reference_type="recognition",
+                reference_id=created_recognitions[recipients.index(recipient)].id,
+            )
+        )
 
     # 6. Audit Log
-    db.add(AuditLog(
-        tenant_id=current_user.tenant_id,
-        actor_id=current_user.id,
-        action="recognition_created",
-        entity_type="recognition",
-        entity_id=created_recognitions[0].id,
-        new_values={
-            "type": rec_type,
-            "recipient_count": len(recipients),
-            "total_points": str(total_points),
-            "message": recognition_data.message
-        }
-    ))
+    db.add(
+        AuditLog(
+            tenant_id=current_user.tenant_id,
+            actor_id=current_user.id,
+            action="recognition_created",
+            entity_type="recognition",
+            entity_id=created_recognitions[0].id,
+            new_values={
+                "type": rec_type,
+                "recipient_count": len(recipients),
+                "total_points": str(total_points),
+                "message": recognition_data.message,
+            },
+        )
+    )
 
     db.commit()
     db.refresh(created_recognitions[0])
@@ -344,34 +463,51 @@ async def create_recognition(
 async def get_recognition(
     recognition_id: UUID,
     current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get a specific recognition"""
-    rec = db.query(Recognition).filter(
-        Recognition.id == recognition_id,
-        Recognition.tenant_id == current_user.tenant_id
-    ).first()
-    
+    rec = (
+        db.query(Recognition)
+        .filter(
+            Recognition.id == recognition_id,
+            Recognition.tenant_id == current_user.tenant_id,
+        )
+        .first()
+    )
+
     if not rec:
         raise HTTPException(status_code=404, detail="Recognition not found")
-    
+
     from_user = db.query(User).filter(User.id == rec.from_user_id).first()
     to_user = db.query(User).filter(User.id == rec.to_user_id).first()
-    badge = db.query(Badge).filter(Badge.id == rec.badge_id).first() if rec.badge_id else None
-    
-    comments_count = db.query(RecognitionComment).filter(
-        RecognitionComment.recognition_id == rec.id
-    ).count()
-    
-    reactions_count = db.query(RecognitionReaction).filter(
-        RecognitionReaction.recognition_id == rec.id
-    ).count()
-    
-    user_reacted = db.query(RecognitionReaction).filter(
-        RecognitionReaction.recognition_id == rec.id,
-        RecognitionReaction.user_id == current_user.id
-    ).first() is not None
-    
+    badge = (
+        db.query(Badge).filter(Badge.id == rec.badge_id).first()
+        if rec.badge_id
+        else None
+    )
+
+    comments_count = (
+        db.query(RecognitionComment)
+        .filter(RecognitionComment.recognition_id == rec.id)
+        .count()
+    )
+
+    reactions_count = (
+        db.query(RecognitionReaction)
+        .filter(RecognitionReaction.recognition_id == rec.id)
+        .count()
+    )
+
+    user_reacted = (
+        db.query(RecognitionReaction)
+        .filter(
+            RecognitionReaction.recognition_id == rec.id,
+            RecognitionReaction.user_id == current_user.id,
+        )
+        .first()
+        is not None
+    )
+
     return RecognitionDetailResponse(
         id=rec.id,
         tenant_id=rec.tenant_id,
@@ -383,12 +519,16 @@ async def get_recognition(
         visibility=rec.visibility,
         status=rec.status,
         created_at=rec.created_at,
-        from_user_name=f"{from_user.first_name} {from_user.last_name}" if from_user else "Unknown",
-        to_user_name=f"{to_user.first_name} {to_user.last_name}" if to_user else "Unknown",
+        from_user_name=(
+            f"{from_user.first_name} {from_user.last_name}" if from_user else "Unknown"
+        ),
+        to_user_name=(
+            f"{to_user.first_name} {to_user.last_name}" if to_user else "Unknown"
+        ),
         badge_name=badge.name if badge else None,
         comments_count=comments_count,
         reactions_count=reactions_count,
-        user_reacted=user_reacted
+        user_reacted=user_reacted,
     )
 
 
@@ -396,60 +536,73 @@ async def get_recognition(
 async def toggle_reaction(
     recognition_id: UUID,
     current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Toggle reaction (like) on a recognition"""
-    recognition = db.query(Recognition).filter(
-        Recognition.id == recognition_id,
-        Recognition.tenant_id == current_user.tenant_id
-    ).first()
-    
+    recognition = (
+        db.query(Recognition)
+        .filter(
+            Recognition.id == recognition_id,
+            Recognition.tenant_id == current_user.tenant_id,
+        )
+        .first()
+    )
+
     if not recognition:
         raise HTTPException(status_code=404, detail="Recognition not found")
-    
-    existing_reaction = db.query(RecognitionReaction).filter(
-        RecognitionReaction.recognition_id == recognition_id,
-        RecognitionReaction.user_id == current_user.id
-    ).first()
-    
+
+    existing_reaction = (
+        db.query(RecognitionReaction)
+        .filter(
+            RecognitionReaction.recognition_id == recognition_id,
+            RecognitionReaction.user_id == current_user.id,
+        )
+        .first()
+    )
+
     if existing_reaction:
         db.delete(existing_reaction)
         db.commit()
         return {"action": "removed", "message": "Reaction removed"}
     else:
         reaction = RecognitionReaction(
-            recognition_id=recognition_id,
-            user_id=current_user.id,
-            reaction_type='like'
+            recognition_id=recognition_id, user_id=current_user.id, reaction_type="like"
         )
         db.add(reaction)
         db.commit()
         return {"action": "added", "message": "Reaction added"}
 
 
-@router.get("/{recognition_id}/comments", response_model=List[RecognitionCommentResponse])
+@router.get(
+    "/{recognition_id}/comments", response_model=List[RecognitionCommentResponse]
+)
 async def get_comments(
     recognition_id: UUID,
     current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get comments on a recognition"""
-    comments = db.query(RecognitionComment).filter(
-        RecognitionComment.recognition_id == recognition_id
-    ).order_by(RecognitionComment.created_at.asc()).all()
-    
+    comments = (
+        db.query(RecognitionComment)
+        .filter(RecognitionComment.recognition_id == recognition_id)
+        .order_by(RecognitionComment.created_at.asc())
+        .all()
+    )
+
     result = []
     for comment in comments:
         user = db.query(User).filter(User.id == comment.user_id).first()
-        result.append(RecognitionCommentResponse(
-            id=comment.id,
-            recognition_id=comment.recognition_id,
-            user_id=comment.user_id,
-            user_name=f"{user.first_name} {user.last_name}" if user else "Unknown",
-            content=comment.content,
-            created_at=comment.created_at
-        ))
-    
+        result.append(
+            RecognitionCommentResponse(
+                id=comment.id,
+                recognition_id=comment.recognition_id,
+                user_id=comment.user_id,
+                user_name=f"{user.first_name} {user.last_name}" if user else "Unknown",
+                content=comment.content,
+                created_at=comment.created_at,
+            )
+        )
+
     return result
 
 
@@ -458,73 +611,84 @@ async def add_comment(
     recognition_id: UUID,
     comment_data: RecognitionCommentCreate,
     current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Add a comment to a recognition"""
-    recognition = db.query(Recognition).filter(
-        Recognition.id == recognition_id,
-        Recognition.tenant_id == current_user.tenant_id
-    ).first()
-    
+    recognition = (
+        db.query(Recognition)
+        .filter(
+            Recognition.id == recognition_id,
+            Recognition.tenant_id == current_user.tenant_id,
+        )
+        .first()
+    )
+
     if not recognition:
         raise HTTPException(status_code=404, detail="Recognition not found")
-    
+
     comment = RecognitionComment(
         recognition_id=recognition_id,
         user_id=current_user.id,
-        content=comment_data.content
+        content=comment_data.content,
     )
     db.add(comment)
     db.commit()
     db.refresh(comment)
-    
+
     return RecognitionCommentResponse(
         id=comment.id,
         recognition_id=comment.recognition_id,
         user_id=comment.user_id,
         user_name=f"{current_user.first_name} {current_user.last_name}",
         content=comment.content,
-        created_at=comment.created_at
+        created_at=comment.created_at,
     )
 
 
 @router.get("/stats/me", response_model=RecognitionStats)
 async def get_my_recognition_stats(
-    current_user: User = Depends(require_tenant_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(require_tenant_user), db: Session = Depends(get_db)
 ):
     """Get current user's recognition statistics"""
     # Given stats
-    given_stats = db.query(
-        func.count(Recognition.id),
-        func.coalesce(func.sum(Recognition.points), 0)
-    ).filter(
-        Recognition.from_user_id == current_user.id,
-        Recognition.status == 'active'
-    ).first()
-    
+    given_stats = (
+        db.query(
+            func.count(Recognition.id), func.coalesce(func.sum(Recognition.points), 0)
+        )
+        .filter(
+            Recognition.from_user_id == current_user.id, Recognition.status == "active"
+        )
+        .first()
+    )
+
     # Received stats
-    received_stats = db.query(
-        func.count(Recognition.id),
-        func.coalesce(func.sum(Recognition.points), 0)
-    ).filter(
-        Recognition.to_user_id == current_user.id,
-        Recognition.status == 'active'
-    ).first()
-    
+    received_stats = (
+        db.query(
+            func.count(Recognition.id), func.coalesce(func.sum(Recognition.points), 0)
+        )
+        .filter(
+            Recognition.to_user_id == current_user.id, Recognition.status == "active"
+        )
+        .first()
+    )
+
     # Top badges received
-    top_badges = db.query(
-        Badge.name,
-        func.count(Recognition.id).label('count')
-    ).join(Recognition, Recognition.badge_id == Badge.id).filter(
-        Recognition.to_user_id == current_user.id,
-        Recognition.status == 'active'
-    ).group_by(Badge.name).order_by(func.count(Recognition.id).desc()).limit(5).all()
-    
+    top_badges = (
+        db.query(Badge.name, func.count(Recognition.id).label("count"))
+        .join(Recognition, Recognition.badge_id == Badge.id)
+        .filter(
+            Recognition.to_user_id == current_user.id, Recognition.status == "active"
+        )
+        .group_by(Badge.name)
+        .order_by(func.count(Recognition.id).desc())
+        .limit(5)
+        .all()
+    )
+
     return RecognitionStats(
         total_given=given_stats[0] or 0,
         total_received=received_stats[0] or 0,
         points_given=Decimal(str(given_stats[1] or 0)),
         points_received=Decimal(str(received_stats[1] or 0)),
-        top_badges=[{"name": b[0], "count": b[1]} for b in top_badges]
+        top_badges=[{"name": b[0], "count": b[1]} for b in top_badges],
     )

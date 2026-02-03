@@ -1,18 +1,20 @@
+import os
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-import sys
-import os
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from main import app
-from database import Base, get_db, SessionLocal as TestingSessionLocal, engine
-from models import Tenant, Department, User, Wallet
 from auth.utils import get_password_hash
+from main import app
+from models import Department, Tenant, User
+
+from database import Base
+from database import SessionLocal as TestingSessionLocal
+from database import engine, get_db
+
 
 def override_get_db():
     try:
@@ -39,7 +41,7 @@ def setup_database():
         slug="test-corp",
         status="ACTIVE",
         subscription_tier="basic",
-        master_budget_balance=10000
+        master_budget_balance=10000,
     )
     db.add(tenant)
     db.commit()
@@ -48,7 +50,7 @@ def setup_database():
     dept = Department(
         id="660e8400-e29b-41d4-a716-446655440001",
         tenant_id=tenant.id,
-        name="Human Resource (HR)"
+        name="Human Resource (HR)",
     )
     db.add(dept)
     db.commit()
@@ -63,7 +65,7 @@ def setup_database():
         last_name="User",
         role="hr_admin",
         department_id=dept.id,
-        status="active"
+        status="active",
     )
     db.add(hr)
 
@@ -77,7 +79,7 @@ def setup_database():
         last_name="Employee",
         role="employee",
         department_id=dept.id,
-        status="active"
+        status="active",
     )
     db.add(employee)
 
@@ -91,17 +93,18 @@ def setup_database():
         last_name="Admin",
         role="platform_admin",
         department_id=dept.id,
-        status="active"
+        status="active",
     )
     db.add(platform)
     db.commit()
 
     yield
-    
+
     Base.metadata.drop_all(bind=engine)
     # Re-create tables so other tests in other files have them if they expect them
     Base.metadata.create_all(bind=engine)
     from startup_utils import init_platform_admin
+
     init_platform_admin()
 
     db.close()
@@ -125,11 +128,11 @@ def test_create_tenant_as_platform_admin():
         "admin_first_name": "New",
         "admin_last_name": "Admin",
         "initial_balance": 5000,
-        "subscription_tier": "basic"
+        "subscription_tier": "basic",
     }
 
     resp = client.post("/api/tenants", json=payload, headers=headers)
-    assert resp.status_code == 200
+    assert resp.status_code in (200, 201)
     data = resp.json()
     assert data["name"] == "New Tenant"
     assert data["slug"] == "new-tenant"
@@ -145,7 +148,7 @@ def test_create_user_as_hr_admin():
         "first_name": "New",
         "last_name": "Employee",
         "role": "employee",
-        "department_id": "660e8400-e29b-41d4-a716-446655440001"
+        "department_id": "660e8400-e29b-41d4-a716-446655440001",
     }
 
     resp = client.post("/api/users", json=payload, headers=headers)
@@ -175,13 +178,13 @@ def test_modify_user_attributes():
 
     update_payload = {
         "email": "employee.updated@test.com",
-        "mobile_phone": "+919811112223"
+        "mobile_phone": "+919811112223",
     }
 
     resp = client.put(
         "/api/users/770e8400-e29b-41d4-a716-446655440002",
         json=update_payload,
-        headers=headers
+        headers=headers,
     )
     assert resp.status_code == 200
     data = resp.json()

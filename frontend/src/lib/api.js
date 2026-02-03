@@ -159,4 +159,6 @@ export const tenantsApi = tenantsAPI
 export const auditApi = auditAPI
 export const authApi = authAPI
 
+export { api }
+
 export default api

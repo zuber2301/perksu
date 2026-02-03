@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
 from typing import Optional
 from uuid import UUID
+
+from pydantic import BaseModel, EmailStr
 
 
 class Token(BaseModel):
@@ -52,7 +53,7 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
-    org_role: str = 'employee'
+    org_role: str = "employee"
     department_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
     is_super_admin: bool = False
@@ -72,11 +73,12 @@ class LoginResponse(BaseModel):
 class SignUpRequest(BaseModel):
     """
     User sign-up with automatic tenant resolution.
-    
+
     Tenant resolution happens in this order:
     1. If invite_token provided: extract tenant_id from token
     2. If email provided: match domain against tenant whitelist
     """
+
     email: EmailStr
     password: str
     first_name: str
@@ -88,6 +90,7 @@ class SignUpRequest(BaseModel):
 
 class SignUpResponse(BaseModel):
     """Response after successful sign-up"""
+
     access_token: str
     token_type: str
     user: UserResponse
@@ -96,6 +99,7 @@ class SignUpResponse(BaseModel):
 
 class InviteLinkResponse(BaseModel):
     """Response containing invite token for a user to join a tenant"""
+
     invite_url: str
     invite_token: str
     expires_in_hours: int

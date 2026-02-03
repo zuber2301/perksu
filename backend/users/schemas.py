@@ -1,18 +1,35 @@
-from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional, Literal
+from datetime import date, datetime
+from typing import Literal, Optional
 from uuid import UUID
-from datetime import datetime, date
 
-VALID_ROLES = ['platform_admin', 'hr_admin', 'manager', 'employee']
-VALID_ORG_ROLES = ['platform_admin', 'tenant_admin', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee']
+from pydantic import BaseModel, EmailStr, field_validator
+
+VALID_ROLES = ["platform_admin", "hr_admin", "manager", "employee"]
+VALID_ORG_ROLES = [
+    "platform_admin",
+    "tenant_admin",
+    "hr_admin",
+    "tenant_lead",
+    "manager",
+    "corporate_user",
+    "employee",
+]
 
 
 class UserBase(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
-    role: Literal['platform_admin', 'hr_admin', 'manager', 'employee']
-    org_role: Literal['platform_admin', 'tenant_admin', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee'] = 'employee'
+    role: Literal["platform_admin", "hr_admin", "manager", "employee"]
+    org_role: Literal[
+        "platform_admin",
+        "tenant_admin",
+        "hr_admin",
+        "tenant_lead",
+        "manager",
+        "corporate_user",
+        "employee",
+    ] = "employee"
     department_id: UUID
     manager_id: Optional[UUID] = None
     personal_email: Optional[EmailStr] = None
@@ -20,24 +37,26 @@ class UserBase(BaseModel):
     date_of_birth: Optional[date] = None
     hire_date: Optional[date] = None
 
-    @field_validator('mobile_phone')
+    @field_validator("mobile_phone")
     @classmethod
     def validate_mobile_phone(cls, v):
         if not v:
             return v
-        
+
         # Strip common formatting
-        cleaned = "".join(c for c in v if c.isdigit() or c == '+')
-        
+        cleaned = "".join(c for c in v if c.isdigit() or c == "+")
+
         # Auto-fix 10 digit or 91... forms
         if len(cleaned) == 10 and cleaned.isdigit():
-            cleaned = '+91' + cleaned
-        elif len(cleaned) == 12 and cleaned.startswith('91'):
-            cleaned = '+' + cleaned
-            
-        if not (cleaned.startswith('+91') and len(cleaned) == 13):
-            raise ValueError("Mobile must follow +91XXXXXXXXXX format (e.g., +919876543210)")
-        
+            cleaned = "+91" + cleaned
+        elif len(cleaned) == 12 and cleaned.startswith("91"):
+            cleaned = "+" + cleaned
+
+        if not (cleaned.startswith("+91") and len(cleaned) == 13):
+            raise ValueError(
+                "Mobile must follow +91XXXXXXXXXX format (e.g., +919876543210)"
+            )
+
         return cleaned
 
 
@@ -51,8 +70,18 @@ class UserUpdate(BaseModel):
     mobile_phone: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    role: Optional[Literal['platform_admin', 'hr_admin', 'manager', 'employee']] = None
-    org_role: Optional[Literal['platform_admin', 'tenant_admin', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee']] = None
+    role: Optional[Literal["platform_admin", "hr_admin", "manager", "employee"]] = None
+    org_role: Optional[
+        Literal[
+            "platform_admin",
+            "tenant_admin",
+            "hr_admin",
+            "tenant_lead",
+            "manager",
+            "corporate_user",
+            "employee",
+        ]
+    ] = None
     department_id: Optional[UUID] = None
     manager_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
@@ -70,7 +99,7 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
-    org_role: str = 'employee'
+    org_role: str = "employee"
     department_id: Optional[UUID] = None
     manager_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
@@ -90,7 +119,7 @@ class UserListResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
-    org_role: str = 'employee'
+    org_role: str = "employee"
     department_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
     status: str
@@ -134,4 +163,4 @@ class BulkUploadResponse(BaseModel):
 
 class BulkActionRequest(BaseModel):
     user_ids: list[UUID]
-    action: Literal['deactivate', 'activate', 'resend_invite', 'reactivate']
+    action: Literal["deactivate", "activate", "resend_invite", "reactivate"]

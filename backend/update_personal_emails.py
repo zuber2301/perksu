@@ -1,5 +1,7 @@
-from database import SessionLocal
 from models import User
+
+from database import SessionLocal
+
 db = SessionLocal()
 try:
     users = db.query(User).all()

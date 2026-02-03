@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional, Dict, Any, List
-from uuid import UUID
-from datetime import datetime
 import re
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ==================== Identity & Branding Schemas ====================
@@ -21,7 +22,10 @@ class BrandingConfig(BaseModel):
 
 # ==================== Governance & Security Schemas ====================
 class GovernanceConfig(BaseModel):
-    domain_whitelist: List[str] = Field(default_factory=list, description="Email domain suffixes, e.g., ['@company.com']")
+    domain_whitelist: List[str] = Field(
+        default_factory=list,
+        description="Email domain suffixes, e.g., ['@company.com']",
+    )
     auth_method: str = "OTP_ONLY"  # OTP_ONLY, PASSWORD_AND_OTP, SSO_SAML
 
 
@@ -39,7 +43,9 @@ class AwardTiers(BaseModel):
 
 
 class RecognitionRules(BaseModel):
-    award_tiers: Dict[str, float] = Field(default_factory=lambda: {"Gold": 5000, "Silver": 2500, "Bronze": 1000})
+    award_tiers: Dict[str, float] = Field(
+        default_factory=lambda: {"Gold": 5000, "Silver": 2500, "Bronze": 1000}
+    )
     peer_to_peer_enabled: bool = True
     expiry_policy: str = "never"  # 90_days, 180_days, 1_year, never
 
@@ -52,14 +58,14 @@ class TenantBase(BaseModel):
     @staticmethod
     def _slugify(value: str) -> str:
         if not value:
-            return ''
+            return ""
         s = value.strip().lower()
-        s = re.sub(r"[^a-z0-9]+", '-', s)
-        s = re.sub(r"-+", '-', s)
-        s = s.strip('-')
+        s = re.sub(r"[^a-z0-9]+", "-", s)
+        s = re.sub(r"-+", "-", s)
+        s = s.strip("-")
         return s or str(uuid.uuid4())[:8]
 
-    @field_validator('slug', mode='before')
+    @field_validator("slug", mode="before")
     @classmethod
     def normalize_slug(cls, v):
         # If slug provided, normalize it; allow None (will be filled from name)
@@ -67,11 +73,11 @@ class TenantBase(BaseModel):
             return v
         return cls._slugify(str(v))
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def ensure_slug(self):
         # If slug wasn't provided, generate it from the name
         if not self.slug and self.name:
-            object.__setattr__(self, 'slug', self._slugify(self.name))
+            object.__setattr__(self, "slug", self._slugify(self.name))
         return self
 
 
@@ -97,27 +103,27 @@ class TenantLoadBudget(BaseModel):
 class TenantUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
-    
+
     # Identity & Branding
     logo_url: Optional[str] = None
     favicon_url: Optional[str] = None
     theme_config: Optional[ThemeConfig] = None
     branding_config: Optional[Dict[str, Any]] = None
-    
+
     # Governance & Security
     domain_whitelist: Optional[List[str]] = None
     auth_method: Optional[str] = None
-    
+
     # Point Economy
     currency_label: Optional[str] = None
     conversion_rate: Optional[float] = None
     auto_refill_threshold: Optional[float] = None
-    
+
     # Recognition Laws
     award_tiers: Optional[Dict[str, float]] = None
     peer_to_peer_enabled: Optional[bool] = None
     expiry_policy: Optional[str] = None
-    
+
     # Financials & Status
     subscription_tier: Optional[str] = None
     status: Optional[str] = None
@@ -125,34 +131,36 @@ class TenantUpdate(BaseModel):
 
 class TenantResponse(TenantBase):
     id: UUID
-    
+
     # Identity & Branding
     logo_url: Optional[str] = None
     favicon_url: Optional[str] = None
     theme_config: Optional[Dict[str, Any]] = Field(default_factory=dict)
     branding_config: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    
+
     # Governance & Security
     domain_whitelist: Optional[List[str]] = Field(default_factory=list)
     auth_method: Optional[str] = "OTP_ONLY"
-    
+
     # Point Economy
     currency_label: Optional[str] = "Points"
     conversion_rate: Optional[float] = 1.0
     auto_refill_threshold: Optional[float] = 20.0
-    
+
     # Recognition Laws
-    award_tiers: Optional[Dict[str, float]] = Field(default_factory=lambda: {"Gold": 5000, "Silver": 2500, "Bronze": 1000})
+    award_tiers: Optional[Dict[str, float]] = Field(
+        default_factory=lambda: {"Gold": 5000, "Silver": 2500, "Bronze": 1000}
+    )
     peer_to_peer_enabled: Optional[bool] = True
     expiry_policy: Optional[str] = "never"
-    
+
     # Financials
     subscription_tier: Optional[str] = "basic"
     master_budget_balance: Optional[float] = 0.0
-    
+
     # Status
     status: Optional[str] = "ACTIVE"
-    
+
     created_at: datetime
     updated_at: datetime
 
@@ -189,7 +197,7 @@ class TransactionResponse(BaseModel):
     balance_after: float
     description: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 

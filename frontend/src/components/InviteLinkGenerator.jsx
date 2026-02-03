@@ -6,10 +6,10 @@ import {
   HiOutlineLink, 
   HiOutlineClipboard,
   HiOutlineClipboardCheck,
-  HiOutlineShare2,
+  HiOutlineShare,
   HiOutlineCalendar,
   HiOutlineQrcode,
-  HiOutlineEnvelope
+  HiOutlineMail
 } from 'react-icons/hi'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -280,7 +280,7 @@ export default function InviteLinkGenerator() {
                   }}
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
-                  <HiOutlineEnvelope className="h-4 w-4" />
+                  <HiOutlineMail className="h-4 w-4" />
                   Email
                 </button>
                 <button
@@ -290,7 +290,7 @@ export default function InviteLinkGenerator() {
                   }}
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
-                  <HiOutlineShare2 className="h-4 w-4" />
+                  <HiOutlineShare className="h-4 w-4" />
                   Share
                 </button>
               </div>

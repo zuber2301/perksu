@@ -2,9 +2,11 @@
 Integration tests that run against the actual running PostgreSQL database.
 These tests verify the API endpoints work correctly end-to-end.
 """
+
+import os
+
 import pytest
 import requests
-import os
 
 # Use environment variable or default to new port
 BASE_URL = os.getenv("API_URL", "http://localhost:6100")
@@ -12,7 +14,7 @@ BASE_URL = os.getenv("API_URL", "http://localhost:6100")
 
 class TestHealthCheck:
     """Test health check endpoint"""
-    
+
     def test_health_endpoint_returns_healthy(self):
         """Test that health endpoint returns healthy status"""
         response = requests.get(f"{BASE_URL}/health")
@@ -22,12 +24,12 @@ class TestHealthCheck:
 
 class TestAuthentication:
     """Test authentication endpoints"""
-    
+
     def test_login_with_valid_credentials(self):
         """Test login returns token with valid credentials"""
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "super_user@jspark.com", "password": "jspark123"}
+            json={"email": "super_user@jspark.com", "password": "jspark123"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -35,41 +37,40 @@ class TestAuthentication:
         assert data["token_type"] == "bearer"
         assert data["user"]["email"] == "super_user@jspark.com"
         assert data["user"]["role"] == "platform_admin"
-    
+
     def test_login_with_invalid_password(self):
         """Test login fails with wrong password"""
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "super_user@jspark.com", "password": "wrongpassword"}
+            json={"email": "super_user@jspark.com", "password": "wrongpassword"},
         )
         assert response.status_code == 401
-    
+
     def test_login_with_nonexistent_email(self):
         """Test login fails with non-existent email"""
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "nonexistent@jspark.com", "password": "jspark123"}
+            json={"email": "nonexistent@jspark.com", "password": "jspark123"},
         )
         assert response.status_code == 401
-    
+
     def test_protected_route_without_token(self):
         """Test that protected routes require authentication"""
         response = requests.get(f"{BASE_URL}/api/auth/me")
         assert response.status_code == 401
-    
+
     def test_me_endpoint_with_valid_token(self):
         """Test /me endpoint returns current user"""
         # Login first
         login = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "super_user@jspark.com", "password": "jspark123"}
+            json={"email": "super_user@jspark.com", "password": "jspark123"},
         )
         token = login.json()["access_token"]
-        
+
         # Access protected route
         response = requests.get(
-            f"{BASE_URL}/api/auth/me",
-            headers={"Authorization": f"Bearer {token}"}
+            f"{BASE_URL}/api/auth/me", headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 200
         assert response.json()["email"] == "super_user@jspark.com"
@@ -78,8 +79,7 @@ class TestAuthentication:
 def get_auth_header(email="super_user@jspark.com"):
     """Helper to get auth header"""
     response = requests.post(
-        f"{BASE_URL}/api/auth/login",
-        json={"email": email, "password": "jspark123"}
+        f"{BASE_URL}/api/auth/login", json={"email": email, "password": "jspark123"}
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -87,30 +87,23 @@ def get_auth_header(email="super_user@jspark.com"):
 
 class TestUsers:
     """Test user management endpoints"""
-    
+
     def test_list_users(self):
         """Test listing all users"""
-        response = requests.get(
-            f"{BASE_URL}/api/users",
-            headers=get_auth_header()
-        )
+        response = requests.get(f"{BASE_URL}/api/users", headers=get_auth_header())
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
         assert len(data) >= 5  # We have 5 demo users
-    
+
     def test_get_user_by_id(self):
         """Test getting a specific user by ID"""
         # First get list to find a user ID
-        users = requests.get(
-            f"{BASE_URL}/api/users",
-            headers=get_auth_header()
-        ).json()
-        
+        users = requests.get(f"{BASE_URL}/api/users", headers=get_auth_header()).json()
+
         user_id = users[0]["id"]
         response = requests.get(
-            f"{BASE_URL}/api/users/{user_id}",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/users/{user_id}", headers=get_auth_header()
         )
         assert response.status_code == 200
         assert response.json()["id"] == user_id
@@ -118,24 +111,20 @@ class TestUsers:
 
 class TestWallets:
     """Test wallet endpoints"""
-    
+
     def test_get_my_wallet(self):
         """Test getting current user's wallet"""
-        response = requests.get(
-            f"{BASE_URL}/api/wallets/me",
-            headers=get_auth_header()
-        )
+        response = requests.get(f"{BASE_URL}/api/wallets/me", headers=get_auth_header())
         assert response.status_code == 200
         data = response.json()
         assert "balance" in data
         assert "lifetime_earned" in data
         assert "lifetime_spent" in data
-    
+
     def test_get_my_ledger(self):
         """Test getting wallet transaction history"""
         response = requests.get(
-            f"{BASE_URL}/api/wallets/me/ledger",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/wallets/me/ledger", headers=get_auth_header()
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
@@ -143,30 +132,28 @@ class TestWallets:
 
 class TestRecognition:
     """Test recognition endpoints"""
-    
+
     def test_get_badges(self):
         """Test getting available badges"""
         response = requests.get(
-            f"{BASE_URL}/api/recognitions/badges",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/recognitions/badges", headers=get_auth_header()
         )
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
         assert len(data) >= 8  # We have 8 system badges
-        
+
         # Verify badge structure
         badge = data[0]
         assert "id" in badge
         assert "name" in badge
         assert "description" in badge
         assert "points_value" in badge
-    
+
     def test_list_recognitions(self):
         """Test listing all recognitions"""
         response = requests.get(
-            f"{BASE_URL}/api/recognitions",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/recognitions", headers=get_auth_header()
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
@@ -174,34 +161,29 @@ class TestRecognition:
 
 class TestFeed:
     """Test social feed endpoints"""
-    
+
     def test_get_feed(self):
         """Test getting the social feed"""
-        response = requests.get(
-            f"{BASE_URL}/api/feed",
-            headers=get_auth_header()
-        )
+        response = requests.get(f"{BASE_URL}/api/feed", headers=get_auth_header())
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
 
 class TestNotifications:
     """Test notification endpoints"""
-    
+
     def test_get_notifications(self):
         """Test getting user notifications"""
         response = requests.get(
-            f"{BASE_URL}/api/notifications",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/notifications", headers=get_auth_header()
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
-    
+
     def test_get_notification_count(self):
         """Test getting unread notification count"""
         response = requests.get(
-            f"{BASE_URL}/api/notifications/count",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/notifications/count", headers=get_auth_header()
         )
         assert response.status_code == 200
         data = response.json()
@@ -211,13 +193,10 @@ class TestNotifications:
 
 class TestBudgets:
     """Test budget management endpoints"""
-    
+
     def test_list_budgets(self):
         """Test listing budgets"""
-        response = requests.get(
-            f"{BASE_URL}/api/budgets",
-            headers=get_auth_header()
-        )
+        response = requests.get(f"{BASE_URL}/api/budgets", headers=get_auth_header())
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -226,22 +205,20 @@ class TestBudgets:
 
 class TestRedemption:
     """Test redemption/voucher endpoints"""
-    
+
     def test_get_vouchers(self):
         """Test getting available vouchers"""
         response = requests.get(
-            f"{BASE_URL}/api/redemptions/vouchers",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/redemptions/vouchers", headers=get_auth_header()
         )
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-    
+
     def test_get_my_redemptions(self):
         """Test getting redemption history"""
         response = requests.get(
-            f"{BASE_URL}/api/redemptions",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/redemptions", headers=get_auth_header()
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
@@ -249,12 +226,12 @@ class TestRedemption:
 
 class TestAudit:
     """Test audit log endpoints"""
-    
+
     def test_get_audit_logs_as_hr_admin(self):
         """Test getting audit logs (HR admin access)"""
         response = requests.get(
             f"{BASE_URL}/api/audit",
-            headers=get_auth_header("admin@triton.com")  # HR admin
+            headers=get_auth_header("admin@triton.com"),  # HR admin
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
@@ -262,23 +239,21 @@ class TestAudit:
 
 class TestTenants:
     """Test tenant endpoints"""
-    
+
     def test_get_current_tenant(self):
         """Test getting current tenant info"""
         response = requests.get(
-            f"{BASE_URL}/api/tenants/current",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/tenants/current", headers=get_auth_header()
         )
         assert response.status_code == 200
         data = response.json()
         assert "name" in data
         assert data["name"] == "jSpark"
-    
+
     def test_get_departments(self):
         """Test getting tenant departments"""
         response = requests.get(
-            f"{BASE_URL}/api/tenants/departments",
-            headers=get_auth_header()
+            f"{BASE_URL}/api/tenants/departments", headers=get_auth_header()
         )
         assert response.status_code == 200
         data = response.json()
@@ -288,21 +263,19 @@ class TestTenants:
 
 class TestRoleBasedAccess:
     """Test role-based access control"""
-    
+
     def test_employee_cannot_access_audit(self):
         """Test that employees cannot access audit logs"""
         response = requests.get(
-            f"{BASE_URL}/api/audit",
-            headers=get_auth_header("employee@triton.com")
+            f"{BASE_URL}/api/audit", headers=get_auth_header("employee@triton.com")
         )
         # Should be 403 Forbidden
         assert response.status_code == 403
-    
+
     def test_employee_can_access_own_wallet(self):
         """Test that employees can access their own wallet"""
         response = requests.get(
-            f"{BASE_URL}/api/wallets/me",
-            headers=get_auth_header("employee@triton.com")
+            f"{BASE_URL}/api/wallets/me", headers=get_auth_header("employee@triton.com")
         )
         assert response.status_code == 200
 

@@ -4,11 +4,11 @@ Revision ID: 0002_budget_triggers
 Revises: 0001_tenant_dashboard_schema
 Create Date: 2026-02-02 00:00:00.000000
 """
-from alembic import op
-import sqlalchemy as sa
 
-revision = '0002_budget_triggers'
-down_revision = '0001_tenant_dashboard_schema'
+from alembic import op
+
+revision = "0002_budget_triggers"
+down_revision = "0001_tenant_dashboard_schema"
 branch_labels = None
 depends_on = None
 

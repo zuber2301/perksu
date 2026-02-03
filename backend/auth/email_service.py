@@ -1,6 +1,8 @@
 import smtplib
 from email.message import EmailMessage
+
 from config import settings
+
 
 def send_otp_email(to_email: str, otp: str):
     """
@@ -14,17 +16,15 @@ def send_otp_email(to_email: str, otp: str):
     msg["Subject"] = "Your Perksu Login Code"
     msg["From"] = f"Perksu <{settings.smtp_email}>"
     msg["To"] = to_email
-    
-    msg.set_content(
-        f"""
+
+    msg.set_content(f"""
 Your Perksu login code is:
 
 {otp}
 
 This code is valid for 5 minutes.
 If you did not request this, ignore this email.
-        """
-    )
+        """)
 
     try:
         with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port) as smtp:

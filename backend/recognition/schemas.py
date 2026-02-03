@@ -1,8 +1,9 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
+from typing import List, Optional
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class BadgeResponse(BaseModel):
@@ -23,10 +24,10 @@ class RecognitionCreate(BaseModel):
     badge_id: Optional[UUID] = None
     points: Decimal
     message: str
-    recognition_type: str = 'standard'
+    recognition_type: str = "standard"
     ecard_template: Optional[str] = None
-    visibility: str = 'public'
-    is_equal_split: bool = False # For group awards
+    visibility: str = "public"
+    is_equal_split: bool = False  # For group awards
 
 
 class RecognitionResponse(BaseModel):
