@@ -138,6 +138,7 @@ export const tenantsAPI = {
   createDepartment: (data) => api.post('/tenants/departments', data),
   updateDepartment: (id, data) => api.put(`/tenants/departments/${id}`, data),
   deleteDepartment: (id) => api.delete(`/tenants/departments/${id}`),
+  getOverview: (id) => api.get(`/tenants/admin/tenants/${id}/overview-stats`),
 }
 
 // Audit API

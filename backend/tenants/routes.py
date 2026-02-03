@@ -34,6 +34,68 @@ from database import get_db
 router = APIRouter()
 
 
+@router.get("/admin/tenants/{tenant_id}/overview-stats")
+async def get_tenant_overview_stats(
+    tenant_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get aggregated overview stats for a tenant.
+    Returns total budget allocated, total spent, budget remaining and user counts by org_role.
+    Accessible by users within the tenant or platform admins.
+    """
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Allow access to tenant members or platform-level super admins
+    if not (
+        getattr(current_user, "tenant_id", None) == tenant_id
+        or getattr(current_user, "is_super_admin", False)
+    ):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    total_allocated = (
+        db.query(func.sum(MasterBudgetLedger.amount))
+        .filter(MasterBudgetLedger.tenant_id == tenant_id, MasterBudgetLedger.transaction_type == "credit")
+        .scalar()
+        or 0
+    )
+
+    total_spent = (
+        db.query(func.sum(MasterBudgetLedger.amount))
+        .filter(MasterBudgetLedger.tenant_id == tenant_id, MasterBudgetLedger.transaction_type == "debit")
+        .scalar()
+        or 0
+    )
+
+    # User counts by org_role
+    role_counts = (
+        db.query(User.org_role, func.count(User.id))
+        .filter(User.tenant_id == tenant_id)
+        .group_by(User.org_role)
+        .all()
+    )
+
+    counts = {r: c for (r, c) in role_counts}
+
+    return {
+        "tenant_id": str(tenant.id),
+        "total_budget_allocated": float(total_allocated),
+        "total_spent": float(total_spent),
+        "budget_remaining": float(tenant.master_budget_balance or 0),
+        "user_counts": {
+            "tenant_manager": counts.get("tenant_manager", 0),
+            "lead": counts.get("lead", 0),
+            "user": counts.get("user", counts.get("employee", 0)),
+            "employee": counts.get("employee", 0),
+            "by_org_role": counts,
+        },
+        "timestamp": datetime.utcnow(),
+    }
+
+
 @router.get("/current", response_model=TenantResponse)
 async def get_current_tenant(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)

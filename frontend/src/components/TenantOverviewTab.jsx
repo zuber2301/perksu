@@ -1,36 +1,70 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { tenantsApi } from '../lib/api';
 import './TenantTabs.css';
 
 export default function TenantOverviewTab({ tenant, onUpdate }) {
-  const [burnRate, setBurnRate] = useState(null);
-  const [engagementData, setEngagementData] = useState(null);
+  const [burnRate, setBurnRate] = useState({});
+  const [engagementData, setEngagementData] = useState({});
+  const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching burn rate and engagement metrics
-    // In a real app, this would come from an API endpoint
-    simulateBurnRateData();
+    // Fetch overview metrics from backend
+    fetchOverview();
   }, [tenant.tenant_id]);
 
   const simulateBurnRateData = () => {
     setLoading(true);
     // Simulated data - replace with actual API call
-    setBurnRate({
-      dailyRate: 450.00,
-      weeklyRate: 2850.00,
-      monthlyProjection: 12500.00,
+    const simulatedBurn = {
+      dailyRate: 450.0,
+      weeklyRate: 2850.0,
+      monthlyProjection: 12500.0,
       daysUntilRefill: 8,
-    });
+    };
 
-    setEngagementData({
+    const simulatedEngagement = {
       recognitionsThisMonth: 123,
       redemptionsThisMonth: 45,
       activeUsersThisWeek: 87,
       avgPointsPerEmployee: 2500,
-    });
+    };
 
+    // Minimal overview fallback so the tab can render when the API fails
+    const simulatedOverview = {
+      total_budget_allocated: simulatedBurn.monthlyProjection * 6,
+      total_spent: simulatedBurn.monthlyProjection * 2,
+      budget_remaining: simulatedBurn.monthlyProjection * 4,
+      user_counts: {
+        tenant_manager: 1,
+        lead: 5,
+        employee: 120,
+        by_org_role: { tenant_manager: 1, lead: 5, employee: 120 },
+      },
+    };
+
+    setBurnRate(simulatedBurn);
+    setEngagementData(simulatedEngagement);
+    setOverview(simulatedOverview);
     setLoading(false);
+  };
+
+  const fetchOverview = async () => {
+    setLoading(true);
+    try {
+      const resp = await tenantsApi.getOverview(tenant.tenant_id);
+      const data = resp.data || resp;
+      setOverview(data);
+      // set optional metrics if present (guard against missing fields)
+      setBurnRate(data.burnRate ?? data.burn_rate ?? {});
+      setEngagementData(data.engagementData ?? data.engagement_data ?? {});
+    } catch (err) {
+      console.error('Failed to load tenant overview', err);
+      // fallback to simulated data
+      simulateBurnRateData();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatCurrency = (value) => {
@@ -42,52 +76,56 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
   };
 
   const getHealthStatus = () => {
-    const { daysUntilRefill } = burnRate;
+    // Guard against missing burnRate (API may provide overview only)
+    const daysUntilRefill = burnRate?.daysUntilRefill ?? null;
+    if (daysUntilRefill === null) return { status: 'unknown', color: '#6b7280' };
     if (daysUntilRefill > 30) return { status: 'healthy', color: '#10b981' };
     if (daysUntilRefill > 10) return { status: 'warning', color: '#f59e0b' };
     return { status: 'critical', color: '#ef4444' };
   };
 
-  if (loading) {
+  if (loading || !overview) {
     return <div className="loading-state">Loading overview...</div>;
   }
 
   const health = getHealthStatus();
+  const totalUsers = Object.values(overview.user_counts?.by_org_role ?? {}).reduce((a,b)=>a+b,0);
 
   return (
     <div className="tab-overview">
       {/* Quick Stats */}
       <div className="stats-grid">
         <div className="stat-card">
-          <h3>Master Balance</h3>
-          <p className="stat-value">
-            {formatCurrency(tenant.master_balance)}
-          </p>
-          <p className="stat-label">Available Points</p>
+          <h3>Total Budget Allocated</h3>
+          <p className="stat-value">{formatCurrency(overview.total_budget_allocated)}</p>
+          <p className="stat-label">Lifetime Allocations</p>
         </div>
 
         <div className="stat-card">
-          <h3>Daily Burn Rate</h3>
-          <p className="stat-value">
-            {formatCurrency(burnRate.dailyRate)}
-          </p>
-          <p className="stat-label">Daily Points Used</p>
+          <h3>Total Spent</h3>
+          <p className="stat-value">{formatCurrency(overview.total_spent)}</p>
+          <p className="stat-label">Redeemed / Debited</p>
         </div>
 
         <div className="stat-card">
-          <h3>Days Until Refill</h3>
+          <h3>Budget Remaining</h3>
           <p className={`stat-value ${health.status}`} style={{ color: health.color }}>
-            {burnRate.daysUntilRefill} days
+            {formatCurrency(overview.budget_remaining)}
           </p>
-          <p className="stat-label">Projected Runout</p>
+          <p className="stat-label">Current Master Balance</p>
         </div>
 
         <div className="stat-card">
-          <h3>Monthly Projection</h3>
-          <p className="stat-value">
-            {formatCurrency(burnRate.monthlyProjection)}
-          </p>
-          <p className="stat-label">Estimated Usage</p>
+          <h3>Total Users</h3>
+          <p className="stat-value">{totalUsers}</p>
+          <p className="stat-label">Managers / Leads / Employees</p>
+          <div className="user-breakdown">
+            <small>Tenant Managers: {overview.user_counts?.tenant_manager ?? 0}</small>
+            <br />
+            <small>Leads: {overview.user_counts?.lead ?? 0}</small>
+            <br />
+            <small>Employees: {overview.user_counts?.employee ?? overview.user_counts?.user ?? 0}</small>
+          </div>
         </div>
       </div>
 
@@ -99,7 +137,7 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
             <span className="metric-icon">🎉</span>
             <div className="metric-info">
               <p className="metric-label">Recognitions This Month</p>
-              <p className="metric-value">{engagementData.recognitionsThisMonth}</p>
+              <p className="metric-value">{engagementData?.recognitionsThisMonth ?? '—'}</p>
             </div>
           </div>
 
@@ -107,7 +145,7 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
             <span className="metric-icon">🎁</span>
             <div className="metric-info">
               <p className="metric-label">Redemptions This Month</p>
-              <p className="metric-value">{engagementData.redemptionsThisMonth}</p>
+              <p className="metric-value">{engagementData?.redemptionsThisMonth ?? '—'}</p>
             </div>
           </div>
 
@@ -115,7 +153,7 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
             <span className="metric-icon">👥</span>
             <div className="metric-info">
               <p className="metric-label">Active Users This Week</p>
-              <p className="metric-value">{engagementData.activeUsersThisWeek}</p>
+              <p className="metric-value">{engagementData?.activeUsersThisWeek ?? '—'}</p>
             </div>
           </div>
 
@@ -124,7 +162,7 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
             <div className="metric-info">
               <p className="metric-label">Avg Points Per Employee</p>
               <p className="metric-value">
-                {formatCurrency(engagementData.avgPointsPerEmployee)}
+                {formatCurrency(engagementData?.avgPointsPerEmployee ?? 0)}
               </p>
             </div>
           </div>

@@ -518,6 +518,19 @@ INSERT INTO recognitions (tenant_id, from_user_id, to_user_id, badge_id, points,
 
 -- Create feed entries for recognitions
 INSERT INTO feed (tenant_id, event_type, reference_type, reference_id, actor_id, target_id, visibility, metadata)
+-- =====================================================
+-- SAFE UPGRADES (idempotent fixes for schema drift)
+-- These ALTER statements ensure the DB schema contains columns
+-- expected by the current application models. They are safe
+-- to run multiple times and will not error if columns exist.
+-- =====================================================
+
+-- Add invitation timestamp for users if missing
+ALTER TABLE users ADD COLUMN IF NOT EXISTS invitation_sent_at TIMESTAMP WITH TIME ZONE;
+
+-- Add expiry date to budgets if missing
+ALTER TABLE budgets ADD COLUMN IF NOT EXISTS expiry_date TIMESTAMP WITH TIME ZONE;
+
 SELECT 
     tenant_id,
     'recognition',
