@@ -118,6 +118,9 @@ class Tenant(Base):
     )  # OTP_ONLY, PASSWORD_AND_OTP, SSO_SAML
 
     # Point Economy
+    currency = Column(String(3), default="INR")  # ISO 4217 code (e.g., INR, USD)
+    markup_percent = Column(Numeric(5, 2), default=0.0)  # Tenant-wide markup %
+    enabled_rewards = Column(JSONType(), default=[])  # Whitelist of brand keys/UTIDs
     currency_label = Column(String(100), default="Points")
     conversion_rate = Column(Numeric(10, 4), default=1.0)
     auto_refill_threshold = Column(Numeric(5, 2), default=20.0)
@@ -134,6 +137,8 @@ class Tenant(Base):
     # Financials
     subscription_tier = Column(String(50), default="basic")
     master_budget_balance = Column(Numeric(15, 2), default=0)
+    master_budget_threshold = Column(Numeric(15, 2), default=100.0) # Pause if below this
+    redemptions_paused = Column(Boolean, default=False)
 
     # Status
     status = Column(String(50), default="ACTIVE")  # ACTIVE, SUSPENDED, ARCHIVED

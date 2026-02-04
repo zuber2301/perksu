@@ -367,7 +367,9 @@ class TestRedemption:
         """Test getting user's redemption history"""
         response = client.get("/api/redemptions", headers=self.get_auth_header())
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        data = response.json()
+        assert "items" in data
+        assert isinstance(data["items"], list)
 
 
 class TestAudit:

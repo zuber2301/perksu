@@ -221,7 +221,9 @@ class TestRedemption:
             f"{BASE_URL}/api/redemptions", headers=get_auth_header()
         )
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        data = response.json()
+        assert "items" in data
+        assert isinstance(data["items"], list)
 
 
 class TestAudit:

@@ -3,6 +3,7 @@ from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, field_validator
+from tenants.schemas import DepartmentResponse
 
 VALID_ROLES = ["platform_admin", "hr_admin", "manager", "employee"]
 VALID_ORG_ROLES = [
@@ -121,8 +122,10 @@ class UserListResponse(BaseModel):
     role: str
     org_role: str = "employee"
     department_id: Optional[UUID] = None
+    department: Optional[DepartmentResponse] = None
     avatar_url: Optional[str] = None
     status: str
+    is_super_admin: bool = False
 
     class Config:
         from_attributes = True

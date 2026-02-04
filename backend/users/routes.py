@@ -13,7 +13,7 @@ from auth.utils import (
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from fastapi.responses import Response
 from models import StagingUser, Tenant, User, Wallet
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from users.schemas import (
     BulkActionRequest,
     BulkUploadResponse,
@@ -120,7 +120,7 @@ async def get_users_by_tenant(
         )
 
     # Query users for this specific tenant
-    query = db.query(User).filter(User.tenant_id == tenant_id)
+    query = db.query(User).options(joinedload(User.department)).filter(User.tenant_id == tenant_id)
 
     if department_id:
         query = query.filter(User.department_id == department_id)

@@ -48,6 +48,17 @@ class VoucherCatalogResponse(VoucherCatalogBase):
         from_attributes = True
 
 
+class DynamicRewardResponse(BaseModel):
+    utid: str
+    rewardName: str
+    brandName: str
+    value: float
+    currencyCode: str
+    pointsRequired: float
+    imageUrl: Optional[str] = None
+    category: Optional[str] = None
+
+
 # =====================================================
 # MERCHANDISE CATALOG SCHEMAS
 # =====================================================
@@ -98,10 +109,12 @@ class RedemptionInitiate(BaseModel):
     """Initial redemption request"""
 
     item_type: Literal["VOUCHER", "MERCH"]
-    item_id: UUID
+    item_id: Optional[UUID] = None
+    utid: Optional[str] = None
     item_name: str
     point_cost: int
     actual_cost: Decimal
+    delivery_details: Optional[dict] = None
 
 
 class RedemptionOTPVerify(BaseModel):

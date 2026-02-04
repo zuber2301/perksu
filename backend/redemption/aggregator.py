@@ -29,6 +29,9 @@ class AggregatorClient:
     def check_balance(self, vendor_code: str) -> Dict[str, Any]:
         raise NotImplementedError()
 
+    def get_catalog(self) -> Dict[str, Any]:
+        raise NotImplementedError()
+
 
 class MockAggregatorClient(AggregatorClient):
     def issue_voucher(
@@ -51,6 +54,39 @@ class MockAggregatorClient(AggregatorClient):
 
     def check_balance(self, vendor_code: str) -> Dict[str, Any]:
         return {"vendor_code": vendor_code, "current_balance": 100000.0}
+
+    def get_catalog(self) -> Dict[str, Any]:
+        """Returns a mock catalog including various international brands."""
+        return {
+            "brands": [
+                {
+                    "brandKey": "amazon-in",
+                    "brandName": "Amazon.in",
+                    "imageUrls": {"80w-mono": "https://img.example/amazon.png"},
+                    "items": [
+                        {"utid": "amz-in-500", "rewardName": "Amazon ₹500", "value": 500, "currencyCode": "INR"},
+                        {"utid": "amz-in-1000", "rewardName": "Amazon ₹1000", "value": 1000, "currencyCode": "INR"}
+                    ]
+                },
+                {
+                    "brandKey": "swiggy-in",
+                    "brandName": "Swiggy",
+                    "imageUrls": {"80w-mono": "https://img.example/swiggy.png"},
+                    "items": [
+                        {"utid": "swig-in-250", "rewardName": "Swiggy ₹250", "value": 250, "currencyCode": "INR"},
+                        {"utid": "swig-in-500", "rewardName": "Swiggy ₹500", "value": 500, "currencyCode": "INR"}
+                    ]
+                },
+                {
+                    "brandKey": "starbucks-us",
+                    "brandName": "Starbucks US",
+                    "imageUrls": {"80w-mono": "https://img.example/starbucks.png"},
+                    "items": [
+                        {"utid": "sbux-us-10", "rewardName": "Starbucks $10", "value": 10, "currencyCode": "USD"}
+                    ]
+                }
+            ]
+        }
 
 
 # Factory
@@ -122,3 +158,9 @@ class TangoCardClient(AggregatorClient):
         resp.raise_for_status()
         data = resp.json()
         return {"vendor_code": vendor_code, "current_balance": data.get("balance")}
+
+    def get_catalog(self) -> Dict[str, Any]:
+        url = f"{self.base}/catalogs"
+        resp = requests.get(url, headers=self._auth_header(), timeout=15)
+        resp.raise_for_status()
+        return resp.json()

@@ -32,8 +32,13 @@ class GovernanceConfig(BaseModel):
 # ==================== Point Economy Schemas ====================
 class PointEconomyConfig(BaseModel):
     currency_label: str = "Points"
+    currency: str = "INR"
+    markup_percent: float = 0.0
+    enabled_rewards: List[str] = Field(default_factory=list)
     conversion_rate: float = 1.0  # $1 = X Points
     auto_refill_threshold: float = 20.0  # Percentage
+    master_budget_threshold: float = 100.0
+    redemptions_paused: bool = False
 
 
 class AwardTiers(BaseModel):
@@ -116,8 +121,13 @@ class TenantUpdate(BaseModel):
 
     # Point Economy
     currency_label: Optional[str] = None
+    currency: Optional[str] = None
+    markup_percent: Optional[float] = None
+    enabled_rewards: Optional[List[str]] = None
     conversion_rate: Optional[float] = None
     auto_refill_threshold: Optional[float] = None
+    master_budget_threshold: Optional[float] = None
+    redemptions_paused: Optional[bool] = None
 
     # Recognition Laws
     award_tiers: Optional[Dict[str, float]] = None
