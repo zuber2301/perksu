@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { formatCurrency } from '../lib/currency'
 import './TenantTabs.css';
 
 export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
@@ -75,13 +76,8 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
     }
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(value);
-  };
+  // Use centralized INR helper (no decimals)
+  // imported at top: formatCurrency
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {

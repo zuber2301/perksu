@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { formatCurrency } from '../lib/currency'
 import './RootAdminDashboard.css';
 
 export default function RootAdminDashboard() {
@@ -100,13 +101,7 @@ export default function RootAdminDashboard() {
     });
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+
 
   if (loading) {
     return (

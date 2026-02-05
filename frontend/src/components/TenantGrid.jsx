@@ -1,5 +1,6 @@
 import React from 'react';
 import './TenantGrid.css';
+import { formatCurrency } from '../lib/currency'
 
 export default function TenantGrid({ tenants, onTenantSelect }) {
   const getStatusBadgeClass = (status) => {
@@ -19,14 +20,6 @@ export default function TenantGrid({ tenants, onTenantSelect }) {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(value);
   };
 
   return (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { tenantsApi } from '../lib/api';
+import { formatCurrency } from '../lib/currency'
 import './TenantTabs.css';
 
 export default function TenantOverviewTab({ tenant, onUpdate }) {
@@ -67,13 +68,7 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
     }
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+
 
   const getHealthStatus = () => {
     // Guard against missing burnRate (API may provide overview only)

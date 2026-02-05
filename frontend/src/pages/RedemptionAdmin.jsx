@@ -10,6 +10,7 @@ import {
   DollarSign, Users, FileText
 } from 'lucide-react';
 import api from '../lib/api';
+import { formatNumber } from '../lib/currency';
 
 export default function RedemptionAdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -119,7 +120,7 @@ function OverviewTab({ analytics }) {
     },
     {
       label: 'Points Redeemed',
-      value: analytics.total_points_redeemed.toLocaleString(),
+      value: formatNumber(analytics.total_points_redeemed),
       icon: TrendingUp,
       color: 'from-green-500 to-green-600'
     },

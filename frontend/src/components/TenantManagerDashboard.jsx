@@ -10,6 +10,7 @@ import {
 } from 'react-icons/hi2'
 import HeroSection from './DashboardComponents/HeroSection'
 import DelegationStatusTable from './DashboardComponents/DelegationStatusTable'
+import DepartmentManagementTable from './DashboardComponents/DepartmentManagementTable'
 import RecentRecognitionFeed from './DashboardComponents/RecentRecognitionFeed'
 import SpendingAnalytics from './DashboardComponents/SpendingAnalytics'
 import ActionSidebar from './DashboardComponents/ActionSidebar'
@@ -129,6 +130,9 @@ export default function TenantManagerDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Department Management Table (operational heart) */}
+            <DepartmentManagementTable onRefresh={fetchDashboardData} />
+
             {/* Delegation Status Table */}
             <DelegationStatusTable
               leads={dashboardData?.leads || []}

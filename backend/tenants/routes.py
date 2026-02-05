@@ -12,7 +12,7 @@ from auth.utils import (
 )
 from config import settings
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from models import Department, MasterBudgetLedger, SystemAdmin, Tenant, User, Wallet
+from models import Department, DepartmentBudget, MasterBudgetLedger, Budget, SystemAdmin, Tenant, User, Wallet
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from tenants.schemas import (
@@ -864,3 +864,178 @@ async def delete_department(
     db.delete(department)
     db.commit()
     return {"message": "Department deleted successfully"}
+
+
+# ------------------ Department Management (Tenant Manager) ------------------
+@router.get("/management/departments")
+async def get_departments_management(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Return department financial overview for tenant managers or HR admins"""
+    # Require tenant-scoped user
+    if not getattr(current_user, "tenant_id", None):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    departments = db.query(Department).filter(Department.tenant_id == current_user.tenant_id).all()
+
+    items = []
+    for d in departments:
+        dept_budget_balance = (
+            db.query(func.coalesce(func.sum(DepartmentBudget.allocated_points - DepartmentBudget.spent_points), 0))
+            .filter(DepartmentBudget.department_id == d.id)
+            .scalar() or 0
+        )
+
+        user_wallet_sum = (
+            db.query(func.coalesce(func.sum(Wallet.balance), 0))
+            .join(User, User.id == Wallet.user_id)
+            .filter(User.department_id == d.id)
+            .scalar() or 0
+        )
+
+        lead = db.query(User).filter(User.department_id == d.id, User.org_role == "dept_lead").first()
+        lead_name = f"{lead.first_name} {lead.last_name}" if lead else None
+
+        items.append({
+            "id": str(d.id),
+            "name": d.name,
+            "lead_name": lead_name,
+            "dept_budget_balance": float(dept_budget_balance),
+            "user_wallet_sum": float(user_wallet_sum),
+            "total_liability": float(dept_budget_balance + user_wallet_sum),
+            "employee_count": db.query(func.count(User.id)).filter(User.department_id == d.id).scalar(),
+        })
+
+    return items
+
+
+# Helper permission for Tenant Admin actions
+async def get_tenant_admin(current_user: User = Depends(get_current_user)) -> User:
+    if getattr(current_user, "role", None) in ["hr_admin", "platform_admin"]:
+        return current_user
+    if getattr(current_user, "org_role", None) == "tenant_manager":
+        return current_user
+    raise HTTPException(status_code=403, detail="Tenant admin access required")
+
+
+@router.post("/departments/{department_id}/add-points")
+async def add_points_to_department(
+    department_id: UUID,
+    request: InjectPointsRequest,
+    current_user: User = Depends(get_tenant_admin),
+    db: Session = Depends(get_db),
+):
+    """Move points from tenant master pool into a department budget (Tenant Manager / HR Admin)"""
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    if Decimal(str(request.amount)) > Decimal(str(tenant.master_budget_balance or 0)):
+        raise HTTPException(status_code=400, detail="Insufficient master pool balance")
+
+    tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance or 0)) - Decimal(str(request.amount))
+
+    ledger = MasterBudgetLedger(
+        tenant_id=tenant.id,
+        transaction_type="debit",
+        amount=request.amount,
+        balance_after=tenant.master_budget_balance,
+        description=f"Allocated to department {department_id}: {request.description}",
+    )
+    db.add(ledger)
+
+    # Find or create active budget
+    budget = (
+        db.query(Budget)
+        .filter(Budget.tenant_id == tenant.id, Budget.status == "active")
+        .order_by(Budget.created_at.desc())
+        .first()
+    )
+
+    if not budget:
+        from datetime import datetime
+        budget = Budget(
+            tenant_id=tenant.id,
+            name=f"Ad-hoc Allocation {datetime.utcnow().date()}",
+            fiscal_year=datetime.utcnow().year,
+            total_points=request.amount,
+            allocated_points=request.amount,
+            status="active",
+            created_by=current_user.id,
+        )
+        db.add(budget)
+        db.flush()
+
+    dept_budget = (
+        db.query(DepartmentBudget)
+        .filter(DepartmentBudget.department_id == department_id, DepartmentBudget.budget_id == budget.id)
+        .first()
+    )
+    if not dept_budget:
+        dept_budget = DepartmentBudget(
+            tenant_id=tenant.id,
+            budget_id=budget.id,
+            department_id=department_id,
+            allocated_points=request.amount,
+            spent_points=0,
+        )
+        db.add(dept_budget)
+    else:
+        dept_budget.allocated_points = Decimal(str(dept_budget.allocated_points or 0)) + Decimal(str(request.amount))
+
+    db.commit()
+
+    updated_dept_balance = (
+        db.query(func.coalesce(func.sum(DepartmentBudget.allocated_points - DepartmentBudget.spent_points), 0))
+        .filter(DepartmentBudget.department_id == department_id)
+        .scalar() or 0
+    )
+
+    db.refresh(tenant)
+
+    return {
+        "department_id": str(department_id),
+        "dept_budget_balance": float(updated_dept_balance),
+        "master_balance": float(tenant.master_budget_balance),
+    }
+
+
+@router.post("/departments/{department_id}/assign-lead")
+async def assign_department_lead(
+    department_id: UUID,
+    payload: dict,
+    current_user: User = Depends(get_tenant_admin),
+    db: Session = Depends(get_db),
+):
+    """Assign a department lead (Tenant Manager / HR Admin)"""
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+
+    user = (
+        db.query(User)
+        .filter(User.id == user_id, User.tenant_id == current_user.tenant_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if str(user.department_id) != str(department_id):
+        raise HTTPException(status_code=400, detail="User does not belong to the specified department")
+
+    existing_leads = (
+        db.query(User)
+        .filter(User.department_id == department_id, User.org_role == "dept_lead")
+        .all()
+    )
+    for l in existing_leads:
+        l.org_role = "employee"
+
+    user.org_role = "dept_lead"
+
+    db.commit()
+
+    return {"message": "Lead assigned", "department_id": str(department_id), "lead_id": str(user.id)}

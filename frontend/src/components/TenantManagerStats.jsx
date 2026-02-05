@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { HiOutlineBanknotes, HiOutlineExclamationCircle } from 'react-icons/hi2'
+import { formatNumber } from '../lib/currency'
 
 export default function TenantManagerStats() {
   const [allocationStats, setAllocationStats] = useState(null)
@@ -80,7 +81,7 @@ export default function TenantManagerStats() {
       <div className="mb-4">
         <p className="text-sm text-gray-600 mb-1">Available to Distribute</p>
         <p className={`text-3xl font-bold ${isNoBalance ? 'text-yellow-600' : 'text-gray-900'}`}>
-          {balance.toLocaleString()}
+          {formatNumber(balance)}
         </p>
         <p className="text-sm text-gray-500 mt-1">{allocationStats.currency_label}</p>
       </div>

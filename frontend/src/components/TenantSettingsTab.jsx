@@ -226,7 +226,7 @@ export default function TenantSettingsTab({ tenant, onUpdate, setMessage }) {
           </div>
 
           <div className="form-group">
-            <label>Conversion Rate ($1 = X Points)</label>
+            <label>Conversion Rate (₹1 = X Points)</label>
             <input
               type="number"
               name="conversion_rate"

@@ -1,4 +1,5 @@
 import { HiOutlineBanknotes, HiOutlineUsers, HiOutlineWallet } from 'react-icons/hi2'
+import { formatNumber } from '../../lib/currency'
 
 /**
  * HeroSection Component
@@ -10,7 +11,7 @@ export default function HeroSection({ stats, currency = 'INR' }) {
   const cards = [
     {
       title: 'Company Pool (Master)',
-      value: stats.master_pool?.toLocaleString() || 0,
+      value: formatNumber(stats.master_pool) || 0,
       subtitle: 'Points available for you to distribute or delegate',
       icon: HiOutlineBanknotes,
       gradient: 'from-blue-500 to-blue-600',
@@ -19,7 +20,7 @@ export default function HeroSection({ stats, currency = 'INR' }) {
     },
     {
       title: 'Total Delegated',
-      value: stats.total_delegated?.toLocaleString() || 0,
+      value: formatNumber(stats.total_delegated) || 0,
       subtitle: 'Budget currently in the hands of your Department Leads',
       icon: HiOutlineUsers,
       gradient: 'from-purple-500 to-purple-600',
@@ -28,7 +29,7 @@ export default function HeroSection({ stats, currency = 'INR' }) {
     },
     {
       title: 'Wallet Circulation',
-      value: stats.total_in_wallets?.toLocaleString() || 0,
+      value: formatNumber(stats.total_in_wallets) || 0,
       subtitle: 'Points earned by employees and ready for redemption',
       icon: HiOutlineWallet,
       gradient: 'from-emerald-500 to-emerald-600',

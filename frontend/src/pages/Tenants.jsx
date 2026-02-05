@@ -18,20 +18,7 @@ import {
   HiOutlineEye,
   HiOutlineCurrencyDollar
 } from 'react-icons/hi'
-
-export default function Tenants() {
-  const { user } = useAuthStore()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
-  const [selectedTenant, setSelectedTenant] = useState(null)
-  const [activeDropdown, setActiveDropdown] = useState(null)
-  const [provName, setProvName] = useState('')
-  const [provSlug, setProvSlug] = useState('')
-  const [slugTouched, setSlugTouched] = useState(false)
-  const queryClient = useQueryClient()
-
-  const { data: tenants, isLoading } = useQuery({
+import { formatCurrency } from '../lib/currency'
     queryKey: ['tenants'],
     queryFn: async () => {
       const response = await tenantsAPI.getAll()
@@ -200,7 +187,7 @@ export default function Tenants() {
             <div>
               <p className="text-sm text-gray-500 font-medium">Total Balance</p>
               <h3 className="text-2xl font-bold text-gray-900">
-                ₹{stats?.totalBalance ? stats.totalBalance.toLocaleString('en-IN') : '0'}
+                {formatCurrency(stats?.totalBalance) || '₹0'}
               </h3>
             </div>
           </div>
@@ -266,7 +253,7 @@ export default function Tenants() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                    ₹{parseFloat(tenant.master_budget_balance).toLocaleString('en-IN')}
+                    {formatCurrency(tenant.master_budget_balance)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {tenant.status === 'ACTIVE' ? (
@@ -466,13 +453,13 @@ export default function Tenants() {
               className="p-6 space-y-4"
             >
               <div className="space-y-2">
-                <label className="label">Amount (USD)</label>
+                <label className="label">Amount (INR)</label>
                 <input 
                   name="amount" 
                   type="number" 
-                  step="0.01" 
+                  step="1" 
                   className="input h-12 text-lg font-bold" 
-                  placeholder="0.00" 
+                  placeholder="0" 
                   required 
                   autoFocus
                 />

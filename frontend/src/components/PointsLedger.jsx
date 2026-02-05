@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HiOutlineChevronDown, HiOutlineSearch, HiOutlineFilter, HiOutlineArrowDownTray } from 'react-icons/hi2'
-import { formatCurrency } from '../lib/currency'
+import { formatCurrency, formatNumber } from '../lib/currency'
 
 export default function PointsLedger({ viewType = 'allocation', tenantId = null }) {
   const [transactions, setTransactions] = useState([])
@@ -293,14 +293,14 @@ export default function PointsLedger({ viewType = 'allocation', tenantId = null 
                             : 'text-green-600'
                         }`}>
                           {tx.transaction_type === 'debit' || tx.source === 'redemption' ? '-' : '+'}
-                          {(tx.amount || tx.points)?.toLocaleString()}
+                          {formatNumber(tx.amount || tx.points || 0)}
                         </div>
                       </td>
 
                       {/* Balance After */}
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="text-sm font-medium text-gray-900">
-                          {(tx.balance_after || 0)?.toLocaleString()}
+                          {formatNumber(tx.balance_after || 0)}
                         </div>
                       </td>
 
@@ -347,11 +347,11 @@ export default function PointsLedger({ viewType = 'allocation', tenantId = null 
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-gray-600">Amount:</dt>
-                        <dd className="text-gray-900 font-semibold">{(tx.amount || tx.points)?.toLocaleString()}</dd>
+                        <dd className="text-gray-900 font-semibold">{formatNumber(tx.amount || tx.points || 0)}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-gray-600">Balance After:</dt>
-                        <dd className="text-gray-900 font-semibold">{(tx.balance_after || 0)?.toLocaleString()}</dd>
+                        <dd className="text-gray-900 font-semibold">{formatNumber(tx.balance_after || 0)}</dd>
                       </div>
                     </dl>
                   </div>

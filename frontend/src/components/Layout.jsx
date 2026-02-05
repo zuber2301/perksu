@@ -3,8 +3,8 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { notificationsAPI } from '../lib/api'
+import TopHeader from './TopHeader'
 import {
-  HiOutlineHome,
   HiOutlineSparkles,
   HiOutlineGift,
   HiOutlineNewspaper,
@@ -12,16 +12,12 @@ import {
   HiOutlineChartBar,
   HiOutlineUsers,
   HiOutlineClipboardList,
-  HiOutlineBell,
-  HiOutlineLogout,
-  HiOutlineUser,
-  HiOutlineMenu,
-  HiOutlineX,
   HiOutlineOfficeBuilding,
   HiOutlineLink,
   HiOutlineCog,
   HiOutlineShieldCheck,
-  HiOutlineChevronDown
+  HiOutlineMenu,
+  HiOutlineX
 } from 'react-icons/hi'
 
 const navigation = [
@@ -50,25 +46,6 @@ const ROLE_DISPLAY_NAMES = {
   tenant_manager: 'Tenant Manager',
   manager: 'Manager',
   employee: 'Employee'
-}
-
-// Persona-aware navigation
-const getPersonaTabs = (role) => {
-  if (role === 'hr_admin' || role === 'tenant_manager') {
-    return [
-      { label: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
-      { label: 'Feed 📱', href: '/feed' },
-      { label: 'Wallet', href: '/wallet', icon: HiOutlineCash },
-      { label: 'Redeem', href: '/redeem', icon: HiOutlineGift },
-    ]
-  }
-  // Default for employees and managers
-  return [
-    { label: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
-    { label: 'Feed 📱', href: '/feed' },
-    { label: 'Wallet', href: '/wallet', icon: HiOutlineCash },
-    { label: 'Redeem', href: '/redeem', icon: HiOutlineGift },
-  ]
 }
 
 const getAdminDropdownItems = (role) => {
@@ -106,8 +83,7 @@ export default function Layout() {
     return roles.includes(user?.role)
   }
 
-  // Get persona-specific tabs
-  const personaTabs = getPersonaTabs(user?.role)
+  // Get admin dropdown items
   const adminDropdownItems = getAdminDropdownItems(user?.role)
 
   return (
@@ -221,73 +197,8 @@ export default function Layout() {
 
       {/* Main content */}
       <div className="lg:pl-64 flex flex-col">
-        {/* Top bar with persona-aware tabs */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-          {/* Slim top bar removed */}
-
-          {/* Primary navigation tabs */}
-          {personaTabs && (
-            <div className="hidden lg:flex items-center h-16 px-4 lg:px-8">
-              {/* Navigation tabs */}
-              <div className="flex items-center gap-6">
-                <NavLink
-                  to="/recognize"
-                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
-                >
-                  Recognize
-                </NavLink>
-
-                <NavLink
-                  to="/feed"
-                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
-                >
-                  Feed 📱
-                </NavLink>
-
-                <NavLink
-                  to="/wallet"
-                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
-                >
-                  Wallet
-                </NavLink>
-
-                <NavLink
-                  to="/redeem"
-                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
-                >
-                  Redeem
-                </NavLink>
-
-                {/* Notifications Bell */}
-                <div className="relative">
-                  <button className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors">
-                    <HiOutlineBell className="w-5 h-5" />
-                    {notificationCount?.data?.count > 0 && (
-                      <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Profile Link */}
-                <NavLink
-                  to="/profile"
-                  className={({ isActive }) => isActive ? 'nav-link-active' : 'nav-link'}
-                >
-                  <HiOutlineUser className="w-5 h-5" />
-                </NavLink>
-
-                {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-red-600 transition-colors"
-                  title="Logout"
-                >
-                  <HiOutlineLogout className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          )}
-        </header>
+        {/* Top Header with persona-aware navigation */}
+        <TopHeader />
 
         {/* Page content */}
         <main className="flex-1 p-4 lg:p-6">

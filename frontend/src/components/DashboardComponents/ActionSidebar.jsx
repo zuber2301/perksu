@@ -1,4 +1,5 @@
 import { HiOutlinePlusCircle, HiOutlineBell, HiOutlineDocumentArrowDown } from 'react-icons/hi2'
+import { formatNumber } from '../../lib/currency'
 
 /**
  * ActionSidebar Component
@@ -113,7 +114,7 @@ export default function ActionSidebar({
             <div>
               <p className="text-sm opacity-90 mb-1">Active Users</p>
               <p className="text-2xl font-bold">
-                {stats.active_users_count?.toLocaleString() || 0}
+                {formatNumber(stats.active_users_count) || 0}
               </p>
             </div>
 
@@ -121,7 +122,7 @@ export default function ActionSidebar({
               <p className="text-sm opacity-90 mb-2">Available to Distribute</p>
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-bold">
-                  {stats.master_pool?.toLocaleString() || 0}
+                  {formatNumber(stats.master_pool) || 0}
                 </p>
                 <p className="text-sm opacity-75">points</p>
               </div>

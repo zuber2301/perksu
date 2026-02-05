@@ -148,6 +148,43 @@ export const auditAPI = {
   getEntityTypes: () => api.get('/audit/entity-types'),
 }
 
+// Departments API
+export const departmentsAPI = {
+  getAll: () => api.get('/departments'),
+  getById: (id) => api.get(`/departments/${id}`),
+  create: (data) => api.post('/departments', data),
+  update: (id, data) => api.put(`/departments/${id}`, data),
+  delete: (id) => api.delete(`/departments/${id}`),
+  getManagementList: () => api.get('/tenants/management/departments'),
+  addPoints: (departmentId, data) => api.post(`/tenants/departments/${departmentId}/add-points`, data),
+  assignLead: (departmentId, data) => api.post(`/tenants/departments/${departmentId}/assign-lead`, data),
+  getMasterPool: () => api.get('/departments/master-pool'),
+  allocateBudget: (id, data) => api.post(`/departments/${id}/allocate`, data),
+}
+
+// Marketplace API
+export const marketplaceAPI = {
+  getAll: (params) => api.get('/marketplace/items', { params }),
+  getById: (id) => api.get(`/marketplace/items/${id}`),
+  createItem: (data) => api.post('/marketplace/items', data),
+  updateItem: (id, data) => api.put(`/marketplace/items/${id}`, data),
+  deleteItem: (id) => api.delete(`/marketplace/items/${id}`),
+  getBrands: () => api.get('/marketplace/brands'),
+  getMarkupSettings: () => api.get('/marketplace/markup-settings'),
+  updateMarkupSettings: (data) => api.put('/marketplace/markup-settings', data),
+}
+
+// Analytics API
+export const analyticsAPI = {
+  getAnalytics: (params) => api.get('/analytics', { params }),
+  getDepartments: () => api.get('/analytics/departments'),
+  getRedemptionTrends: (params) => api.get('/analytics/redemption-trends', { params }),
+  getDepartmentPerformance: (params) => api.get('/analytics/department-performance', { params }),
+  getPopularCategories: (params) => api.get('/analytics/popular-categories', { params }),
+  getUserEngagement: (params) => api.get('/analytics/user-engagement', { params }),
+  exportReport: (params) => api.get('/analytics/export', { params, responseType: 'blob' }),
+}
+
 // Alias exports for component compatibility
 export const recognitionApi = recognitionAPI
 export const usersApi = usersAPI
@@ -159,6 +196,9 @@ export const notificationsApi = notificationsAPI
 export const tenantsApi = tenantsAPI
 export const auditApi = auditAPI
 export const authApi = authAPI
+export const departmentsApi = departmentsAPI
+export const marketplaceApi = marketplaceAPI
+export const analyticsApi = analyticsAPI
 
 export { api }
 

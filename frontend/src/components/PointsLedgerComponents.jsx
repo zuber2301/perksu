@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HiOutlineXMark, HiOutlineEye, HiOutlineTrash } from 'react-icons/hi2'
+import { formatNumber } from '../lib/currency'
 
 /**
  * LedgerRow Component - Individual transaction row with expand/collapse
@@ -45,7 +46,7 @@ export function LedgerRow({ transaction, isExpanded, onToggle, onAction, type = 
             </td>
             <td className="px-6 py-4">
               <div className="text-sm font-semibold text-green-600">
-                +{transaction.amount?.toLocaleString()}
+                +{formatNumber(transaction.amount || transaction.points || 0)}
               </div>
             </td>
           </>
@@ -59,7 +60,7 @@ export function LedgerRow({ transaction, isExpanded, onToggle, onAction, type = 
                 transaction.transaction_type === 'debit' ? 'text-red-600' : 'text-green-600'
               }`}>
                 {transaction.transaction_type === 'debit' ? '-' : '+'}
-                {(transaction.points || transaction.amount)?.toLocaleString()}
+                {formatNumber(transaction.points || transaction.amount || 0)}
               </div>
             </td>
           </>
@@ -97,7 +98,7 @@ export function LedgerRow({ transaction, isExpanded, onToggle, onAction, type = 
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Amount</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {(transaction.amount || transaction.points)?.toLocaleString()} pts
+                  {formatNumber(transaction.amount || transaction.points || 0)} pts
                 </p>
               </div>
               <div>
@@ -150,19 +151,19 @@ export function LedgerSummary({ transactions, type = 'allocation' }) {
 
       <div className="bg-white rounded-lg shadow p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Total Amount</p>
-        <p className="text-2xl font-bold text-gray-900">{stats.totalAmount.toLocaleString()}</p>
+        <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalAmount)}</p>
         <p className="text-xs text-gray-500 mt-1">points</p>
       </div>
 
       <div className="bg-white rounded-lg shadow p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Total Credits</p>
-        <p className="text-2xl font-bold text-green-600">+{stats.credits.toLocaleString()}</p>
+        <p className="text-2xl font-bold text-green-600">+{formatNumber(stats.credits)}</p>
         <p className="text-xs text-gray-500 mt-1">incoming</p>
       </div>
 
       <div className="bg-white rounded-lg shadow p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Total Debits</p>
-        <p className="text-2xl font-bold text-red-600">-{stats.debits.toLocaleString()}</p>
+        <p className="text-2xl font-bold text-red-600">-{formatNumber(stats.debits)}</p>
         <p className="text-xs text-gray-500 mt-1">outgoing</p>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { HiOutlineHand, HiOutlineHeart } from 'react-icons/hi2'
+import { HiOutlineHandRaised, HiOutlineHeart } from 'react-icons/hi2'
 
 /**
  * RecentRecognitionFeed Component
@@ -130,7 +130,7 @@ export default function RecentRecognitionFeed({ recognitions, onRefresh }) {
         </div>
       ) : (
         <div className="px-6 py-12 text-center text-gray-500">
-          <HiOutlineHand className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <HiOutlineHandRaised className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>No recent recognitions yet. Encourage your team to celebrate wins!</p>
         </div>
       )}

@@ -447,7 +447,7 @@ export default function PointsAllocationDashboard() {
                           </td>
                           <td className="px-6 py-4">
                             <span className="text-sm font-semibold text-green-600">
-                              {wallet.points.toLocaleString()}
+                              {formatNumber(wallet.points)}
                             </span>
                           </td>
                           <td className="px-6 py-4">

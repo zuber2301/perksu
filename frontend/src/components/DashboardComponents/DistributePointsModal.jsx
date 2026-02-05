@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HiOutlineXMark } from 'react-icons/hi2'
+import { formatNumber } from '../../lib/currency'
 
 /**
  * DistributePointsModal Component
@@ -98,7 +99,7 @@ export default function DistributePointsModal({
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-xs text-gray-600 mb-1">Available to Distribute</p>
             <p className="text-2xl font-bold text-blue-600">
-              {availablePoints.toLocaleString()}
+              {formatNumber(availablePoints)}
             </p>
           </div>
 
@@ -134,7 +135,7 @@ export default function DistributePointsModal({
               {leads.map(lead => (
                 <option key={lead.id} value={lead.id}>
                   {lead.name}
-                  {lead.budget && ` (Current: ${lead.budget.toLocaleString()} pts)`}
+                  {lead.budget && ` (Current: ${formatNumber(lead.budget)} pts)`}
                 </option>
               ))}
             </select>
@@ -181,13 +182,13 @@ export default function DistributePointsModal({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Points to Distribute:</span>
                   <span className="font-semibold">
-                    {parseFloat(formData.amount || 0).toLocaleString()}
+                    {formatNumber(parseFloat(formData.amount || 0))}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Remaining After:</span>
                   <span className="font-semibold text-blue-600">
-                    {(availablePoints - parseFloat(formData.amount || 0)).toLocaleString()}
+                    {formatNumber(availablePoints - parseFloat(formData.amount || 0))}
                   </span>
                 </div>
               </div>

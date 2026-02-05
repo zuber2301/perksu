@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HiOutlinePencil, HiOutlineTrash, HiOutlineEye } from 'react-icons/hi2'
+import { formatNumber } from '../../lib/currency'
 
 /**
  * DelegationStatusTable Component
@@ -85,12 +86,12 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm font-medium text-gray-900">
-                        {lead.budget?.toLocaleString() || 0} pts
+                        {formatNumber(lead.budget) || 0} pts
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">
-                        {lead.used?.toLocaleString() || 0} pts
+                        {formatNumber(lead.used) || 0} pts
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -159,9 +160,7 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
               Total Assigned
             </p>
             <p className="text-lg font-bold text-gray-900">
-              {leads
-                .reduce((sum, lead) => sum + (lead.budget || 0), 0)
-                .toLocaleString()}
+              {formatNumber(leads.reduce((sum, lead) => sum + (lead.budget || 0), 0))}
               pts
             </p>
           </div>
@@ -170,9 +169,7 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
               Total Used
             </p>
             <p className="text-lg font-bold text-gray-900">
-              {leads
-                .reduce((sum, lead) => sum + (lead.used || 0), 0)
-                .toLocaleString()}
+              {formatNumber(leads.reduce((sum, lead) => sum + (lead.used || 0), 0))}
               pts
             </p>
           </div>
@@ -181,10 +178,10 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
               Remaining
             </p>
             <p className="text-lg font-bold text-green-600">
-              {(
+              {formatNumber(
                 leads.reduce((sum, lead) => sum + (lead.budget || 0), 0) -
                 leads.reduce((sum, lead) => sum + (lead.used || 0), 0)
-              ).toLocaleString()}
+              )}
               pts
             </p>
           </div>

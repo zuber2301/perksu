@@ -16,6 +16,11 @@ import Tenants from './pages/Tenants'
 import AdminUserManagement from './components/AdminUserManagement'
 import TenantSettings from './components/TenantSettings'
 import InviteLinkGenerator from './components/InviteLinkGenerator'
+import TenantManagerDashboard from './components/TenantManagerDashboard'
+import Departments from './pages/Departments'
+import Marketplace from './pages/Marketplace'
+import Analytics from './pages/Analytics'
+import Settings from './pages/Settings'
 
 function PrivateRoute({ children, requiredRole = null }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -74,6 +79,31 @@ function App() {
         <Route path="tenants" element={
           <PrivateRoute requiredRole="platform_admin">
             <Tenants />
+          </PrivateRoute>
+        } />
+        <Route path="dashboard/manager" element={
+          <PrivateRoute>
+            <TenantManagerDashboard />
+          </PrivateRoute>
+        } />
+        <Route path="departments" element={
+          <PrivateRoute>
+            <Departments />
+          </PrivateRoute>
+        } />
+        <Route path="marketplace" element={
+          <PrivateRoute>
+            <Marketplace />
+          </PrivateRoute>
+        } />
+        <Route path="analytics" element={
+          <PrivateRoute>
+            <Analytics />
+          </PrivateRoute>
+        } />
+        <Route path="settings" element={
+          <PrivateRoute requiredRole={['hr_admin', 'tenant_manager']}>
+            <Settings />
           </PrivateRoute>
         } />
         <Route path="profile" element={<Profile />} />
