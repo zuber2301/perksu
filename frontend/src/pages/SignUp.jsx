@@ -115,7 +115,11 @@ export default function SignUp() {
       
       // Redirect after 2 seconds
       setTimeout(() => {
-        navigate('/dashboard')
+        if (user?.role === 'platform_admin') {
+          navigate('/tenants')
+        } else {
+          navigate('/dashboard')
+        }
       }, 2000)
     },
     onError: (error) => {

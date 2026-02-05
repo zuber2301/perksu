@@ -190,6 +190,7 @@ export default function Users() {
     const colors = {
       platform_admin: 'bg-red-100 text-red-800',
       hr_admin: 'bg-purple-100 text-purple-800',
+      tenant_manager: 'bg-purple-100 text-purple-800',
       manager: 'bg-blue-100 text-blue-800',
       employee: 'bg-green-100 text-green-800',
     }
@@ -752,6 +753,7 @@ export default function Users() {
                     <option value="employee">Employee</option>
                     <option value="manager">Manager</option>
                     <option value="hr_admin">HR Admin</option>
+                    <option value="tenant_manager">Tenant Manager</option>
                   </select>
                 </div>
               </div>

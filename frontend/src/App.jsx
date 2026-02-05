@@ -24,11 +24,29 @@ function PrivateRoute({ children, requiredRole = null }) {
     return <Navigate to="/login" />
   }
   
-  if (requiredRole && user?.role !== requiredRole && user?.role !== 'platform_admin') {
-    return <Navigate to="/dashboard" />
+  if (requiredRole) {
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
+    if (!roles.includes(user?.role) && user?.role !== 'platform_admin') {
+      return <Navigate to="/dashboard" />
+    }
   }
   
   return children
+}
+
+function DashboardRoute() {
+  const { isAuthenticated, user } = useAuthStore()
+  if (!isAuthenticated) return <Navigate to="/login" />
+  
+  // Platform admin sees Tenants view at /dashboard
+  if (user?.role === 'platform_admin') return <Tenants />
+  
+  // Tenant managers and other organizational roles see Dashboard
+  const dashboardRoles = ['tenant_manager', 'hr_admin', 'manager', 'employee']
+  if (dashboardRoles.includes(user?.role)) return <Dashboard />
+  
+  // Fallback to login if role unknown
+  return <Navigate to="/login" />
 }
 
 function App() {
@@ -45,7 +63,7 @@ function App() {
         </PrivateRoute>
       }>
         <Route index element={<Navigate to="/dashboard" />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="dashboard" element={<DashboardRoute />} />
         <Route path="feed" element={<Feed />} />
         <Route path="recognize" element={<Recognize />} />
         <Route path="redeem" element={<Redeem />} />
@@ -53,7 +71,11 @@ function App() {
         <Route path="budgets" element={<Budgets />} />
         <Route path="users" element={<Users />} />
         <Route path="audit" element={<Audit />} />
-        <Route path="tenants" element={<Tenants />} />
+        <Route path="tenants" element={
+          <PrivateRoute requiredRole="platform_admin">
+            <Tenants />
+          </PrivateRoute>
+        } />
         <Route path="profile" element={<Profile />} />
         
         {/* Admin Routes */}
@@ -65,13 +87,13 @@ function App() {
         
         {/* HR Admin Routes */}
         <Route path="settings/organization" element={
-          <PrivateRoute requiredRole="hr_admin">
+          <PrivateRoute requiredRole={['hr_admin', 'tenant_manager']}>
             <TenantSettings />
           </PrivateRoute>
         } />
         
         <Route path="admin/invite" element={
-          <PrivateRoute requiredRole="hr_admin">
+          <PrivateRoute requiredRole={['hr_admin', 'tenant_manager']}>
             <InviteLinkGenerator />
           </PrivateRoute>
         } />

@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { HiOutlineSparkles, HiOutlineGift, HiOutlineTrendingUp, HiOutlineUsers } from 'react-icons/hi'
 import { formatCurrency } from '../lib/currency'
 import WalletBalance from '../components/WalletBalance'
+import StatCard from '../components/StatCard'
 import FeedCard from '../components/FeedCard'
 
 export default function Dashboard() {
@@ -13,11 +14,13 @@ export default function Dashboard() {
   const { data: wallet } = useQuery({
     queryKey: ['myWallet'],
     queryFn: () => walletsAPI.getMyWallet(),
+    enabled: user?.role !== 'platform_admin',
   })
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['myRecognitionStats'],
     queryFn: () => recognitionAPI.getMyStats(),
+    enabled: user?.role !== 'platform_admin',
   })
 
   const { data: feed } = useQuery({
@@ -41,52 +44,44 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <WalletBalance wallet={wallet?.data} />
         
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Recognitions Given</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.data?.total_given || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-perksu-purple/10 rounded-xl flex items-center justify-center">
-              <HiOutlineSparkles className="w-6 h-6 text-perksu-purple" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2 font-medium">
-             Current Quarter: {formatCurrency(stats?.data?.points_given || 0)}
-          </p>
-        </div>
+        <StatCard
+          title="Recognitions Given"
+          value={stats?.data?.total_given || 0}
+          icon={<HiOutlineSparkles className="w-6 h-6 text-white" />}
+          gradient
+          loading={statsLoading}
+          footerLeft={
+            <span className="text-white/80 font-medium">
+              Current Quarter: {formatCurrency(stats?.data?.points_given || 0)}
+            </span>
+          }
+        />
 
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Recognitions Received</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.data?.total_received || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-perksu-green/10 rounded-xl flex items-center justify-center">
-              <HiOutlineTrendingUp className="w-6 h-6 text-perksu-green" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2 font-medium">
-             Total Rewards: {formatCurrency(stats?.data?.points_received || 0)}
-          </p>
-        </div>
+        <StatCard
+          title="Recognitions Received"
+          value={stats?.data?.total_received || 0}
+          icon={<HiOutlineTrendingUp className="w-6 h-6 text-white" />}
+          gradient
+          loading={statsLoading}
+          footerLeft={
+            <span className="text-white/80 font-medium">
+              Total Rewards: {formatCurrency(stats?.data?.points_received || 0)}
+            </span>
+          }
+        />
 
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Top Badge</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats?.data?.top_badges?.[0]?.name || 'None yet'}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-perksu-orange/10 rounded-xl flex items-center justify-center">
-              <HiOutlineGift className="w-6 h-6 text-perksu-orange" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">
-            {stats?.data?.top_badges?.[0]?.count || 0} times received
-          </p>
-        </div>
+        <StatCard
+          title="Top Badge"
+          value={stats?.data?.top_badges?.[0]?.name || 'None yet'}
+          icon={<HiOutlineGift className="w-6 h-6 text-white" />}
+          gradient
+          loading={statsLoading}
+          footerLeft={
+            <span className="text-white/80">
+              {stats?.data?.top_badges?.[0]?.count || 0} times received
+            </span>
+          }
+        />
       </div>
 
       {/* Recent activity */}

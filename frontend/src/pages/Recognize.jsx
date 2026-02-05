@@ -55,8 +55,8 @@ export default function Recognize() {
   }
 
   const pathways = [
-    { id: 'individual_award', name: 'Individual Award', description: 'Manager-to-employee high impact recognition', icon: HiOutlineSparkles, color: 'orange', roles: ['manager', 'hr_admin', 'platform_admin'] },
-    { id: 'group_award', name: 'Group Award', description: 'Celebrate team-wide wins and project milestones', icon: HiOutlineUsers, color: 'blue', roles: ['manager', 'hr_admin', 'platform_admin'] },
+    { id: 'individual_award', name: 'Individual Award', description: 'Manager-to-employee high impact recognition', icon: HiOutlineSparkles, color: 'orange', roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] },
+    { id: 'group_award', name: 'Group Award', description: 'Celebrate team-wide wins and project milestones', icon: HiOutlineUsers, color: 'blue', roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] },
     { id: 'ecard', name: 'Send E-Card', description: 'Personalized cards for birthdays and milestones', icon: HiOutlineStar, color: 'purple' },
   ]
 

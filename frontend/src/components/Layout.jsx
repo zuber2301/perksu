@@ -25,7 +25,6 @@ import {
 } from 'react-icons/hi'
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HiOutlineHome },
   { name: 'Feed', href: '/feed', icon: HiOutlineNewspaper },
   { name: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
   { name: 'Redeem', href: '/redeem', icon: HiOutlineGift },
@@ -34,27 +33,28 @@ const navigation = [
 
 const adminNavigation = [
   { name: 'Tenants', href: '/tenants', icon: HiOutlineOfficeBuilding, roles: ['platform_admin'] },
-  { name: 'Budgets', href: '/budgets', icon: HiOutlineChartBar, roles: ['manager', 'hr_admin', 'platform_admin'] },
-  { name: 'Users', href: '/users', icon: HiOutlineUsers, roles: ['hr_admin', 'platform_admin'] },
-  { name: 'Audit Log', href: '/audit', icon: HiOutlineClipboardList, roles: ['hr_admin', 'platform_admin'] },
+  { name: 'Budgets', href: '/budgets', icon: HiOutlineChartBar, roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] },
+  { name: 'Users', href: '/users', icon: HiOutlineUsers, roles: ['hr_admin', 'tenant_manager', 'platform_admin'] },
+  { name: 'Audit Log', href: '/audit', icon: HiOutlineClipboardList, roles: ['hr_admin', 'tenant_manager', 'platform_admin'] },
 ]
 
 const adminPanelNavigation = [
   { name: 'User Management', href: '/admin/users', icon: HiOutlineShieldCheck, roles: ['platform_admin'], section: 'Platform Admin' },
-  { name: 'Organization Settings', href: '/settings/organization', icon: HiOutlineCog, roles: ['hr_admin', 'platform_admin'], section: 'HR Admin' },
-  { name: 'Generate Invites', href: '/admin/invite', icon: HiOutlineLink, roles: ['hr_admin', 'platform_admin'], section: 'HR Admin' },
+  { name: 'Organization Settings', href: '/settings/organization', icon: HiOutlineCog, roles: ['hr_admin', 'tenant_manager', 'platform_admin'], section: 'HR Admin' },
+  { name: 'Generate Invites', href: '/admin/invite', icon: HiOutlineLink, roles: ['hr_admin', 'tenant_manager', 'platform_admin'], section: 'HR Admin' },
 ]
 
 const ROLE_DISPLAY_NAMES = {
   platform_admin: 'Perksu Admin',
   hr_admin: 'HR Admin',
+  tenant_manager: 'Tenant Manager',
   manager: 'Manager',
   employee: 'Employee'
 }
 
 // Persona-aware navigation
 const getPersonaTabs = (role) => {
-  if (role === 'hr_admin') {
+  if (role === 'hr_admin' || role === 'tenant_manager') {
     return [
       { label: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
       { label: 'Feed 📱', href: '/feed' },
@@ -72,7 +72,7 @@ const getPersonaTabs = (role) => {
 }
 
 const getAdminDropdownItems = (role) => {
-  if (role === 'hr_admin') {
+  if (role === 'hr_admin' || role === 'tenant_manager') {
     return [
       { label: 'Budgets', href: '/budgets', icon: HiOutlineChartBar },
       { label: 'Users', href: '/users', icon: HiOutlineUsers },
@@ -93,6 +93,7 @@ export default function Layout() {
     queryKey: ['notificationCount'],
     queryFn: () => notificationsAPI.getCount(),
     refetchInterval: 30000,
+    enabled: user?.role !== 'platform_admin',
   })
 
   const handleLogout = () => {

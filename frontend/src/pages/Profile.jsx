@@ -1,11 +1,13 @@
 import { useAuthStore } from '../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { walletsAPI, recognitionAPI } from '../lib/api'
-import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase } from 'react-icons/hi'
+import StatCard from '../components/StatCard'
+import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase, HiOutlineSparkles, HiOutlineCash, HiOutlineTrendingUp, HiOutlineEmojiHappy } from 'react-icons/hi'
 
 const ROLE_DISPLAY_NAMES = {
   platform_admin: 'Perksu Admin',
   hr_admin: 'HR Admin',
+  tenant_manager: 'Tenant Manager',
   manager: 'Manager',
   employee: 'Employee'
 }
@@ -13,14 +15,16 @@ const ROLE_DISPLAY_NAMES = {
 export default function Profile() {
   const { user } = useAuthStore()
 
-  const { data: wallet } = useQuery({
+  const { data: wallet, isLoading: walletLoading } = useQuery({
     queryKey: ['myWallet'],
     queryFn: () => walletsAPI.getMyWallet(),
+    enabled: user?.role !== 'platform_admin',
   })
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['myRecognitionStats'],
     queryFn: () => recognitionAPI.getMyStats(),
+    enabled: user?.role !== 'platform_admin',
   })
 
   return (
@@ -73,23 +77,35 @@ export default function Profile() {
       {/* Stats */}
       <div className="card">
         <h2 className="text-lg font-semibold mb-4">Recognition Stats</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Points Balance</p>
-            <p className="text-2xl font-bold text-perksu-purple">{wallet?.data?.balance || 0}</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Lifetime Earned</p>
-            <p className="text-2xl font-bold text-green-600">{wallet?.data?.lifetime_earned || 0}</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Recognitions Given</p>
-            <p className="text-2xl font-bold text-blue-600">{stats?.data?.total_given || 0}</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Recognitions Received</p>
-            <p className="text-2xl font-bold text-orange-600">{stats?.data?.total_received || 0}</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <StatCard
+            title="Points Balance"
+            value={wallet?.data?.balance || 0}
+            icon={<HiOutlineCash className="w-6 h-6 text-white" />}
+            gradient
+            loading={walletLoading}
+          />
+          <StatCard
+            title="Lifetime Earned"
+            value={wallet?.data?.lifetime_earned || 0}
+            icon={<HiOutlineTrendingUp className="w-6 h-6 text-white" />}
+            gradient
+            loading={walletLoading}
+          />
+          <StatCard
+            title="Recognitions Given"
+            value={stats?.data?.total_given || 0}
+            icon={<HiOutlineSparkles className="w-6 h-6 text-white" />}
+            gradient
+            loading={statsLoading}
+          />
+          <StatCard
+            title="Recognitions Received"
+            value={stats?.data?.total_received || 0}
+            icon={<HiOutlineEmojiHappy className="w-6 h-6 text-white" />}
+            gradient
+            loading={statsLoading}
+          />
         </div>
       </div>
 

@@ -32,12 +32,12 @@ export const useAuthStore = create(
 
       isHRAdmin: () => {
         const { user } = get()
-        return user?.role === 'hr_admin' || user?.role === 'platform_admin'
+        return user?.role === 'hr_admin' || user?.role === 'tenant_manager' || user?.role === 'platform_admin'
       },
 
       isManager: () => {
         const { user } = get()
-        return ['manager', 'hr_admin', 'platform_admin'].includes(user?.role)
+        return ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'].includes(user?.role)
       },
     }),
     {

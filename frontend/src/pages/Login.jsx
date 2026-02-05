@@ -19,6 +19,14 @@ export default function Login() {
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
 
+  const redirectAfterLogin = (user) => {
+    if (user?.role === 'platform_admin') {
+      navigate('/tenants')
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
   useEffect(() => {
     let interval
     if (timer > 0) {
@@ -47,7 +55,7 @@ export default function Login() {
       const { access_token, user } = response.data
       setAuth(user, access_token)
       toast.success(`Welcome back, ${user.first_name}!`)
-      navigate('/dashboard')
+      redirectAfterLogin(user)
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Login failed')
@@ -64,7 +72,7 @@ export default function Login() {
       const { access_token, user } = response.data
       setAuth(user, access_token)
       toast.success(`Welcome back, ${user.first_name}!`)
-      navigate('/dashboard')
+      redirectAfterLogin(user)
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Invalid identification code')
@@ -316,27 +324,6 @@ export default function Login() {
               </div>
             </form>
           )}
-
-          {/* Demo help */}
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            <p className="text-[9px] font-medium text-gray-400 uppercase tracking-widest mb-2 text-center">Demo Accounts</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Admin', email: 'admin@demo.com' },
-                { label: 'Employee', email: 'employee@triton.com' }
-              ].map(demo => (
-                <button
-                  key={demo.email}
-                  onClick={() => setEmail(demo.email)}
-                  className="text-[9px] bg-gray-50 hover:bg-gray-100 text-gray-600 px-2 py-1.5 rounded border border-gray-200 text-left transition-colors"
-                >
-                  <span className="block font-bold text-gray-700">{demo.label}</span>
-                  {demo.email}
-                </button>
-              ))}
-            </div>
-            <p className="text-[9px] text-gray-400 mt-2 text-center italic">Default password: <span className="font-mono not-italic">jspark123</span></p>
-          </div>
 
           {/* Sign up link */}
           <div className="mt-4 pt-4 border-t border-gray-100">
