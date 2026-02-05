@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tenantsAPI } from '../lib/api'
+import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 import TenantControlPanel from '../components/TenantControlPanel'
 import { 
@@ -19,6 +20,7 @@ import {
 } from 'react-icons/hi'
 
 export default function Tenants() {
+  const { user } = useAuthStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
@@ -141,13 +143,15 @@ export default function Tenants() {
           <h1 className="text-2xl font-bold text-gray-900">Tenant Dashboard</h1>
           <p className="text-gray-500">Global oversight of all platform organizations</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="btn-primary flex items-center justify-center gap-2"
-        >
-          <HiOutlinePlus className="w-5 h-5" />
-          Provision New Tenant
-        </button>
+        {(user?.role === 'platform_admin' || user?.org_role === 'platform_admin') && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="btn-primary flex items-center justify-center gap-2"
+          >
+            <HiOutlinePlus className="w-5 h-5" />
+            Provision New Tenant
+          </button>
+        )}
       </div>
 
       {/* Stats Cards Row */}

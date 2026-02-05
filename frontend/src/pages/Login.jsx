@@ -192,7 +192,7 @@ export default function Login() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => handleRequestOTP('email')}
+                    onClick={() => setStep('email_entry')}
                     disabled={requestOtpMutation.isPending}
                     className="flex flex-col items-center justify-center py-2 bg-purple-50 border border-purple-100 rounded-xl hover:bg-purple-100 transition-all group"
                   >
@@ -218,6 +218,46 @@ export default function Login() {
                 >
                   <HiOutlineLibrary className="w-6 h-6 text-perksu-blue group-hover:scale-110 transition-transform" />
                   <span className="text-[10px] font-bold text-perksu-blue uppercase tracking-widest">Enterprise SSO Login</span>
+                </button>
+              </div>
+            </div>
+          ) : step === 'email_entry' ? (
+            /* Email Entry Step */
+            <div className="space-y-4">
+              <div className="text-center mb-2">
+                <h2 className="text-lg font-bold text-gray-900">Email Verification</h2>
+                <p className="text-xs text-gray-500">Enter your registered work email</p>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="label py-1">Email Address</label>
+                  <div className="relative">
+                    <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="input pl-10 h-10"
+                      placeholder="you@company.com"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleRequestOTP('email')}
+                  disabled={requestOtpMutation.isPending}
+                  className="w-full btn-primary h-10 font-bold"
+                >
+                  {requestOtpMutation.isPending ? 'Sending...' : 'Send OTP via Email'}
+                </button>
+
+                <button
+                  onClick={() => setStep('login')}
+                  className="w-full text-xs text-gray-500 hover:text-gray-700 font-medium"
+                >
+                  Go Back
                 </button>
               </div>
             </div>
@@ -314,7 +354,10 @@ export default function Login() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => requestOtpMutation.mutate()}
+                      onClick={() => requestOtpMutation.mutate({ 
+                        identifier: authMethod === 'email' ? email : mobilePhone, 
+                        isEmail: authMethod === 'email' 
+                      })}
                       className="text-[10px] font-semibold text-perksu-purple hover:underline"
                     >
                       Resend Code

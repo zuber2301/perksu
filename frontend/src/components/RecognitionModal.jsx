@@ -63,6 +63,17 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
   }, [initialSelectedUser])
 
   useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
+  useEffect(() => {
     if (recognitionType === 'individual_award') {
       setPoints(tiers[selectedTier])
     } else if (recognitionType === 'ecard') {
@@ -164,23 +175,23 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
         
         <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-0 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-perksu-purple to-perksu-blue p-6 text-white">
+          <div className="bg-gradient-to-r from-perksu-purple to-perksu-blue p-3 px-6 text-white">
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 text-white/80 hover:text-white"
+              className="absolute top-3 right-4 text-white/80 hover:text-white"
             >
               <HiX className="w-6 h-6" />
             </button>
-            <div className="flex items-center gap-3 mb-2">
-              <HiOutlineSparkles className="w-8 h-8" />
-              <h2 className="text-2xl font-bold">New Recognition</h2>
+            <div className="flex items-center gap-2">
+              <HiOutlineSparkles className="w-5 h-5" />
+              <h2 className="text-lg font-bold">New Recognition</h2>
             </div>
-            <p className="text-white/80">Recognize contribution and build culture</p>
+            <p className="text-[10px] text-white/80">Recognize contribution and build culture</p>
           </div>
 
-          <div className="p-6">
+          <div className="p-5">
             {/* Workflow Selection */}
-            <div className="grid grid-cols-4 gap-2 mb-8">
+            <div className="grid grid-cols-4 gap-2 mb-6">
               {RECOGNITION_TYPES.map(type => (
                 <button
                   key={type.id}

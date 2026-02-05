@@ -61,7 +61,7 @@ export default function Recognize() {
   ]
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6">
       <RecognitionModal 
         isOpen={showModal} 
         onClose={() => {
@@ -74,29 +74,29 @@ export default function Recognize() {
       />
       {/* Header */}
       <div className="text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-perksu-purple to-perksu-blue rounded-2xl mb-4">
-          <HiOutlineSparkles className="w-8 h-8 text-white" />
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-perksu-purple to-perksu-blue rounded-2xl mb-3">
+          <HiOutlineSparkles className="w-6 h-6 text-white" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Recognize Someone</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Recognize Someone</h1>
+        <p className="text-sm text-gray-500">
           Show appreciation for your colleagues' great work
         </p>
       </div>
 
       {/* Pathways */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {pathways.map(path => (
           (!path.roles || path.roles.includes(user?.role)) && (
             <button
               key={path.id}
               onClick={() => handleOpenWorkflow(path.id)}
-              className="flex flex-col items-start p-6 bg-white rounded-2xl border-2 border-transparent hover:border-perksu-purple shadow-sm hover:shadow-md transition-all text-left"
+              className="flex flex-col items-start p-4 bg-white rounded-2xl border-2 border-transparent hover:border-perksu-purple shadow-sm hover:shadow-md transition-all text-left"
             >
-              <div className={`w-12 h-12 rounded-xl mb-4 flex items-center justify-center bg-${path.color}-100 text-${path.color}-600`}>
-                <path.icon className="w-6 h-6" />
+              <div className={`w-10 h-10 rounded-xl mb-3 flex items-center justify-center bg-${path.color}-100 text-${path.color}-600`}>
+                <path.icon className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">{path.name}</h3>
-              <p className="text-sm text-gray-500">{path.description}</p>
+              <h3 className="text-base font-bold text-gray-900 mb-0.5">{path.name}</h3>
+              <p className="text-xs text-gray-500">{path.description}</p>
             </button>
           )
         ))}
