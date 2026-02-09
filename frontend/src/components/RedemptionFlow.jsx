@@ -15,7 +15,9 @@ const STEPS = {
   CONFIRM: 'confirm',
   OTP: 'otp',
   DELIVERY: 'delivery',
-  SUCCESS: 'success'
+  PROCESSING: 'processing',
+  SUCCESS: 'success',
+  FAILED: 'failed'
 };
 
 export default function RedemptionFlow({ item, onClose, onComplete }) {
@@ -42,7 +44,7 @@ export default function RedemptionFlow({ item, onClose, onComplete }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post('/api/redemption/initiate', {
+      const response = await api.post('/redemptions/initiate', {
         item_type: item.item_type || (item.voucher_denomination ? 'VOUCHER' : 'MERCH'),
         item_id: item.id,
         item_name: item.name || item.vendor_name,
@@ -69,14 +71,33 @@ export default function RedemptionFlow({ item, onClose, onComplete }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post('/api/redemption/verify-otp', {
+      const response = await api.post('/redemptions/verify-otp', {
         redemption_id: redemptionId,
         otp_code: otp
       });
 
       // If voucher, go to success. If merchandise, go to delivery details
-      if (item.item_type === 'VOUCHER' || item.voucher_denomination) {
-        setStep(STEPS.SUCCESS);
+          if (item.item_type === 'VOUCHER' || item.voucher_denomination) {
+        // For vouchers, the issuance happens asynchronously in a background task.
+        // Show a processing state and poll the redemption status until completion or failure.
+        setStep(STEPS.PROCESSING);
+        // Poll for status
+        const poll = setInterval(async () => {
+          try {
+            const resp = await api.get(`/redemptions/${response.data.redemption_id}`);
+            const status = resp.data.status;
+            if (status === 'COMPLETED') {
+              clearInterval(poll);
+              setStep(STEPS.SUCCESS);
+            } else if (status === 'FAILED') {
+              clearInterval(poll);
+              setError(resp.data.failed_reason || 'Voucher issuance failed');
+              setStep(STEPS.FAILED);
+            }
+          } catch (err) {
+            // ignore transient errors
+          }
+        }, 2000);
       } else {
         setStep(STEPS.DELIVERY);
       }
@@ -102,7 +123,7 @@ export default function RedemptionFlow({ item, onClose, onComplete }) {
     setLoading(true);
     setError(null);
     try {
-      await api.post(`/api/redemption/delivery-details/${redemptionId}`, {
+      await api.post(`/redemptions/delivery-details/${redemptionId}`, {
         ...deliveryDetails
       });
 
@@ -166,6 +187,37 @@ export default function RedemptionFlow({ item, onClose, onComplete }) {
               error={error}
               onSubmit={handleSubmitDelivery}
             />
+          )}
+
+          {/* Step: Processing (background issuer) */}
+          {step === STEPS.PROCESSING && (
+            <div className="space-y-4 text-center">
+              <div className="mx-auto w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+                <svg className="animate-spin w-6 h-6 text-blue-600" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium">Processing your voucher</h3>
+              <p className="text-sm text-slate-600">We're issuing your voucher — this may take a few moments. We'll update this screen when it's ready.</p>
+              <div className="flex gap-2 justify-center mt-4">
+                <button onClick={() => { onClose(); onComplete(); }} className="px-4 py-2 text-sm border rounded">Close</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step: Failed */}
+          {step === STEPS.FAILED && (
+            <div className="space-y-4 text-center">
+              <div className="mx-auto w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" viewBox="0 0 24 24"><path d="M11.001 10h2v5h-2zM11 16h2v2h-2z" fill="currentColor"/></svg>
+              </div>
+              <h3 className="text-lg font-medium">Voucher issuance failed</h3>
+              <p className="text-sm text-slate-600">{error || 'There was an error issuing your voucher. Please try again later.'}</p>
+              <div className="flex gap-2 justify-center mt-4">
+                <button onClick={() => { onClose(); onComplete(); }} className="px-4 py-2 text-sm border rounded">Close</button>
+              </div>
+            </div>
           )}
 
           {/* Step: Success */}

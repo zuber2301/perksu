@@ -139,6 +139,9 @@ export const tenantsAPI = {
   updateDepartment: (id, data) => api.put(`/tenants/departments/${id}`, data),
   deleteDepartment: (id) => api.delete(`/tenants/departments/${id}`),
   getOverview: (id) => api.get(`/tenants/admin/tenants/${id}/overview-stats`),
+  getDepartmentManagement: () => api.get('/tenants/management/departments'),
+  allocateDepartmentBudget: (deptId, amount) => api.post(`/tenants/departments/${deptId}/add-points`, { amount, description: 'Points allocation' }),
+  assignDepartmentLead: (deptId, userId) => api.post(`/tenants/departments/${deptId}/assign-lead`, { user_id: userId }),
 }
 
 // Audit API

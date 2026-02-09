@@ -167,6 +167,7 @@ class TenantResponse(TenantBase):
     # Financials
     subscription_tier: Optional[str] = "basic"
     master_budget_balance: Optional[float] = 0.0
+    allocated_budget: Optional[float] = 0.0  # Total allocated budget loaded by platform admin
 
     # Status
     status: Optional[str] = "ACTIVE"

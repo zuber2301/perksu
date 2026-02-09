@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useQuery } from '@tanstack/react-query'
-import { authAPI } from '../lib/api'
+import { authAPI, tenantsAPI } from '../lib/api'
 import { useState, useEffect } from 'react'
 import {
   HiOutlineHome,
@@ -31,6 +31,13 @@ export default function TopHeader() {
   const { user, token, logout, updateUser } = useAuthStore()
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+
+  // Fetch current tenant info
+  const { data: tenant } = useQuery({
+    queryKey: ['tenant', 'current'],
+    queryFn: () => tenantsAPI.getCurrent(),
+    enabled: !!token,
+  })
 
   // Refresh current user to ensure we have the latest org_role
   useQuery({
@@ -161,7 +168,20 @@ export default function TopHeader() {
                   </svg>
                 </button>
                 {profileDropdownOpen && (
-                  <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    {/* Tenant Info Section */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="text-xs text-gray-500 font-medium uppercase">Account Info</div>
+                      <div className="mt-2 space-y-1">
+                        <div className="text-xs text-gray-600">
+                          <span className="font-medium">Tenant Name:</span> {tenant?.data?.organization_name || tenant?.organization_name || 'N/A'}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          <span className="font-medium">Tenant ID:</span> {tenant?.data?.id ? tenant.data.id.split('-')[0] : (tenant?.id ? tenant.id.split('-')[0] : 'N/A')}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Menu Items */}
                     <NavLink to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setProfileDropdownOpen(false)}>Profile</NavLink>
                     <button onClick={() => { handleLogout(); setProfileDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Logout</button>
                   </div>

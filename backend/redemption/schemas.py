@@ -154,6 +154,7 @@ class RedemptionResponse(BaseModel):
     status: str  # PENDING, OTP_VERIFIED, PROCESSING, COMPLETED, SHIPPED, FAILED
     voucher_code: Optional[str] = None
     tracking_number: Optional[str] = None
+    failed_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

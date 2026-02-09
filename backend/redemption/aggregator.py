@@ -52,6 +52,75 @@ class MockAggregatorClient(AggregatorClient):
             "vendor_reference": str(uuid.uuid4()),
         }
 
+
+class TangoCardClient(AggregatorClient):
+    """Minimal TangoCard implementation (requires settings.tango_api_key and account id).
+    This is a simple wrapper; for full integration, extend per TangoCard docs."""
+
+    def issue_voucher(self, tenant_id: uuid.UUID, vendor_code: str, amount: float, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        if not (getattr(settings, "tango_api_key", "") and getattr(settings, "tango_account_identifier", "")):
+            raise RuntimeError("TangoCard configuration missing")
+        try:
+            url = f"{settings.tango_api_base}/v2/clients/{settings.tango_account_identifier}/orders"
+            payload = {
+                "send": False,
+                "amount": amount,
+                "denominations": [{"denomination": amount}],
+                "vendor": vendor_code,
+                "metadata": metadata,
+            }
+            headers = {"Authorization": f"Bearer {settings.tango_api_key}", "Content-Type": "application/json"}
+            resp = requests.post(url, json=payload, headers=headers, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            # Map response fields conservatively
+            return {
+                "status": "success",
+                "voucher_code": data.get("voucher_code") or data.get("order_id") or str(uuid.uuid4()),
+                "redeem_url": data.get("redeem_url"),
+                "vendor_reference": data.get("order_id") or data.get("vendor_reference") or str(uuid.uuid4()),
+            }
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+
+
+class XoxodayClient(AggregatorClient):
+    """Minimal Xoxoday implementation (requires API key configured as XOXODAY_API_KEY).
+    Adjust according to the provider's API."""
+
+    def issue_voucher(self, tenant_id: uuid.UUID, vendor_code: str, amount: float, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        api_key = getattr(settings, "xoxoday_api_key", "")
+        api_base = getattr(settings, "xoxoday_api_base", "https://api.xoxoday.com")
+        if not api_key:
+            raise RuntimeError("Xoxoday API key not configured")
+        try:
+            url = f"{api_base}/catalogs/{vendor_code}/issue"
+            payload = {"amount": amount, "metadata": metadata}
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            resp = requests.post(url, json=payload, headers=headers, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            return {
+                "status": data.get("status", "success"),
+                "voucher_code": data.get("voucher_code") or data.get("code") or str(uuid.uuid4()),
+                "redeem_url": data.get("redeem_url") or data.get("url"),
+                "vendor_reference": data.get("reference") or data.get("vendor_reference") or str(uuid.uuid4()),
+            }
+        except Exception as e:
+            return {"status": "failed", "error": str(e)}
+
+
+# Factory
+def get_aggregator_client() -> AggregatorClient:
+    provider = getattr(settings, "aggregator_provider", "mock")
+    if provider == "mock":
+        return MockAggregatorClient()
+    if provider == "tangocard":
+        return TangoCardClient()
+    if provider == "xoxoday":
+        return XoxodayClient()
+    # Add other providers here (e.g., XoxodayClient)
+    return MockAggregatorClient()
     def check_balance(self, vendor_code: str) -> Dict[str, Any]:
         return {"vendor_code": vendor_code, "current_balance": 100000.0}
 
@@ -62,7 +131,7 @@ class MockAggregatorClient(AggregatorClient):
                 {
                     "brandKey": "amazon-in",
                     "brandName": "Amazon.in",
-                    "imageUrls": {"80w-mono": "https://img.example/amazon.png"},
+                    "imageUrls": {"80w-mono": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg"},
                     "items": [
                         {"utid": "amz-in-500", "rewardName": "Amazon ₹500", "value": 500, "currencyCode": "INR"},
                         {"utid": "amz-in-1000", "rewardName": "Amazon ₹1000", "value": 1000, "currencyCode": "INR"}
@@ -71,7 +140,7 @@ class MockAggregatorClient(AggregatorClient):
                 {
                     "brandKey": "swiggy-in",
                     "brandName": "Swiggy",
-                    "imageUrls": {"80w-mono": "https://img.example/swiggy.png"},
+                    "imageUrls": {"80w-mono": "https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Swiggy_logo.svg/1200px-Swiggy_logo.svg.png"},
                     "items": [
                         {"utid": "swig-in-250", "rewardName": "Swiggy ₹250", "value": 250, "currencyCode": "INR"},
                         {"utid": "swig-in-500", "rewardName": "Swiggy ₹500", "value": 500, "currencyCode": "INR"}
@@ -80,7 +149,7 @@ class MockAggregatorClient(AggregatorClient):
                 {
                     "brandKey": "starbucks-us",
                     "brandName": "Starbucks US",
-                    "imageUrls": {"80w-mono": "https://img.example/starbucks.png"},
+                    "imageUrls": {"80w-mono": "https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/Starbucks_Corporation_Logo_2011.svg/1200px-Starbucks_Corporation_Logo_2011.svg.png"},
                     "items": [
                         {"utid": "sbux-us-10", "rewardName": "Starbucks $10", "value": 10, "currencyCode": "USD"}
                     ]

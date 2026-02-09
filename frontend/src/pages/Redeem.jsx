@@ -2,14 +2,12 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { redemptionAPI, walletsAPI } from '../lib/api'
 import toast from 'react-hot-toast'
-import { HiOutlineGift, HiOutlineSearch, HiOutlineFilter, HiOutlineCheck } from 'react-icons/hi'
+import { HiOutlineGift, HiOutlineCheck, HiOutlineClock, HiOutlineShoppingBag } from 'react-icons/hi'
 import RewardsCatalog from '../components/RewardsCatalog'
 import RedemptionHistory from '../components/RedemptionHistory'
 
 export default function Redeem() {
   const [activeTab, setActiveTab] = useState('catalog')
-  const [selectedCategory, setSelectedCategory] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
   const [selectedVoucher, setSelectedVoucher] = useState(null)
   const queryClient = useQueryClient()
 
@@ -18,14 +16,9 @@ export default function Redeem() {
     queryFn: () => walletsAPI.getMyWallet(),
   })
 
-  const { data: categories } = useQuery({
-    queryKey: ['voucherCategories'],
-    queryFn: () => redemptionAPI.getCategories(),
-  })
-
   const { data: vouchers, isLoading: loadingVouchers } = useQuery({
-    queryKey: ['vouchers', { category: selectedCategory }],
-    queryFn: () => redemptionAPI.getVouchers({ category: selectedCategory || undefined }),
+    queryKey: ['vouchers'],
+    queryFn: () => redemptionAPI.getVouchers(),
   })
 
   const { data: redemptions } = useQuery({
@@ -57,11 +50,6 @@ export default function Redeem() {
     }
   }
 
-  const filteredVouchers = vouchers?.data?.filter(v => 
-    v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.brand_name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
   return (
     <div className="space-y-6">
       {/* Header with balance */}
@@ -81,57 +69,34 @@ export default function Redeem() {
       <div className="flex gap-4 border-b border-gray-200">
         <button
           onClick={() => setActiveTab('catalog')}
-          className={`pb-4 px-2 font-medium transition-colors ${
+          className={`pb-4 px-2 font-medium transition-colors flex items-center gap-2 ${
             activeTab === 'catalog'
               ? 'text-perksu-purple border-b-2 border-perksu-purple'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
+          <HiOutlineShoppingBag className="w-5 h-5" />
           Rewards Catalog
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`pb-4 px-2 font-medium transition-colors ${
+          className={`pb-4 px-2 font-medium transition-colors flex items-center gap-2 ${
             activeTab === 'history'
               ? 'text-perksu-purple border-b-2 border-perksu-purple'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
+          <HiOutlineClock className="w-5 h-5" />
           My Redemptions
         </button>
       </div>
 
       {activeTab === 'catalog' ? (
         <>
-          {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input pl-12"
-                placeholder="Search rewards..."
-              />
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input md:w-48"
-            >
-              <option value="">All Categories</option>
-              {categories?.data?.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-
           {/* Catalog */}
           <RewardsCatalog
-            vouchers={filteredVouchers || []}
-            isLoading={loadingVouchers}
-            balance={wallet?.data?.balance || 0}
+            vouchers={vouchers?.data || []}
+            walletBalance={wallet?.data?.balance || 0}
             onRedeem={handleRedeem}
             isRedeeming={redeemMutation.isPending}
           />

@@ -57,11 +57,15 @@ async def get_tenant_overview_stats(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     total_allocated = (
-        db.query(func.sum(MasterBudgetLedger.amount))
-        .filter(MasterBudgetLedger.tenant_id == tenant_id, MasterBudgetLedger.transaction_type == "credit")
+        db.query(func.coalesce(func.sum(Budget.total_points), 0))
+        .filter(Budget.tenant_id == tenant_id)
         .scalar()
         or 0
     )
+
+    # Fallback / additional value: allocated_budget stored on tenant
+    tenant_obj = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    stored_allocated = float(tenant_obj.allocated_budget or 0)
 
     total_spent = (
         db.query(func.sum(MasterBudgetLedger.amount))
@@ -83,6 +87,7 @@ async def get_tenant_overview_stats(
     return {
         "tenant_id": str(tenant.id),
         "total_budget_allocated": float(total_allocated),
+        "stored_allocated_budget": stored_allocated,
         "total_spent": float(total_spent),
         "budget_remaining": float(tenant.master_budget_balance or 0),
         "user_counts": {
@@ -449,8 +454,9 @@ async def inject_tenant_points(
     if request.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    # Update balance
+    # Update balance and tenant allocated budget (the total allocated by platform admin)
     tenant.master_budget_balance += Decimal(str(request.amount))
+    tenant.allocated_budget = Decimal(str(tenant.allocated_budget or 0)) + Decimal(str(request.amount))
 
     # Record transaction
     ledger_entry = MasterBudgetLedger(
@@ -740,8 +746,11 @@ async def load_tenant_budget(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Update tenant balance
+    # Update tenant balance and allocated budget
     tenant.master_budget_balance += Decimal(str(budget_data.amount))
+    tenant.allocated_budget = Decimal(str(tenant.allocated_budget or 0)) + Decimal(
+        str(budget_data.amount)
+    )
 
     # Record in ledger
     ledger_entry = MasterBudgetLedger(
@@ -935,6 +944,19 @@ async def add_points_to_department(
 
     if Decimal(str(request.amount)) > Decimal(str(tenant.master_budget_balance or 0)):
         raise HTTPException(status_code=400, detail="Insufficient master pool balance")
+
+    # Ensure tenant-level allocated budget cap is not exceeded by department allocations
+    current_dept_allocated = (
+        db.query(func.coalesce(func.sum(DepartmentBudget.allocated_points), 0))
+        .filter(DepartmentBudget.tenant_id == tenant.id)
+        .scalar()
+        or 0
+    )
+    if Decimal(str(current_dept_allocated)) + Decimal(str(request.amount)) > Decimal(str(tenant.allocated_budget or 0)):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Allocation would exceed tenant's total allocated budget ({tenant.allocated_budget or 0})",
+        )
 
     tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance or 0)) - Decimal(str(request.amount))
 

@@ -31,78 +31,88 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_database():
-    Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
 
     # Create test tenant
-    tenant = Tenant(
-        id="550e8400-e29b-41d4-a716-446655440000",
-        name="Test Corp",
-        slug="test-corp",
-        status="ACTIVE",
-        subscription_tier="basic",
-        master_budget_balance=10000,
-    )
-    db.add(tenant)
-    db.commit()
+    tenant = db.query(Tenant).filter(Tenant.slug == "test-corp").first()
+    if not tenant:
+        tenant = Tenant(
+            id="550e8400-e29b-41d4-a716-446655440000",
+            name="Test Corp",
+            slug="test-corp",
+            status="ACTIVE",
+            subscription_tier="basic",
+            master_budget_balance=10000,
+        )
+        db.add(tenant)
+        db.commit()
 
     # Create test department
-    dept = Department(
-        id="660e8400-e29b-41d4-a716-446655440001",
-        tenant_id=tenant.id,
-        name="Human Resource (HR)",
-    )
-    db.add(dept)
-    db.commit()
+    dept = db.query(Department).filter(Department.id == "660e8400-e29b-41d4-a716-446655440001").first()
+    if not dept:
+        dept = Department(
+            id="660e8400-e29b-41d4-a716-446655440001",
+            tenant_id=tenant.id,
+            name="Human Resource (HR)",
+        )
+        db.add(dept)
+        db.commit()
 
     # HR admin
-    hr = User(
-        id="770e8400-e29b-41d4-a716-446655440001",
-        tenant_id=tenant.id,
-        email="test@test.com",
-        password_hash=get_password_hash("password123"),
-        first_name="Test",
-        last_name="User",
-        role="hr_admin",
-        department_id=dept.id,
-        status="active",
-    )
-    db.add(hr)
+    hr = db.query(User).filter(User.id == "770e8400-e29b-41d4-a716-446655440001").first()
+    if not hr:
+        hr = User(
+            id="770e8400-e29b-41d4-a716-446655440001",
+            tenant_id=tenant.id,
+            email="test@test.com",
+            personal_email="test@test.com",
+            password_hash=get_password_hash("password123"),
+            first_name="Test",
+            last_name="User",
+            role="hr_admin",
+            department_id=dept.id,
+            status="active",
+        )
+        db.add(hr)
 
     # Employee
-    employee = User(
-        id="770e8400-e29b-41d4-a716-446655440002",
-        tenant_id=tenant.id,
-        email="employee@test.com",
-        password_hash=get_password_hash("password123"),
-        first_name="Test",
-        last_name="Employee",
-        role="employee",
-        department_id=dept.id,
-        status="active",
-    )
-    db.add(employee)
+    employee = db.query(User).filter(User.id == "770e8400-e29b-41d4-a716-446655440002").first()
+    if not employee:
+        employee = User(
+            id="770e8400-e29b-41d4-a716-446655440002",
+            tenant_id=tenant.id,
+            email="employee@test.com",
+            personal_email="employee@test.com",
+            password_hash=get_password_hash("password123"),
+            first_name="Test",
+            last_name="Employee",
+            role="employee",
+            department_id=dept.id,
+            status="active",
+        )
+        db.add(employee)
 
     # Platform admin (for tenant provisioning)
-    platform = User(
-        id="770e8400-e29b-41d4-a716-446655440100",
-        tenant_id=tenant.id,
-        email="platform@test.com",
-        password_hash=get_password_hash("password123"),
-        first_name="Platform",
-        last_name="Admin",
-        role="platform_admin",
-        department_id=dept.id,
-        status="active",
-    )
-    db.add(platform)
+    platform = db.query(User).filter(User.id == "770e8400-e29b-41d4-a716-446655440100").first()
+    if not platform:
+        platform = User(
+            id="770e8400-e29b-41d4-a716-446655440100",
+            tenant_id=tenant.id,
+            email="platform@test.com",
+            personal_email="platform@test.com",
+            password_hash=get_password_hash("password123"),
+            first_name="Platform",
+            last_name="Admin",
+            role="platform_admin",
+            department_id=dept.id,
+            status="active",
+        )
+        db.add(platform)
     db.commit()
 
     yield
 
-    Base.metadata.drop_all(bind=engine)
     # Re-create tables so other tests in other files have them if they expect them
-    Base.metadata.create_all(bind=engine)
     from startup_utils import init_platform_admin
 
     init_platform_admin()

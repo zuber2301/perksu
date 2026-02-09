@@ -67,13 +67,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Create an in-memory test database and override the app dependency so all tests use the same DB
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+# Create a file-based test database for better connection sharing
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test_api.db"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -89,8 +88,9 @@ except Exception:
     backend_db = importlib.import_module("database")
 
 sys.modules["database"] = backend_db
+sys.modules["backend.database"] = backend_db
 
-# Patch the real database module so everyone uses our in-memory DB
+# Patch the real database module so everyone uses our file-based DB
 backend_db.SessionLocal = TestingSessionLocal
 backend_db.engine = engine
 Base = backend_db.Base
@@ -107,10 +107,10 @@ def _override_get_db():
 
 
 # Avoid multiple imports by checking if models already in sys.modules
-if "models" not in sys.modules:
-    import models  # registers all model classes on Base
+import models  # registers all model classes on Base
 
 # Ensure the test DB schema exists before the app or any routes are imported
+print(f"DEBUG: Tables in Base.metadata: {Base.metadata.tables.keys()}")
 Base.metadata.create_all(bind=engine)
 
 # Seed platform admin
@@ -130,6 +130,9 @@ except Exception:
 
 import pytest
 from fastapi.testclient import TestClient
+from uuid import uuid4
+from decimal import Decimal
+from models import Tenant, Department, User
 
 
 # Ensure every test has the DB override, even if legacy tests try to clobber it
@@ -193,8 +196,160 @@ def create_test_token(user_id, tenant_id=None, role="platform_admin"):
     return create_access_token(token_data)
 
 
+@pytest.fixture
+def platform_tenant(db):
+    """Get or create the platform tenant"""
+    platform_tenant = db.query(Tenant).filter(Tenant.slug == "jspark").first()
+    if not platform_tenant:
+        platform_tenant = Tenant(
+            id=uuid4(),
+            name="jSpark Platform",
+            slug="jspark",
+            subscription_tier="enterprise",
+            master_budget_balance=Decimal("1000000.00"),
+            status="ACTIVE",
+        )
+        db.add(platform_tenant)
+        db.commit()
+    return platform_tenant
+
+
+@pytest.fixture
+def platform_admin_department(db, platform_tenant):
+    """Create an admin department for platform admins"""
+    dept = (
+        db.query(Department)
+        .filter(
+            Department.tenant_id == platform_tenant.id,
+            Department.name == "Platform Admin",
+        )
+        .first()
+    )
+    if not dept:
+        dept = Department(
+            id=uuid4(), tenant_id=platform_tenant.id, name="Platform Admin"
+        )
+        db.add(dept)
+        db.commit()
+    return dept
+
+
+@pytest.fixture
+def platform_admin_user(db, platform_tenant, platform_admin_department):
+    """Create a platform admin user for testing"""
+    admin = User(
+        id=uuid4(),
+        tenant_id=platform_tenant.id,
+        email="admin@sparknode.io",
+        password_hash="hashed_password",
+        first_name="Platform",
+        last_name="Admin",
+        role="platform_admin",
+        department_id=platform_admin_department.id,
+        is_super_admin=True,
+        status="active",
+    )
+    db.add(admin)
+    db.commit()
+    return admin
+
+
+@pytest.fixture
+def platform_admin_token(platform_admin_user):
+    """Create a JWT token for the platform admin user"""
+    from auth.utils import create_access_token
+    token_data = {
+        "sub": str(platform_admin_user.id),
+        "tenant_id": str(platform_admin_user.tenant_id),
+        "email": platform_admin_user.email,
+        "role": "platform_admin",
+        "type": "tenant",
+    }
+    return create_access_token(token_data)
+
+
+@pytest.fixture
+def test_tenant(db):
+    """Create a test tenant"""
+    unique_slug = f"test-company-{uuid4().hex[:8]}"
+    tenant = Tenant(
+        id=uuid4(),
+        name="Test Company",
+        slug=unique_slug,
+        subscription_tier="premium",
+        master_budget_balance=Decimal("50000.00"),
+        status="ACTIVE",
+        logo_url="https://example.com/logo.png",
+        favicon_url="https://example.com/favicon.ico",
+        theme_config={
+            "primary_color": "#007bff",
+            "secondary_color": "#6c757d",
+            "font_family": "system-ui",
+        },
+        domain_whitelist=["@test-company.com", "@test.io"],
+        auth_method="OTP_ONLY",
+        currency_label="Test Credits",
+        conversion_rate=1.0,
+        auto_refill_threshold=20.0,
+        award_tiers={"Gold": 5000, "Silver": 2500, "Bronze": 1000},
+        peer_to_peer_enabled=True,
+        expiry_policy="1_year",
+    )
+    db.add(tenant)
+    db.commit()
+    return tenant
+
+
+@pytest.fixture
+def test_tenant_manager_department(db, test_tenant):
+    """Create an admin department for the test tenant"""
+    dept = Department(id=uuid4(), tenant_id=test_tenant.id, name="Admin")
+    db.add(dept)
+    db.commit()
+    return dept
+
+
+@pytest.fixture
+def test_tenant_manager(db, test_tenant, test_tenant_manager_department):
+    """Create a tenant manager user"""
+    admin = User(
+        id=uuid4(),
+        tenant_id=test_tenant.id,
+        email="admin@test-company.com",
+        password_hash="hashed_password",
+        first_name="Tenant",
+        last_name="Manager",
+        role="hr_admin",
+        department_id=test_tenant_manager_department.id,
+        is_super_admin=True,
+        status="active",
+    )
+    db.add(admin)
+    db.commit()
+    return admin
+
+
+@pytest.fixture
+def test_tenant_manager_token(test_tenant_manager):
+    """Create a JWT token for the test tenant manager user"""
+    from auth.utils import create_access_token
+    token_data = {
+        "sub": str(test_tenant_manager.id),
+        "tenant_id": str(test_tenant_manager.tenant_id),
+        "email": test_tenant_manager.email,
+        "role": "hr_admin",
+        "type": "tenant",
+    }
+    return create_access_token(token_data)
+
+
 # Keep a session-scoped fixture to drop the schema at the end of the test session
 @pytest.fixture(scope="session", autouse=True)
 def teardown_database():
     yield
     Base.metadata.drop_all(bind=engine)
+    try:
+        if os.path.exists("./test_api.db"):
+            os.remove("./test_api.db")
+    except Exception:
+        pass

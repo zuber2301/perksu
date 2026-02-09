@@ -54,6 +54,16 @@ def issue_voucher_task(self, redemption_id: str):
             )
             db.add(ledger)
             db.commit()
+
+            # Send reward email to user if email exists
+            try:
+                from notifications.email_service import send_reward_email
+                user = db.query(User).filter(User.id == redemption.user_id).first()
+                if user and user.personal_email:
+                    send_reward_email(user.personal_email, redemption.voucher_code, redemption.delivery_details.get("redeem_url"))
+            except Exception as e:
+                print(f"[WARNING] Failed to send reward email: {e}")
+
             return {"status": "completed", "voucher_code": redemption.voucher_code}
         else:
             # REFUND Logic for Atomic Transaction

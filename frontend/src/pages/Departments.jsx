@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tenantsAPI, usersAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -7,29 +7,24 @@ import toast from 'react-hot-toast'
 import { 
   HiOutlineOfficeBuilding, 
   HiOutlinePlus, 
-  HiOutlinePencil, 
-  HiOutlineTrash,
   HiOutlineCurrencyDollar,
   HiOutlineUsers,
   HiOutlineUserAdd,
-  HiOutlineExclamation,
-  HiOutlineCheck,
-  HiOutlineX
+  HiOutlinePencil
 } from 'react-icons/hi'
+import { HiOutlineEllipsisVertical } from 'react-icons/hi2'
 
 export default function Departments() {
   const [showAddPointsModal, setShowAddPointsModal] = useState(false)
   const [showAssignLeadModal, setShowAssignLeadModal] = useState(false)
   const [showCreateDeptModal, setShowCreateDeptModal] = useState(false)
-  const [showRecallModal, setShowRecallModal] = useState(false)
   const [selectedDept, setSelectedDept] = useState(null)
   const [allocationAmount, setAllocationAmount] = useState('')
-  const [recallAmount, setRecallAmount] = useState('')
   const [newDeptName, setNewDeptName] = useState('')
   const [newDeptAllocation, setNewDeptAllocation] = useState('')
   const [selectedLeadUserId, setSelectedLeadUserId] = useState('')
-  const [deptNameCheck, setDeptNameCheck] = useState({ isChecking: false, exists: false, message: '' })
   const [newlyCreatedDeptId, setNewlyCreatedDeptId] = useState(null)
+  const [openActionsMenu, setOpenActionsMenu] = useState(null)
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
 
@@ -78,49 +73,34 @@ export default function Departments() {
     },
   })
 
-  const recallMutation = useMutation({
-    mutationFn: ({ deptId, amount }) => tenantsAPI.recallDepartmentBudget(deptId, parseFloat(amount)),
-    onSuccess: (response) => {
-      toast.success(response.message)
-      queryClient.invalidateQueries(['departments', 'management'])
-      queryClient.invalidateQueries(['tenant', 'current'])
-      setShowRecallModal(false)
-      setSelectedDept(null)
-      setRecallAmount('')
-    },
-    onError: (error) => {
-      const detail = error.response?.data?.detail || error.message || 'Failed to recall budget'
-      toast.error(detail)
-    },
-  })
 
-  // Debounced department name checking
-  useEffect(() => {
-    if (!newDeptName.trim()) {
-      setDeptNameCheck({ isChecking: false, exists: false, message: '' })
-      return
-    }
-
-    const timeoutId = setTimeout(async () => {
-      setDeptNameCheck({ isChecking: true, exists: false, message: '' })
-      try {
-        const response = await tenantsAPI.checkDepartmentName(newDeptName)
-        setDeptNameCheck({ isChecking: false, exists: response.exists, message: response.message })
-      } catch (error) {
-        setDeptNameCheck({ isChecking: false, exists: false, message: '' })
-      }
-    }, 500)
-
-    return () => clearTimeout(timeoutId)
-  }, [newDeptName])
+  
+  // Note: Department name availability checking could be added in the future
+  // via a backend endpoint for validation
 
   const createDeptMutation = useMutation({
-    mutationFn: (data) => tenantsAPI.createDepartmentWithAllocation(data),
+    mutationFn: async (data) => {
+      // First, create the department
+      const deptResponse = await tenantsAPI.createDepartment({ name: data.name })
+      const newDeptId = deptResponse.data.id || deptResponse.id
+      
+      // Then, if there's an initial allocation, add points
+      if (data.initial_allocation && data.initial_allocation > 0) {
+        await tenantsAPI.allocateDepartmentBudget(newDeptId, data.initial_allocation)
+      }
+      
+      // Finally, if there's a lead to assign, assign it
+      if (data.lead_user_id) {
+        await tenantsAPI.assignDepartmentLead(newDeptId, data.lead_user_id)
+      }
+      
+      return { ...deptResponse.data, dept_id: newDeptId, department_id: newDeptId }
+    },
     onSuccess: (response) => {
-      toast.success(`Department "${response.department_name}" created successfully!`)
+      toast.success(`Department created successfully!`)
       queryClient.invalidateQueries(['departments', 'management'])
       queryClient.invalidateQueries(['tenant', 'current'])
-      setNewlyCreatedDeptId(response.dept_id || response.department_id)
+      setNewlyCreatedDeptId(response.dept_id || response.id)
       setShowCreateDeptModal(false)
       resetCreateForm()
       
@@ -145,22 +125,25 @@ export default function Departments() {
     setNewDeptName('')
     setNewDeptAllocation('')
     setSelectedLeadUserId('')
-    setDeptNameCheck({ isChecking: false, exists: false, message: '' })
   }
 
   const handleAddPoints = (dept) => {
     setSelectedDept(dept)
     setShowAddPointsModal(true)
+    setOpenActionsMenu(null)
   }
 
   const handleAssignLead = (dept) => {
     setSelectedDept(dept)
     setShowAssignLeadModal(true)
+    setOpenActionsMenu(null)
   }
 
-  const handleRecall = (dept) => {
+  const handleEditDept = (dept) => {
     setSelectedDept(dept)
-    setShowRecallModal(true)
+    setNewDeptName(dept.name)
+    setShowCreateDeptModal(true)
+    setOpenActionsMenu(null)
   }
 
   const submitAllocation = () => {
@@ -175,35 +158,9 @@ export default function Departments() {
     assignLeadMutation.mutate({ deptId: selectedDept.id, userId })
   }
 
-  const submitRecall = () => {
-    if (!recallAmount || parseFloat(recallAmount) <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-    if (parseFloat(recallAmount) > selectedDept.unallocated_budget) {
-      toast.error('Recall amount cannot exceed department balance')
-      return
-    }
-    recallMutation.mutate({ deptId: selectedDept.id, amount: recallAmount })
-  }
-
-  const setRecallPercentage = (percentage) => {
-    const amount = (selectedDept.unallocated_budget * percentage / 100).toFixed(2)
-    setRecallAmount(amount)
-  }
-
-  const recallAll = () => {
-    setRecallAmount(selectedDept.unallocated_budget.toString())
-  }
-
   const handleCreateDepartment = () => {
     if (!newDeptName.trim()) {
       toast.error('Please enter a department name')
-      return
-    }
-
-    if (deptNameCheck.exists) {
-      toast.error('Department name already exists')
       return
     }
 
@@ -312,40 +269,41 @@ export default function Departments() {
                   <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                     {formatBudgetValue(dept.total_liability)}
                   </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button
-                      onClick={() => handleAddPoints(dept)}
-                      className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-perksu-purple text-white rounded hover:bg-perksu-purple/90 transition-colors"
-                    >
-                      <HiOutlineCurrencyDollar className="w-4 h-4" />
-                      Add Points
-                    </button>
-                    {dept.unallocated_budget > 0 && (
+                  <td className="px-6 py-4 text-right">
+                    <div className="relative inline-block">
                       <button
-                        onClick={() => handleRecall(dept)}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                        onClick={() => setOpenActionsMenu(openActionsMenu === dept.id ? null : dept.id)}
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Actions"
                       >
-                        <HiOutlineX className="w-4 h-4" />
-                        Recall
+                        <HiOutlineEllipsisVertical className="w-5 h-5" />
                       </button>
-                    )}
-                    {!dept.dept_lead_name ? (
-                      <button
-                        onClick={() => handleAssignLead(dept)}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                      >
-                        <HiOutlineUserAdd className="w-4 h-4" />
-                        Assign Lead
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {/* TODO: Navigate to department users */}}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                      >
-                        <HiOutlineUsers className="w-4 h-4" />
-                        View Users
-                      </button>
-                    )}
+                      {openActionsMenu === dept.id && (
+                        <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-40">
+                          <button
+                            onClick={() => handleAddPoints(dept)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 first:rounded-t-lg"
+                          >
+                            <HiOutlineCurrencyDollar className="w-4 h-4" />
+                            Add points
+                          </button>
+                          <button
+                            onClick={() => handleAssignLead(dept)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <HiOutlineUserAdd className="w-4 h-4" />
+                            Assign Lead
+                          </button>
+                          <button
+                            onClick={() => handleEditDept(dept)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 last:rounded-b-lg"
+                          >
+                            <HiOutlinePencil className="w-4 h-4" />
+                            Edit Dept.
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -474,21 +432,6 @@ export default function Departments() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-perksu-purple focus:border-transparent"
                   placeholder="e.g., Customer Success"
                 />
-                {deptNameCheck.isChecking && (
-                  <p className="text-sm text-gray-500 mt-1">Checking availability...</p>
-                )}
-                {deptNameCheck.exists && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <HiOutlineX className="w-4 h-4 text-red-500" />
-                    <p className="text-sm text-red-600">{deptNameCheck.message}</p>
-                  </div>
-                )}
-                {!deptNameCheck.exists && newDeptName.trim() && !deptNameCheck.isChecking && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <HiOutlineCheck className="w-4 h-4 text-green-500" />
-                    <p className="text-sm text-green-600">Department name is available</p>
-                  </div>
-                )}
               </div>
 
               {/* Initial Allocation */}
@@ -548,7 +491,7 @@ export default function Departments() {
               </button>
               <button
                 onClick={handleCreateDepartment}
-                disabled={createDeptMutation.isPending || deptNameCheck.exists || deptNameCheck.isChecking}
+                disabled={createDeptMutation.isPending}
                 className="flex-1 px-4 py-2 bg-perksu-purple text-white rounded-lg hover:bg-perksu-purple/90 transition-colors disabled:opacity-50"
               >
                 {createDeptMutation.isPending ? 'Creating...' : 'Create Department'}
@@ -558,106 +501,6 @@ export default function Departments() {
         </div>
       )}
 
-      {/* Recall Budget Modal */}
-      {showRecallModal && selectedDept && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Recall Budget: {selectedDept.name}
-            </h3>
-
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Current Department Balance</p>
-              <p className="text-xl font-bold text-perksu-purple">
-                {formatBudgetValue(selectedDept.unallocated_budget)}
-              </p>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount to Recall
-              </label>
-              <input
-                type="number"
-                value={recallAmount}
-                onChange={(e) => setRecallAmount(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Enter amount"
-                min="0"
-                max={selectedDept.unallocated_budget}
-                step="0.01"
-              />
-            </div>
-
-            {/* Quick Toggle Buttons */}
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Quick Select:</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setRecallPercentage(25)}
-                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                >
-                  25%
-                </button>
-                <button
-                  onClick={() => setRecallPercentage(50)}
-                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                >
-                  50%
-                </button>
-                <button
-                  onClick={recallAll}
-                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                >
-                  Recall All
-                </button>
-              </div>
-            </div>
-
-            {recallAmount && parseFloat(recallAmount) > 0 && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">Preview:</p>
-                <p className="text-sm">
-                  New Dept Balance: <span className="font-medium">{formatBudgetValue(selectedDept.unallocated_budget - parseFloat(recallAmount))}</span>
-                </p>
-                <p className="text-sm">
-                  New Master Pool: <span className="font-medium">{formatBudgetValue((tenant?.master_budget_balance || 0) + parseFloat(recallAmount))}</span>
-                </p>
-              </div>
-            )}
-
-            <div className="mb-4 p-3 bg-yellow-50 rounded-lg">
-              <div className="flex items-start gap-2">
-                <HiOutlineExclamation className="w-5 h-5 text-yellow-600 mt-0.5" />
-                <div className="text-sm text-yellow-800">
-                  <p className="font-medium">Warning:</p>
-                  <p>This will reduce the points available for the Department Lead to distribute. It will not affect points already in employee wallets.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowRecallModal(false)
-                  setSelectedDept(null)
-                  setRecallAmount('')
-                }}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitRecall}
-                disabled={recallMutation.isPending || !recallAmount || parseFloat(recallAmount) <= 0}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {recallMutation.isPending ? 'Recalling...' : 'Recall Budget'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

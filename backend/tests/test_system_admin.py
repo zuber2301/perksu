@@ -32,31 +32,34 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def setup_database():
     """Create all tables before each test and drop after"""
-    Base.metadata.create_all(bind=engine)
 
     db = TestingSessionLocal()
 
     # 1. Create a System Admin
-    admin = SystemAdmin(
-        email="admin@perksu.com",
-        password_hash=get_password_hash("admin123"),
-        first_name="Perksu",
-        last_name="Admin",
-        is_super_admin=True,
-        mfa_enabled=False,
-    )
-    db.add(admin)
-    db.commit()
+    admin = db.query(SystemAdmin).filter(SystemAdmin.email == "admin@perksu.com").first()
+    if not admin:
+        admin = SystemAdmin(
+            email="admin@perksu.com",
+            password_hash=get_password_hash("admin123"),
+            first_name="Perksu",
+            last_name="Admin",
+            is_super_admin=True,
+            mfa_enabled=False,
+        )
+        db.add(admin)
+        db.commit()
 
     # 2. Create a Tenant and some users
-    tenant = Tenant(
-        id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
-        name="jSpark Platform",
-        slug="jspark",
-        status="ACTIVE",
-    )
-    db.add(tenant)
-    db.commit()
+    tenant = db.query(Tenant).filter(Tenant.slug == "jspark").first()
+    if not tenant:
+        tenant = Tenant(
+            id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+            name="jSpark Platform",
+            slug="jspark",
+            status="ACTIVE",
+        )
+        db.add(tenant)
+        db.commit()
 
     # Add department
     dept = Department(tenant_id=tenant.id, name="Technology (IT)")
@@ -77,7 +80,6 @@ def setup_database():
     db.commit()
 
     yield
-    Base.metadata.drop_all(bind=engine)
 
 
 def test_system_admin_login_and_template():

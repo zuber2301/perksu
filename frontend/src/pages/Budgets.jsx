@@ -27,11 +27,16 @@ export default function Budgets() {
   const [topUpPoints, setTopUpPoints] = useState(0)
   
   const queryClient = useQueryClient()
-  const { isHRAdmin } = useAuthStore()
+  const { isHRAdmin, isManager, user } = useAuthStore()
 
   const { data: budgets, isLoading } = useQuery({
     queryKey: ['budgets'],
     queryFn: () => budgetsAPI.getAll(),
+  })
+
+  const { data: tenantInfo } = useQuery({
+    queryKey: ['tenant', 'current'],
+    queryFn: () => tenantsAPI.getCurrent(),
   })
 
   const { data: leads } = useQuery({
@@ -192,12 +197,13 @@ export default function Budgets() {
     return Math.max(0, Math.min(100, +p.toFixed(1)))
   }
 
-  if (!isHRAdmin()) {
+  // Allow HR Admins and Managers to view/operate on budgets; restrict others
+  if (!isHRAdmin() && !isManager()) {
     return (
       <div className="card text-center py-12">
         <HiOutlineChartBar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
-        <p className="text-gray-500">Only HR Admins can manage budgets.</p>
+        <p className="text-gray-500">Only HR Admins or Managers can manage and allocate budgets.</p>
       </div>
     )
   }
@@ -208,6 +214,15 @@ export default function Budgets() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Budget Management</h1>
           <p className="text-sm text-gray-500">Manage organizational budgets and lead point allocations</p>
+          {tenantInfo?.data && (
+            <div className="mt-2 flex items-center gap-4">
+              <div className="text-xs text-gray-500">Total Allocated Budget</div>
+              <div className="text-lg font-semibold text-gray-900">{(tenantInfo.data.allocated_budget || 0).toLocaleString()} pts</div>
+              <div className="text-xs text-gray-400">•</div>
+              <div className="text-xs text-gray-500">Master Pool</div>
+              <div className="text-sm font-medium text-gray-700">{(tenantInfo.data.master_budget_balance || 0).toLocaleString()} pts</div>
+            </div>
+          )}
         </div>
         {activeTab === 'budgets' && (
           <button
@@ -220,7 +235,13 @@ export default function Budgets() {
         )}
         {activeTab === 'allocations' && (
           <button
-            onClick={() => setShowEmployeeTopUpModal(true)}
+            onClick={() => {
+              // If user is a department lead, preselect their department
+              if (user?.org_role === 'dept_lead' || user?.org_role === 'tenant_lead') {
+                setTopUpDepartment(user.department_id)
+              }
+              setShowEmployeeTopUpModal(true)
+            }}
             className="btn-secondary flex items-center gap-2"
           >
             <HiOutlineCash className="w-4 h-4" />
@@ -830,11 +851,17 @@ export default function Budgets() {
 
               <div>
                 <label className="label">Department</label>
-                <select className="input" value={topUpDepartment || ''} onChange={(e) => setTopUpDepartment(e.target.value)} required>
+                <select className="input" value={topUpDepartment || ''} onChange={(e) => setTopUpDepartment(e.target.value)} required disabled={user?.org_role === 'dept_lead' || user?.org_role === 'tenant_lead'}>
                   <option value="">Select a department</option>
-                  {departments?.data?.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
+                  {user?.org_role === 'dept_lead' || user?.org_role === 'tenant_lead' ? (
+                    departments?.data?.filter(d => d.id === user.department_id).map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))
+                  ) : (
+                    departments?.data?.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))
+                  )}
                 </select>
               </div>
 

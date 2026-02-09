@@ -1,16 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { formatCurrency } from '../lib/currency'
+import { useAuthStore } from '../store/authStore'
+import { useQuery } from '@tanstack/react-query'
 import './TenantTabs.css';
 
 export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
+  const { user } = useAuthStore()
   const [injectAmount, setInjectAmount] = useState('');
   const [injectDescription, setInjectDescription] = useState('');
   const [injecting, setInjecting] = useState(false);
+
+  // New: load allocated budget form
+  const [loadAmount, setLoadAmount] = useState('');
+  const [loadDescription, setLoadDescription] = useState('Allocated budget load')
+  const [loadingAllocated, setLoadingAllocated] = useState(false);
+
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageSize] = useState(20);
   const [page, setPage] = useState(0);
+
+  // Fetch up-to-date tenant details (so we can show master balance and allocated_budget reliably)
+  const { data: tenantDetails } = useQuery({
+    queryKey: ['tenant', tenant.tenant_id],
+    queryFn: async () => { const resp = await api.get(`/tenants/${tenant.tenant_id}`); return resp.data },
+    enabled: !!tenant?.tenant_id,
+  })
+
+  const effectiveTenant = tenantDetails || tenant
 
   useEffect(() => {
     fetchTransactions();
@@ -76,6 +94,34 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
     }
   };
 
+  // Platform Admin: Load Allocated Budget (explicit action)
+  const handleLoadAllocatedBudget = async (e) => {
+    e.preventDefault();
+
+    if (!loadAmount || isNaN(parseFloat(loadAmount)) || parseFloat(loadAmount) <= 0) {
+      setMessage({ type: 'error', text: 'Please enter a valid amount to load' });
+      return;
+    }
+
+    setLoadingAllocated(true);
+    try {
+      await api.post(`/tenants/${tenant.tenant_id}/load-budget`, {
+        amount: parseFloat(loadAmount),
+        description: loadDescription || 'Platform allocated budget load',
+      });
+
+      setMessage({ type: 'success', text: `Loaded ${(parseFloat(loadAmount)).toLocaleString()} pts to allocated budget` });
+      setLoadAmount('');
+      setLoadDescription('Allocated budget load');
+      fetchTransactions();
+      onUpdate();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to load allocated budget' });
+    } finally {
+      setLoadingAllocated(false);
+    }
+  }
+
   // Use centralized INR helper (no decimals)
   // imported at top: formatCurrency
 
@@ -132,11 +178,57 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
         </form>
       </div>
 
+      {/* Platform Admin: Load Allocated Budget */}
+      {user?.role === 'platform_admin' && (
+        <div className="inject-points-section mt-6">
+          <h2>📤 Load Allocated Budget (Platform Admin)</h2>
+          <form onSubmit={handleLoadAllocatedBudget} className="inject-form">
+            <div className="form-row">
+              <div className="form-group">
+                <label>Amount</label>
+                <input
+                  type="number"
+                  value={loadAmount}
+                  onChange={(e) => setLoadAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Description (Optional)</label>
+                <input
+                  type="text"
+                  value={loadDescription}
+                  onChange={(e) => setLoadDescription(e.target.value)}
+                  placeholder="e.g., Platform allocation for FY"
+                />
+              </div>
+
+              <div className="form-group">
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={loadingAllocated}
+                >
+                  {loadingAllocated ? 'Processing...' : 'Load Allocated Budget'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Current Balance */}
       <div className="balance-card">
         <h2>Current Master Balance</h2>
-        <p className="balance-amount">{formatCurrency(tenant.master_balance)}</p>
+        <p className="balance-amount">{formatCurrency(effectiveTenant.master_budget_balance || effectiveTenant.master_balance)}</p>
         <p className="balance-label">Total Points Available</p>
+        <div className="mt-2 text-sm text-gray-600">
+          <span className="mr-4">Total Allocated Budget: <strong>{(effectiveTenant.allocated_budget || 0).toLocaleString()} pts</strong></span>
+        </div>
       </div>
 
       {/* Transaction History */}

@@ -137,6 +137,7 @@ class Tenant(Base):
     # Financials
     subscription_tier = Column(String(50), default="basic")
     master_budget_balance = Column(Numeric(15, 2), default=0)
+    allocated_budget = Column(Numeric(15, 2), default=0)  # Total budget allocated by platform admin
     master_budget_threshold = Column(Numeric(15, 2), default=100.0) # Pause if below this
     redemptions_paused = Column(Boolean, default=False)
 
