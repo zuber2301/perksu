@@ -442,12 +442,30 @@ async def initiate_redemption(
     db.add(ledger)
     db.commit()
 
-    # TODO: Send OTP via SMS/Email
-    print(f"OTP for {current_user.email}: {otp_code}")
+    # Send OTP via Email or SMS depending on user available contact
+    try:
+        from auth.email_service import send_otp_email
+        from notifications.sms_service import send_otp_sms
+
+        sent = False
+        if current_user.personal_email:
+            send_otp_email(current_user.personal_email, otp_code)
+            sent = True
+        if current_user.mobile_phone:
+            # Prefer SMS if configured; still attempt email too when available
+            sms_ok = send_otp_sms(current_user.mobile_phone, otp_code)
+            sent = sent or sms_ok
+
+        if not sent:
+            # Fallback to logging during development
+            print(f"OTP for {current_user.email} / {current_user.mobile_phone}: {otp_code}")
+    except Exception as e:
+        # Non-fatal: log and continue
+        print(f"Error sending OTP: {e}")
 
     return {
         "redemption_id": str(redemption.id),
-        "message": f"OTP sent to {current_user.email}",
+        "message": "OTP sent successfully",
         "otp_expires_in_minutes": 10,
     }
 
@@ -700,6 +718,30 @@ async def resend_reward_email(
     
     return {"message": f"Reward email resent to {current_user.email}"}
 
+
+
+@router.get("/{redemption_id}", response_model=RedemptionResponse)
+async def get_redemption_by_id(
+    redemption_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get redemption by ID (user must own it)"""
+    redemption = (
+        db.query(Redemption)
+        .filter(
+            and_(
+                Redemption.id == redemption_id,
+                Redemption.user_id == current_user.id,
+            )
+        )
+        .first()
+    )
+
+    if not redemption:
+        raise HTTPException(status_code=404, detail="Redemption not found")
+
+    return RedemptionResponse.model_validate(redemption)
 
 @router.get("/history", response_model=RedemptionListResponse)
 async def get_redemption_history(

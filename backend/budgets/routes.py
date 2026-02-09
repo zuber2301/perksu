@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
-from auth.utils import get_current_user, get_hr_admin, get_platform_admin
+from auth.utils import get_current_user, get_hr_admin, get_platform_admin, get_manager_or_above
 from budgets.schemas import (
     BudgetAllocationRequest,
     BudgetCreate,
@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from models import (
     AuditLog,
     Budget,
+    Tenant,
     DepartmentBudget,
     LeadAllocation,
     User,
@@ -77,7 +78,27 @@ async def create_budget(
     current_user: User = Depends(get_platform_admin),
     db: Session = Depends(get_db),
 ):
-    """Create a new budget (HR Admin only)"""
+    """Create a new budget (Platform Admin only). Ensure tenant-level allocation cap is not exceeded."""
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Check tenant allocation cap
+    existing_total = (
+        db.query(func.coalesce(func.sum(Budget.total_points), 0))
+        .filter(Budget.tenant_id == tenant.id)
+        .scalar()
+        or 0
+    )
+
+    if Decimal(str(existing_total)) + Decimal(str(budget_data.total_points)) > Decimal(
+        str(tenant.allocated_budget or 0)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient tenant allocated budget. Available: {tenant.allocated_budget or 0}",
+        )
+
     budget = Budget(
         tenant_id=current_user.tenant_id,
         name=budget_data.name,
@@ -234,10 +255,10 @@ async def update_budget(
 async def allocate_budget_to_departments(
     budget_id: UUID,
     allocation_data: BudgetAllocationRequest,
-    current_user: User = Depends(get_hr_admin),
+    current_user: User = Depends(get_manager_or_above),
     db: Session = Depends(get_db),
 ):
-    """Allocate budget to departments (HR Admin only)"""
+    """Allocate budget to departments (Tenant Manager / HR Admin / Manager)"""
     budget = (
         db.query(Budget)
         .filter(Budget.id == budget_id, Budget.tenant_id == current_user.tenant_id)
@@ -377,13 +398,22 @@ async def allocate_to_employee(
     budget_id: UUID,
     department_id: UUID,
     allocation: EmployeeAllocationRequest,
-    current_user: User = Depends(get_hr_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Allocate points from a department budget to a specific employee wallet (HR Admin only)
+    """Allocate points from a department budget to a specific employee wallet.
 
+    Allowed for HR Admins / Platform Admins, or the department lead/manager for the target department.
     This updates the DepartmentBudget.spent_points and creates a WalletLedger entry.
     """
+    # Permission check: HR/admins can allocate across departments; department leads only for their department
+    is_admin = current_user.role in ["hr_admin", "platform_admin"]
+    is_dept_lead = (
+        getattr(current_user, "department_id", None) == department_id
+        and getattr(current_user, "org_role", None) in ["tenant_lead", "dept_lead", "manager"]
+    )
+    if not (is_admin or is_dept_lead):
+        raise HTTPException(status_code=403, detail="Permission denied")
     # Ensure department budget exists and belongs to tenant
     dept_budget = (
         db.query(DepartmentBudget)
