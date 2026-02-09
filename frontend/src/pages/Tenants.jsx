@@ -18,7 +18,22 @@ import {
   HiOutlineEye,
   HiOutlineCurrencyDollar
 } from 'react-icons/hi'
-import { formatCurrency } from '../lib/currency'
+import { formatCurrency } from '../lib/currency';
+ 
+export default function Tenants() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [provName, setProvName] = useState('')
+  const [provSlug, setProvSlug] = useState('')
+  const [slugTouched, setSlugTouched] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
+  const [selectedTenant, setSelectedTenant] = useState(null)
+  const [activeDropdown, setActiveDropdown] = useState(null)
+
+  const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+
+  const { data: tenants = [], isLoading } = useQuery({
     queryKey: ['tenants'],
     queryFn: async () => {
       const response = await tenantsAPI.getAll()

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { HiOutlineXMark } from 'react-icons/hi2'
-import { formatCurrency } from '../../lib/currency'
+import { formatCurrency } from '../../../lib/currency'
 
 export default function AddPointsModal({ isOpen, onClose, department, availablePoints = 0, onSubmit }) {
   const [amount, setAmount] = useState('')
