@@ -31,7 +31,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
   }, [defaultType, isOpen])
 
   const [message, setMessage] = useState('')
-  const [points, setPoints] = useState(10)
+  const [points, setPoints] = useState(100)
   const [badgeId, setBadgeId] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -113,7 +113,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
   const handleClose = () => {
     setRecipients([])
     setMessage('')
-    setPoints(10)
+    setPoints(100)
     setBadgeId('')
     setIsPrivate(false)
     setSearchTerm('')
@@ -339,7 +339,9 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                       <input
                         type="number"
                         value={points}
-                        onChange={(e) => setPoints(e.target.value)}
+                        onChange={(e) => setPoints(Number(e.target.value))}
+                        min="100"
+                        step="100"
                         className="w-full bg-white border-2 border-gray-100 rounded-lg p-2 font-bold outline-none focus:border-perksu-purple"
                       />
                     </div>
@@ -380,7 +382,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Points</label>
                   <div className="flex items-center gap-2">
-                    {[10, 25, 50, 100].map(p => (
+                    {[100, 200, 500, 1000].map(p => (
                       <button
                         key={p}
                         type="button"
@@ -397,7 +399,9 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                     <input
                       type="number"
                       value={points}
-                      onChange={(e) => setPoints(e.target.value)}
+                      onChange={(e) => setPoints(Number(e.target.value))}
+                      min="100"
+                      step="100"
                       className="w-24 py-3 rounded-xl border-2 border-gray-100 text-center font-bold outline-none focus:border-perksu-purple"
                     />
                   </div>

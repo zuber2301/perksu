@@ -172,6 +172,7 @@ async def create_user(
         mobile_phone=user_data.mobile_phone,
         date_of_birth=user_data.date_of_birth,
         hire_date=user_data.hire_date,
+        status="active",  # Set to active since password is provided during manual creation
     )
     db.add(user)
     db.flush()
@@ -251,6 +252,7 @@ async def download_template(current_user: User = Depends(get_hr_admin)):
             "Last Name",
             "Work Email",
             "Personal Email",
+            "Password",
             "Mobile Number",
             "Role",
             "Department",
@@ -265,6 +267,7 @@ async def download_template(current_user: User = Depends(get_hr_admin)):
             "Manager",
             "sarah.manager@perksu.com",
             "sarah.personal@gmail.com",
+            "jspark123",
             "+919876543210",
             "manager",
             "Technology (IT)",
@@ -279,6 +282,7 @@ async def download_template(current_user: User = Depends(get_hr_admin)):
             "Employee",
             "john.employee@perksu.com",
             "john.e@yahoo.com",
+            "jspark123",
             "+919876543211",
             "employee",
             "Sales & Marketing",

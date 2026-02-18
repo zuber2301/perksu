@@ -56,19 +56,13 @@ async def get_tenant_overview_stats(
     ):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    total_allocated = (
-        db.query(func.coalesce(func.sum(Budget.total_points), 0))
-        .filter(Budget.tenant_id == tenant_id)
-        .scalar()
-        or 0
-    )
+    # Total budget ever allocated by platform admin to this org
+    stored_allocated_budget = float(tenant.allocated_budget or 0)
 
-    # Fallback / additional value: allocated_budget stored on tenant
-    tenant_obj = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-    stored_allocated = float(tenant_obj.allocated_budget or 0)
-
+    # Note: total_allocated in the overview usually refers to what's been given to the org
+    # whereas Budget sums are internal distributions. We'll use the Org's allocated_budget.
     total_spent = (
-        db.query(func.sum(MasterBudgetLedger.amount))
+        db.query(func.coalesce(func.sum(MasterBudgetLedger.amount), 0))
         .filter(MasterBudgetLedger.tenant_id == tenant_id, MasterBudgetLedger.transaction_type == "debit")
         .scalar()
         or 0
@@ -86,8 +80,7 @@ async def get_tenant_overview_stats(
 
     return {
         "tenant_id": str(tenant.id),
-        "total_budget_allocated": float(total_allocated),
-        "stored_allocated_budget": stored_allocated,
+        "total_budget_allocated": stored_allocated_budget,
         "total_spent": float(total_spent),
         "budget_remaining": float(tenant.master_budget_balance or 0),
         "user_counts": {
@@ -455,8 +448,9 @@ async def inject_tenant_points(
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     # Update balance and tenant allocated budget (the total allocated by platform admin)
-    tenant.master_budget_balance += Decimal(str(request.amount))
-    tenant.allocated_budget = Decimal(str(tenant.allocated_budget or 0)) + Decimal(str(request.amount))
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + Decimal(str(request.amount))
+    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + Decimal(str(request.amount))
+    tenant.allocated_budget = (tenant.allocated_budget or 0) + Decimal(str(request.amount))
 
     # Record transaction
     ledger_entry = MasterBudgetLedger(
@@ -747,8 +741,9 @@ async def load_tenant_budget(
         raise HTTPException(status_code=404, detail="Tenant not found")
 
     # Update tenant balance and allocated budget
-    tenant.master_budget_balance += Decimal(str(budget_data.amount))
-    tenant.allocated_budget = Decimal(str(tenant.allocated_budget or 0)) + Decimal(
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + Decimal(str(budget_data.amount))
+    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + Decimal(str(budget_data.amount))
+    tenant.allocated_budget = (tenant.allocated_budget or 0) + Decimal(
         str(budget_data.amount)
     )
 

@@ -15,6 +15,7 @@ from models import (
     Recognition,
     RecognitionComment,
     RecognitionReaction,
+    Tenant,
     User,
     Wallet,
     WalletLedger,
@@ -280,10 +281,13 @@ async def create_recognition(
 
     # Financial debits
     if total_points > 0:
+        tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
         if lead_allocation:
             lead_allocation.spent_points = (
                 Decimal(str(lead_allocation.spent_points)) + total_points
             )
+            if tenant:
+                tenant.master_budget_balance = (tenant.master_budget_balance or 0) - total_points
         elif manager_wallet:
             manager_wallet.balance = Decimal(str(manager_wallet.balance)) - total_points
             manager_wallet.lifetime_spent = (
@@ -293,6 +297,11 @@ async def create_recognition(
             dept_budget.spent_points = (
                 Decimal(str(dept_budget.spent_points)) + total_points
             )
+            if tenant:
+                tenant.master_budget_balance = (tenant.master_budget_balance or 0) - total_points
+        
+        if tenant:
+            db.add(tenant)
 
     for recipient in recipients:
         recognition = Recognition(

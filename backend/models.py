@@ -137,6 +137,7 @@ class Tenant(Base):
     # Financials
     subscription_tier = Column(String(50), default="basic")
     master_budget_balance = Column(Numeric(15, 2), default=0)
+    budget_allocation_balance = Column(Numeric(15, 2), default=0)  # Current pool for distribution
     allocated_budget = Column(Numeric(15, 2), default=0)  # Total budget allocated by platform admin
     master_budget_threshold = Column(Numeric(15, 2), default=100.0) # Pause if below this
     redemptions_paused = Column(Boolean, default=False)
@@ -295,6 +296,7 @@ class StagingUser(Base):
     raw_manager_email = Column(String(255))
     raw_personal_email = Column(String(255))
     raw_mobile_phone = Column(String(20))
+    raw_password = Column(String(255))
     raw_date_of_birth = Column(String(50))
     raw_hire_date = Column(String(50))
 
@@ -445,7 +447,7 @@ class LeadAllocation(Base):
     )
     lead_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    allocated_points = Column(Numeric(15, 2), nullable=False, default=0)
+    allocated_points = Column("allocated_budget", Numeric(15, 2), nullable=False, default=0)
     spent_points = Column(Numeric(15, 2), nullable=False, default=0)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

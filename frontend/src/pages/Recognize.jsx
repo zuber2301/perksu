@@ -4,12 +4,11 @@ import { recognitionAPI, usersAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { HiOutlineSearch, HiOutlineSparkles, HiOutlineStar, HiOutlineUsers } from 'react-icons/hi'
+import { HiOutlineSparkles, HiOutlineStar, HiOutlineUsers } from 'react-icons/hi'
 import RecognitionModal from '../components/RecognitionModal'
 import FeedCard from '../components/FeedCard'
 
 export default function Recognize() {
-  const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [defaultType, setDefaultType] = useState('standard')
@@ -31,22 +30,10 @@ export default function Recognize() {
     queryFn: () => recognitionAPI.getBadges(),
   })
 
-  const { data: searchResults, isLoading: isSearching } = useQuery({
-    queryKey: ['userSearch', searchQuery],
-    queryFn: () => usersAPI.search(searchQuery),
-    enabled: searchQuery.length >= 2,
-  })
-
   const { data: recentRecognitions } = useQuery({
     queryKey: ['recognitions', { user_id: user?.id }],
     queryFn: () => recognitionAPI.getAll({ limit: 10 }),
   })
-
-  const handleSelectUser = (selectedUser) => {
-    setSelectedUser(selectedUser)
-    setDefaultType('standard')
-    setShowModal(true)
-  }
 
   const handleOpenWorkflow = (type) => {
     setDefaultType(type)
@@ -55,9 +42,36 @@ export default function Recognize() {
   }
 
   const pathways = [
-    { id: 'individual_award', name: 'Individual Award', description: 'Manager-to-employee high impact recognition', icon: HiOutlineSparkles, color: 'orange', roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] },
-    { id: 'group_award', name: 'Group Award', description: 'Celebrate team-wide wins and project milestones', icon: HiOutlineUsers, color: 'blue', roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] },
-    { id: 'ecard', name: 'Send E-Card', description: 'Personalized cards for birthdays and milestones', icon: HiOutlineStar, color: 'purple' },
+    { 
+      id: 'standard', 
+      name: 'Standard', 
+      description: 'Peer-to-peer appreciation & badges', 
+      icon: HiOutlineStar, 
+      gradient: 'from-perksu-purple to-perksu-blue' 
+    },
+    { 
+      id: 'individual_award', 
+      name: 'Individual Award', 
+      description: 'Manager-to-employee high impact awards', 
+      icon: HiOutlineSparkles, 
+      gradient: 'from-orange-500 to-red-500', 
+      roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] 
+    },
+    { 
+      id: 'group_award', 
+      name: 'Group Award', 
+      description: 'Celebrate team-wide wins & milestones', 
+      icon: HiOutlineUsers, 
+      gradient: 'from-blue-600 to-indigo-600', 
+      roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] 
+    },
+    { 
+      id: 'ecard', 
+      name: 'E-Card', 
+      description: 'Personalized cards for milestones', 
+      icon: HiOutlineStar, 
+      gradient: 'from-purple-500 to-pink-500' 
+    },
   ]
 
   return (
@@ -84,72 +98,32 @@ export default function Recognize() {
       </div>
 
       {/* Pathways */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {pathways.map(path => (
           (!path.roles || path.roles.includes(user?.role)) && (
             <button
               key={path.id}
               onClick={() => handleOpenWorkflow(path.id)}
-              className="flex flex-col items-start p-4 bg-white rounded-2xl border-2 border-transparent hover:border-perksu-purple shadow-sm hover:shadow-md transition-all text-left"
+              className={`flex flex-col items-start p-6 rounded-2xl bg-gradient-to-br ${path.gradient} text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all text-left group relative overflow-hidden`}
             >
-              <div className={`w-10 h-10 rounded-xl mb-3 flex items-center justify-center bg-${path.color}-100 text-${path.color}-600`}>
-                <path.icon className="w-5 h-5" />
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                <path.icon className="w-16 h-16" />
               </div>
-              <h3 className="text-base font-bold text-gray-900 mb-0.5">{path.name}</h3>
-              <p className="text-xs text-gray-500">{path.description}</p>
+              <div className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center bg-white/20 backdrop-blur-sm">
+                <path.icon className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold mb-1">{path.name}</h3>
+              <p className="text-sm text-white/80 line-clamp-2">{path.description}</p>
+              
+              <div className="mt-4 flex items-center text-xs font-semibold uppercase tracking-wider bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                Start Now
+                <svg className="w-4 h-4 ml-1.5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </button>
           )
         ))}
-      </div>
-
-      {/* Search */}
-      <div className="card">
-        <label className="label font-bold text-gray-700">Quick Recognition</label>
-        <p className="text-xs text-gray-500 mb-4">Search for a colleague to give standard recognition</p>
-        <div className="relative">
-          <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="input pl-12"
-            placeholder="Search by name or email..."
-          />
-        </div>
-
-        {/* Search results */}
-        {searchQuery.length >= 2 && (
-          <div className="mt-4">
-            {isSearching ? (
-              <div className="text-center py-4 text-gray-500">Searching...</div>
-            ) : searchResults?.data?.length > 0 ? (
-              <div className="space-y-2">
-                {searchResults.data
-                  .filter((u) => u.id !== user.id)
-                  .map((searchUser) => (
-                    <button
-                      key={searchUser.id}
-                      onClick={() => handleSelectUser(searchUser)}
-                      className="w-full flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-perksu-purple hover:bg-perksu-purple/5 transition-colors text-left"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-perksu-purple to-perksu-blue flex items-center justify-center text-white font-medium">
-                        {searchUser.first_name[0]}{searchUser.last_name[0]}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">
-                          {searchUser.first_name} {searchUser.last_name}
-                        </p>
-                        <p className="text-sm text-gray-500">{searchUser.email}</p>
-                      </div>
-                      <HiOutlineStar className="w-5 h-5 text-gray-400" />
-                    </button>
-                  ))}
-              </div>
-            ) : (
-              <div className="text-center py-4 text-gray-500">No users found</div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Quick recognize - badges */}

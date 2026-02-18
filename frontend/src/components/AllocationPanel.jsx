@@ -107,7 +107,7 @@ export default function AllocationPanel({ tenantId, tenantName, onAllocationSucc
             <input
               id="amount"
               type="number"
-              min="1"
+              min="100"
               step="100"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}

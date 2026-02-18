@@ -61,7 +61,11 @@ class PointsService:
 
         try:
             # Step 1: Increase tenant's allocation pool
-            tenant.budget_allocation_balance += amount
+            # We sync both master_budget_balance and budget_allocation_balance
+            # and track the lifetime total in allocated_budget
+            tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + amount
+            tenant.master_budget_balance = (tenant.master_budget_balance or 0) + amount
+            tenant.allocated_budget = (tenant.allocated_budget or 0) + amount
             db.add(tenant)
 
             # Step 2: Create allocation log (for tenant-level audit)
@@ -151,6 +155,7 @@ class PointsService:
         try:
             # Deduct from tenant pool
             tenant.budget_allocation_balance -= amount
+            tenant.master_budget_balance = (tenant.master_budget_balance or 0) - amount
 
             # Add to lead's lead_distribution_balance (new field to add to User model)
             if not hasattr(lead, "lead_distribution_balance"):
@@ -238,6 +243,7 @@ class PointsService:
         try:
             # Step 1: Deduct from tenant's allocation pool
             tenant.budget_allocation_balance -= amount
+            tenant.master_budget_balance = (tenant.master_budget_balance or 0) - amount
 
             # Step 2: Get or create recipient's wallet
             wallet = (
@@ -332,6 +338,7 @@ class PointsService:
         try:
             # Reset allocation balance to zero
             tenant.budget_allocation_balance = Decimal(0)
+            tenant.master_budget_balance = Decimal(0)
 
             # Create platform billing log for clawback
             platform_log = PlatformBillingLog(

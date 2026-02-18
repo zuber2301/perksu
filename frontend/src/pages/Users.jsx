@@ -419,6 +419,19 @@ export default function Users() {
                             <HiOutlinePencil className="w-4 h-4 text-gray-400" />
                             Edit
                           </button>
+
+                          {user.status === 'pending_invite' && (
+                            <button 
+                              onClick={() => {
+                                bulkActionMutation.mutate({ user_ids: [user.id], action: 'activate' });
+                                setActiveDropdown(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
+                            >
+                              <HiOutlineCheckCircle className="w-4 h-4 text-green-400" />
+                              Activate User
+                            </button>
+                          )}
                           
                           {user.status !== 'deactivated' ? (
                             <button 
@@ -553,6 +566,7 @@ export default function Users() {
                         <ul className="text-[10px] space-y-1 text-perksu-purple/80">
                           <li>• Use our official CSV template for formatting</li>
                           <li>• Emails must be unique within your organization</li>
+                          <li>• Include a password (min 8 chars) for direct login</li>
                           <li>• Role must be 'manager' or 'employee'</li>
                           <li>• Mobile must follow +91XXXXXXXXXX format</li>
                         </ul>

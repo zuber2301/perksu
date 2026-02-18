@@ -79,6 +79,7 @@ def process_bulk_upload(
 
         email = str(row.get("work_email", row.get("email", ""))).strip()
         personal_email = str(row.get("personal_email", "")).strip()
+        password = str(row.get("password", "")).strip()
         mobile_phone = str(
             row.get("mobile_number", row.get("mobile_phone", ""))
         ).strip()
@@ -161,6 +162,7 @@ def process_bulk_upload(
             raw_manager_email=manager_email,
             raw_personal_email=personal_email,
             raw_mobile_phone=mobile_phone,
+            raw_password=password,
             raw_date_of_birth=dob,
             raw_hire_date=hire_date,
             is_valid=len(errors) == 0,
@@ -197,15 +199,16 @@ def commit_staging_batch(db: Session, tenant_id: uuid.UUID, batch_id: uuid.UUID)
 
     for s_user in staging_users:
         # Create user
-        # We generate a temporary password. Users will use OTP to login first time anyway
-        temp_password = generate_random_password()
+        # If a password was provided in the bulk upload, use it (hashed).
+        # Otherwise generate a temporary random one.
+        password_to_use = s_user.raw_password if s_user.raw_password else generate_random_password()
 
         user = User(
             tenant_id=tenant_id,
             email=s_user.raw_email,
             personal_email=s_user.raw_personal_email,
             mobile_phone=s_user.raw_mobile_phone,
-            password_hash=get_password_hash(temp_password),
+            password_hash=get_password_hash(password_to_use),
             first_name=s_user.first_name,
             last_name=s_user.last_name,
             role=s_user.raw_role,
@@ -214,7 +217,7 @@ def commit_staging_batch(db: Session, tenant_id: uuid.UUID, batch_id: uuid.UUID)
                 s_user.raw_date_of_birth if s_user.raw_date_of_birth else None
             ),
             hire_date=s_user.raw_hire_date if s_user.raw_hire_date else None,
-            status="pending_invite",
+            status="pending_invite" if not s_user.raw_password else "active", # If password set, make active
         )
         db.add(user)
         db.flush()
