@@ -40,8 +40,8 @@ async def get_users(
     department_id: Optional[UUID] = Query(None, description="Filter by department_id"),
     role: Optional[str] = Query(None, description="Filter by role"),
     status: Optional[str] = Query(
-        default="active",
-        description="Filter by status (active, deactivated, pending_invite)",
+        default=None,
+        description="Filter by status (active, deactivated, pending_invite). Defaults to all statuses for admins.",
     ),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -60,9 +60,9 @@ async def get_users(
     This ensures data isolation at the database layer.
 
     Example queries:
-    - GET /users -> Returns all active users in current user's tenant
+    - GET /users -> Returns all users in current user's tenant
     - GET /users?tenant_id=UUID -> (Admin only) Returns users from specified tenant
-    - GET /users?department_id=UUID -> Returns active users in department (auto-scoped to tenant)
+    - GET /users?department_id=UUID -> Returns users in department (auto-scoped to tenant)
     """
     query = db.query(User)
 
@@ -80,8 +80,15 @@ async def get_users(
         query = query.filter(User.department_id == department_id)
     if role:
         query = query.filter(User.role == role)
+    
+    # Status filtering: 
+    # If explicitly requested, use it.
+    # Otherwise, for regular users default to 'active'. 
+    # For HR/Managers, show all by default unless they specify.
     if status:
         query = query.filter(User.status == status)
+    elif current_user.role not in ["platform_admin", "hr_admin", "tenant_manager"]:
+        query = query.filter(User.status == "active")
 
     users = query.offset(skip).limit(limit).all()
     return users
@@ -141,10 +148,10 @@ async def create_user(
     db: Session = Depends(get_db),
 ):
     """Create a new user (HR Admin only)"""
-    # Check if email already exists in tenant
+    # Check if email already exists globally
     existing_user = (
         db.query(User)
-        .filter(User.tenant_id == current_user.tenant_id, User.email == user_data.email)
+        .filter(User.email == user_data.email)
         .first()
     )
     if existing_user:
@@ -158,6 +165,7 @@ async def create_user(
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         role=user_data.role,
+        org_role=user_data.org_role,
         department_id=user_data.department_id,
         manager_id=user_data.manager_id,
         personal_email=user_data.personal_email,

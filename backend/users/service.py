@@ -147,7 +147,7 @@ def process_bulk_upload(
                 errors.append(f"Department '{dept_name}' not found")
 
         # Role validation
-        valid_roles = ["hr_admin", "manager", "employee", "platform_admin"]
+        valid_roles = ["hr_admin", "manager", "employee", "platform_admin", "tenant_manager"]
         if role not in valid_roles:
             errors.append(f"Invalid role '{role}'")
 

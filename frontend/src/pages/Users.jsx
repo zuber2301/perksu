@@ -20,6 +20,8 @@ import {
 
 export default function Users() {
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [lastCreatedUser, setLastCreatedUser] = useState(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   
@@ -53,8 +55,10 @@ export default function Users() {
 
   const createMutation = useMutation({
     mutationFn: (data) => usersAPI.create(data),
-    onSuccess: () => {
-      toast.success('User created successfully')
+    onSuccess: (res) => {
+      // toast.success('User created successfully') // Temporarily disable default toast to show our custom modal
+      setLastCreatedUser(res.data)
+      setShowSuccessModal(true)
       queryClient.invalidateQueries(['users'])
       setShowCreateModal(false)
     },
@@ -140,6 +144,7 @@ export default function Users() {
       first_name: formData.get('first_name'),
       last_name: formData.get('last_name'),
       role: formData.get('role'),
+      org_role: formData.get('role'),
       department_id: formData.get('department_id') || null,
       personal_email: formData.get('personal_email') || null,
       mobile_phone: fullMobile,
@@ -808,6 +813,46 @@ export default function Users() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Creation Success Modal */}
+      {showSuccessModal && lastCreatedUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <HiOutlineCheckCircle className="w-12 h-12 text-green-600" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">User Created Successfully!</h2>
+            <p className="text-gray-500 mb-8">
+              A welcome invitation has been queued for {lastCreatedUser.first_name} {lastCreatedUser.last_name}.
+            </p>
+
+            <div className="bg-gray-50 rounded-2xl p-6 mb-8 text-left space-y-3">
+              <div className="flex justify-between">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Email</span>
+                <span className="text-sm font-medium text-gray-900">{lastCreatedUser.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Org Role</span>
+                <span className="text-sm font-medium text-gray-900 capitalize">{lastCreatedUser.org_role}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Status</span>
+                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                  {lastCreatedUser.status.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => { setShowSuccessModal(false); setLastCreatedUser(null); }}
+              className="w-full btn-primary py-4 rounded-2xl shadow-xl shadow-perksu-purple/20 font-bold"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

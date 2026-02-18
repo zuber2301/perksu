@@ -407,7 +407,7 @@ async def allocate_to_employee(
     This updates the DepartmentBudget.spent_points and creates a WalletLedger entry.
     """
     # Permission check: HR/admins can allocate across departments; department leads only for their department
-    is_admin = current_user.role in ["hr_admin", "platform_admin"]
+    is_admin = current_user.role in ["hr_admin", "platform_admin", "tenant_manager"]
     is_dept_lead = (
         getattr(current_user, "department_id", None) == department_id
         and getattr(current_user, "org_role", None) in ["tenant_lead", "dept_lead", "manager"]

@@ -91,7 +91,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('platform_admin', 'hr_admin', 'manager', 'employee')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('platform_admin', 'tenant_manager', 'hr_admin', 'manager', 'employee')),
     org_role VARCHAR(50) DEFAULT 'employee' CHECK (org_role IN ('platform_admin', 'tenant_manager', 'hr_admin', 'tenant_lead', 'manager', 'corporate_user', 'employee')),
     department_id UUID REFERENCES departments(id),
     manager_id UUID REFERENCES users(id),

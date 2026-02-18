@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { authAPI, tenantsAPI } from '../lib/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   HiOutlineHome,
   HiOutlineUser,
@@ -31,6 +31,8 @@ export default function TopHeader() {
   const { user, token, logout, updateUser } = useAuthStore()
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef(null)
+  const adminDropdownRef = useRef(null)
 
   // Fetch current tenant info
   const { data: tenant } = useQuery({
@@ -48,6 +50,22 @@ export default function TopHeader() {
       if (data) updateUser(data)
     },
   })
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false)
+      }
+      if (adminDropdownRef.current && !adminDropdownRef.current.contains(event.target)) {
+        setAdminDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Also force a fresh fetch on mount when token exists to avoid stale cache issues
   useEffect(() => {
@@ -126,7 +144,7 @@ export default function TopHeader() {
             {/* Admin dropdown (for tenant_manager) */}
             {effectiveRole === 'tenant_manager' && (
               <div className="hidden lg:flex items-center">
-                <div className="relative">
+                <div className="relative" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
                     className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
@@ -151,7 +169,7 @@ export default function TopHeader() {
 
             {/* Profile / Tenant info */}
             <div className="flex items-center gap-3">
-              <div className="relative">
+              <div className="relative" ref={profileDropdownRef}>
                 <button 
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   className="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors"
@@ -174,7 +192,10 @@ export default function TopHeader() {
                       <div className="text-xs text-gray-500 font-medium uppercase">Account Info</div>
                       <div className="mt-2 space-y-1">
                         <div className="text-xs text-gray-600">
-                          <span className="font-medium">Tenant Name:</span> {tenant?.data?.organization_name || tenant?.organization_name || 'N/A'}
+                          <span className="font-medium">Tenant Name:</span> {tenant?.data?.name || tenant?.name || 'N/A'}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          <span className="font-medium">Role:</span> {ROLE_DISPLAY_NAMES[user?.org_role] || user?.org_role || 'N/A'}
                         </div>
                         <div className="text-xs text-gray-600">
                           <span className="font-medium">Tenant ID:</span> {tenant?.data?.id ? tenant.data.id.split('-')[0] : (tenant?.id ? tenant.id.split('-')[0] : 'N/A')}

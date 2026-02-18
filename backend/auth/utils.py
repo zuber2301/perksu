@@ -135,7 +135,7 @@ def require_role(*allowed_roles):
 
 # Role-based dependencies for convenience
 async def get_hr_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in ["hr_admin", "platform_admin"]:
+    if current_user.role not in ["hr_admin", "platform_admin", "tenant_manager"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="HR Admin access required"
         )
@@ -184,7 +184,7 @@ async def require_tenant_user(current_user=Depends(get_current_user)) -> User:
 
 def verify_admin(current_user: User):
     """Raise if current_user is not HR admin or platform admin."""
-    if current_user.role not in ["hr_admin", "platform_admin"]:
+    if current_user.role not in ["hr_admin", "platform_admin", "tenant_manager"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
