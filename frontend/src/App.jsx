@@ -23,7 +23,7 @@ import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 
 function PrivateRoute({ children, requiredRole = null }) {
-  const { isAuthenticated, user } = useAuthStore()
+  const { isAuthenticated, activeRole } = useAuthStore()
   
   if (!isAuthenticated) {
     return <Navigate to="/login" />
@@ -31,7 +31,7 @@ function PrivateRoute({ children, requiredRole = null }) {
   
   if (requiredRole) {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
-    if (!roles.includes(user?.role) && user?.role !== 'platform_admin') {
+    if (!roles.includes(activeRole) && activeRole !== 'platform_admin') {
       return <Navigate to="/dashboard" />
     }
   }
@@ -40,15 +40,18 @@ function PrivateRoute({ children, requiredRole = null }) {
 }
 
 function DashboardRoute() {
-  const { isAuthenticated, user } = useAuthStore()
+  const { isAuthenticated, activeRole } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" />
   
-  // Platform admin sees Tenants view at /dashboard
-  if (user?.role === 'platform_admin') return <Tenants />
+  // Platform admin persona sees Tenants view at /dashboard
+  if (activeRole === 'platform_admin') return <Tenants />
   
-  // Tenant managers and other organizational roles see Dashboard
-  const dashboardRoles = ['hr_admin', 'dept_lead', 'user', 'platform_admin']
-  if (dashboardRoles.includes(user?.role)) return <Dashboard />
+  // HR Admin sees the management dashboard
+  if (activeRole === 'hr_admin') return <TenantManagerDashboard />
+  
+  // Dept Lead and standard User see the individual dashboard
+  const userRoles = ['dept_lead', 'user']
+  if (userRoles.includes(activeRole)) return <Dashboard />
   
   // Fallback to login if role unknown
   return <Navigate to="/login" />

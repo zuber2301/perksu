@@ -21,7 +21,17 @@ const ECARD_TEMPLATES = [
 ]
 
 export default function RecognitionModal({ isOpen, onClose, initialSelectedUser, defaultType = 'standard' }) {
+  const { user: currentUser, activeRole } = useAuthStore()
   const [recognitionType, setRecognitionType] = useState(defaultType)
+  
+  // Filter recognition types based on persona
+  const availableTypes = RECOGNITION_TYPES.filter(type => {
+    if (activeRole === 'user') {
+      return ['standard', 'ecard'].includes(type.id)
+    }
+    return true // Admins and Leads can see all
+  })
+  
   const [recipients, setRecipients] = useState([])
 
   useEffect(() => {
@@ -40,7 +50,6 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
   const [ecardTemplate, setEcardTemplate] = useState('appreciation')
   const [selectedTier, setSelectedTier] = useState('Bronze')
   
-  const { user: currentUser } = useAuthStore()
   const queryClient = useQueryClient()
 
   const { data: tenantData } = useQuery({
@@ -198,7 +207,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
           <div className="p-5">
             {/* Workflow Selection */}
             <div className="grid grid-cols-4 gap-2 mb-6">
-              {RECOGNITION_TYPES.map(type => (
+              {availableTypes.map(type => (
                 <button
                   key={type.id}
                   onClick={() => {

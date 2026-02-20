@@ -9,18 +9,18 @@ import StatCard from '../components/StatCard'
 import FeedCard from '../components/FeedCard'
 
 export default function Dashboard() {
-  const { user } = useAuthStore()
+  const { user, activeRole } = useAuthStore()
 
   const { data: wallet } = useQuery({
     queryKey: ['myWallet'],
     queryFn: () => walletsAPI.getMyWallet(),
-    enabled: user?.role !== 'platform_admin',
+    enabled: !['platform_admin'].includes(activeRole),
   })
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['myRecognitionStats'],
     queryFn: () => recognitionAPI.getMyStats(),
-    enabled: user?.role !== 'platform_admin',
+    enabled: !['platform_admin'].includes(activeRole),
   })
 
   const { data: feed } = useQuery({

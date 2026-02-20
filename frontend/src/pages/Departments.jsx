@@ -26,7 +26,7 @@ export default function Departments() {
   const [newlyCreatedDeptId, setNewlyCreatedDeptId] = useState(null)
   const [openActionsMenu, setOpenActionsMenu] = useState(null)
   const queryClient = useQueryClient()
-  const { user } = useAuthStore()
+  const { user, isHRAdmin } = useAuthStore()
 
   const { data: tenant } = useQuery({
     queryKey: ['tenant', 'current'],
@@ -184,6 +184,16 @@ export default function Departments() {
 
   const formatBudgetValue = (value) => {
     return formatCurrency(value)
+  }
+
+  if (!isHRAdmin()) {
+    return (
+      <div className="card text-center py-12">
+        <HiOutlineOfficeBuilding className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
+        <p className="text-gray-500">Only HR Admins can manage departments.</p>
+      </div>
+    )
   }
 
   if (isLoading) {

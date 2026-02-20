@@ -240,8 +240,8 @@ export default function Budgets() {
         {activeTab === 'allocations' && (
           <button
             onClick={() => {
-              // If user is a department lead, preselect their department
-              if (user?.org_role === 'dept_lead') {
+              // If user is a department lead (active persona), preselect their department if available
+              if (activeRole === 'dept_lead' && user?.department_id) {
                 setTopUpDepartment(user.department_id)
               }
               setShowEmployeeTopUpModal(true)

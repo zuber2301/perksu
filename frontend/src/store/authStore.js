@@ -18,15 +18,17 @@ export const useAuthStore = create(
       activeRole: null, // Track the currently active role
 
       setAuth: (user, token) => {
-        // Extract all available roles from the user object
-        const availableRoles = []
-        if (user?.org_role) availableRoles.push(user.org_role)
-        if (user?.role && user.role !== user.org_role) availableRoles.push(user.role)
+        // Extract the maximum role level the user has
+        const userRoles = [user?.role, user?.org_role].filter(Boolean)
+        const maxLevel = Math.max(...userRoles.map(r => ROLE_HIERARCHY[r] || 0))
         
-        // Determine default role (highest in hierarchy)
-        const defaultRole = availableRoles.sort((a, b) => 
-          (ROLE_HIERARCHY[b] || 0) - (ROLE_HIERARCHY[a] || 0)
-        )[0] || user?.org_role || user?.role
+        // Available roles are all roles in the hierarchy up to the user's maxLevel
+        const availableRoles = Object.keys(ROLE_HIERARCHY)
+          .filter(role => ROLE_HIERARCHY[role] <= maxLevel)
+          .sort((a, b) => ROLE_HIERARCHY[b] - ROLE_HIERARCHY[a])
+
+        // Default role is the highest one
+        const defaultRole = availableRoles[0] || 'user'
         
         set({
           user: { ...user, availableRoles },

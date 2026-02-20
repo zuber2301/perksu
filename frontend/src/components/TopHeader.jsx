@@ -122,7 +122,7 @@ export default function TopHeader({ onMenuClick }) {
                   onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                 >
-                  <span className="hidden sm:inline text-gray-500 font-normal mr-1">Role:</span>
+                  <span className="hidden sm:inline text-gray-500 font-normal mr-1">Persona:</span>
                   <span>{ROLE_DISPLAY_NAMES[activeRole] || activeRole}</span>
                   <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.354a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
@@ -131,8 +131,8 @@ export default function TopHeader({ onMenuClick }) {
                 {adminDropdownOpen && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
-                        Switch Role
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-100 italic">
+                        Switch Persona
                       </div>
                       {user.availableRoles.map(role => (
                         <button
@@ -168,7 +168,7 @@ export default function TopHeader({ onMenuClick }) {
                 </div>
                 <div className="hidden lg:flex flex-col text-sm leading-4 text-left mr-1">
                   <span className="font-semibold text-gray-900">{user?.first_name || 'Tenant'}</span>
-                  <span className="text-xs text-gray-500">{ROLE_DISPLAY_NAMES[user?.org_role] || ROLE_DISPLAY_NAMES[user?.role] || user?.org_role}</span>
+                  <span className="text-xs text-gray-500">{ROLE_DISPLAY_NAMES[activeRole] || activeRole} Persona</span>
                 </div>
                 <svg className="w-4 h-4 text-gray-400 hidden lg:block" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.354a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />

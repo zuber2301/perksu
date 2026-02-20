@@ -189,6 +189,11 @@ export const analyticsAPI = {
   exportReport: (params) => api.get('/analytics/export', { params, responseType: 'blob' }),
 }
 
+// Dashboard API
+export const dashboardAPI = {
+  getSummary: () => api.get('/dashboard/summary'),
+}
+
 // Alias exports for component compatibility
 export const recognitionApi = recognitionAPI
 export const usersApi = usersAPI
@@ -203,6 +208,7 @@ export const authApi = authAPI
 export const departmentsApi = departmentsAPI
 export const marketplaceApi = marketplaceAPI
 export const analyticsApi = analyticsAPI
+export const dashboardApi = dashboardAPI
 
 export { api }
 

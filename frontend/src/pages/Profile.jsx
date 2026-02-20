@@ -7,25 +7,23 @@ import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase, HiOutlineSparkles, Hi
 const ROLE_DISPLAY_NAMES = {
   platform_admin: 'Perksu Admin',
   hr_admin: 'HR Admin',
-  platform_admin: 'Perksu Admin',
-  hr_admin: 'HR Admin',
   dept_lead: 'Department Lead',
   user: 'User'
 }
 
 export default function Profile() {
-  const { user } = useAuthStore()
+  const { user, activeRole } = useAuthStore()
 
   const { data: wallet, isLoading: walletLoading } = useQuery({
     queryKey: ['myWallet'],
     queryFn: () => walletsAPI.getMyWallet(),
-    enabled: user?.role !== 'platform_admin',
+    enabled: activeRole !== 'platform_admin',
   })
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['myRecognitionStats'],
     queryFn: () => recognitionAPI.getMyStats(),
-    enabled: user?.role !== 'platform_admin',
+    enabled: activeRole !== 'platform_admin',
   })
 
   return (
@@ -38,7 +36,32 @@ export default function Profile() {
         <h1 className="text-2xl font-bold text-gray-900">
           {user?.first_name} {user?.last_name}
         </h1>
-        <p className="text-gray-500">{ROLE_DISPLAY_NAMES[user?.role] || user?.role?.replace('_', ' ')}</p>
+        <p className="text-gray-500">{ROLE_DISPLAY_NAMES[activeRole] || activeRole?.replace('_', ' ')} Persona</p>
+      </div>
+
+      {/* Contact Info */}
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4 text-gray-400 uppercase tracking-widest text-[10px]">Role Information</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <HiOutlineBriefcase className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">System Role</p>
+              <p className="font-medium text-gray-900">{ROLE_DISPLAY_NAMES[user?.role] || user?.role?.replace('_', ' ')}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <HiOutlineOfficeBuilding className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Org Role</p>
+              <p className="font-medium text-gray-900">{ROLE_DISPLAY_NAMES[user?.org_role] || user?.org_role?.replace('_', ' ')}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Contact Info */}
@@ -52,15 +75,6 @@ export default function Profile() {
             <div>
               <p className="text-sm text-gray-500">Email</p>
               <p className="font-medium">{user?.email}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-              <HiOutlineBriefcase className="w-5 h-5 text-gray-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Role</p>
-              <p className="font-medium">{ROLE_DISPLAY_NAMES[user?.role] || user?.role?.replace('_', ' ')}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">

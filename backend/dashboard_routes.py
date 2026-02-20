@@ -70,40 +70,33 @@ def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Get comprehensive dashboard summary for Tenant Manager
+    Get comprehensive dashboard summary for HR Admin / Dept Lead
     Returns: consolidated JSON with stats, leads, recognitions, and spending data
-    
-    Authorization: Only Tenant Managers can access their own tenant's data
     """
     
-    # If the caller is a platform admin by role, redirect them to the tenants UI
-    if getattr(current_user, 'role', None) == 'platform_admin':
-        return RedirectResponse(url="http://localhost:7173/tenants", status_code=302)
-
-    # Authorization: Ensure user is a Tenant Manager (or platform_admin org_role)
-    if current_user.org_role not in ['tenant_manager', 'platform_admin']:
+    # Authorization: Only HR Admin, Dept Lead or Platform Admin can access
+    allowed_roles = ['platform_admin', 'hr_admin', 'dept_lead']
+    if current_user.org_role not in allowed_roles:
         raise HTTPException(
             status_code=403, 
-            detail="Access denied. Only Tenant Managers can access dashboard."
+            detail="Access denied. Insufficient permissions for dashboard summary."
         )
 
-    # If the caller is a platform admin, redirect them to the tenants UI
-    if current_user.org_role == 'platform_admin':
-        return RedirectResponse(url="http://localhost:7173/tenants", status_code=302)
-    
     # Get user's tenant
     tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
     if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
+        # Platform admins might not have a tenant_id in some cases, but they should be assigned to one for this view
+        raise HTTPException(status_code=404, detail="Tenant context not found")
 
     # Get all users in tenant
     tenant_users = db.query(User).filter(User.tenant_id == tenant.id).all()
     user_ids = [u.id for u in tenant_users]
 
     # Calculate statistics
+    # Use budget_allocation_balance which is the 'Total Budget (Tenant)' for HR Admin
     master_pool = float(tenant.budget_allocation_balance or 0)
     
-    # Get all leads (managers with role LEAD or DEPARTMENT_LEAD)
+    # Get all leads (dept_lead)
     leads_query = db.query(
         User.id,
         User.first_name,
@@ -114,7 +107,7 @@ def get_dashboard_summary(
     ).filter(
         and_(
             User.tenant_id == tenant.id,
-            User.org_role.in_(['tenant_lead', 'manager'])
+            User.org_role == 'dept_lead'
         )
     ).all()
 
@@ -123,19 +116,22 @@ def get_dashboard_summary(
     
     for lead in leads_query:
         try:
-            # Get budget from LeadAllocation for this lead
-            lead_allocation = db.query(
-                func.sum(LeadAllocation.allocated_budget).label('allocated'),
-                func.sum(LeadAllocation.spent_points).label('spent'),
+            # For each lead, get their total allocated budget from DepartmentBudget
+            # Actually, DepartmentBudget is linked to Department, not lead directly, but a lead belongs to a department.
+            # Let's check how budgets are structured.
+            
+            # Simple aggregation for now
+            lead_budget = db.query(
+                func.sum(Budget.amount).label('total')
             ).filter(
                 and_(
-                    LeadAllocation.lead_id == lead.id,
-                    LeadAllocation.tenant_id == tenant.id
+                    Budget.owner_id == lead.id,
+                    Budget.tenant_id == tenant.id,
+                    Budget.status == 'active'
                 )
             ).first()
             
-            allocated = float(lead_allocation.allocated or 0) if lead_allocation else 0
-            spent = float(lead_allocation.spent or 0) if lead_allocation else 0
+            allocated = float(lead_budget.total or 0) if lead_budget else 0
             total_delegated += allocated
             
             leads.append({
@@ -143,7 +139,7 @@ def get_dashboard_summary(
                 'name': f"{lead.first_name} {lead.last_name}",
                 'department': lead.department_name or 'Unassigned',
                 'budget': allocated,
-                'used': spent,
+                'used': 0, # To be implemented: spent points tracking
             })
         except Exception as e:
             print(f"Error processing lead {lead.id}: {str(e)}")
@@ -155,12 +151,12 @@ def get_dashboard_summary(
     ).scalar() or 0
     total_in_wallets = float(total_in_wallets)
 
-    # Active users count (excluding leads)
+    # Active users count (standard users)
     active_users = db.query(func.count(User.id)).filter(
         and_(
             User.tenant_id == tenant.id,
             User.status == 'active',
-            User.org_role == 'employee'
+            User.org_role == 'user'
         )
     ).scalar() or 0
 

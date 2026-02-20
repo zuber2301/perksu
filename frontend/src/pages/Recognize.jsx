@@ -12,7 +12,7 @@ export default function Recognize() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [defaultType, setDefaultType] = useState('standard')
-  const { user } = useAuthStore()
+  const { user, activeRole } = useAuthStore()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -100,7 +100,7 @@ export default function Recognize() {
       {/* Pathways */}
       <div className="grid grid-cols-4 gap-3">
         {pathways.map(path => (
-          (!path.roles || path.roles.includes(user?.role)) && (
+          (!path.roles || path.roles.includes(activeRole)) && (
             <button
               key={path.id}
               onClick={() => handleOpenWorkflow(path.id)}
