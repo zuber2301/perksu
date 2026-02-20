@@ -98,26 +98,26 @@ export default function Recognize() {
       </div>
 
       {/* Pathways */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-4 gap-3">
         {pathways.map(path => (
           (!path.roles || path.roles.includes(user?.role)) && (
             <button
               key={path.id}
               onClick={() => handleOpenWorkflow(path.id)}
-              className={`flex flex-col items-start p-6 rounded-2xl bg-gradient-to-br ${path.gradient} text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all text-left group relative overflow-hidden`}
+              className={`flex flex-col items-start p-3 rounded-2xl bg-gradient-to-br ${path.gradient} text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all text-left group relative overflow-hidden`}
             >
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                <path.icon className="w-16 h-16" />
+              <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
+                <path.icon className="w-12 h-12" />
               </div>
-              <div className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center bg-white/20 backdrop-blur-sm">
-                <path.icon className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-lg mb-2 flex items-center justify-center bg-white/20 backdrop-blur-sm">
+                <path.icon className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-lg font-bold mb-1">{path.name}</h3>
-              <p className="text-sm text-white/80 line-clamp-2">{path.description}</p>
+              <h3 className="text-base font-bold mb-0.5 line-clamp-1">{path.name}</h3>
+              <p className="text-xs text-white/80 line-clamp-2">{path.description}</p>
               
-              <div className="mt-4 flex items-center text-xs font-semibold uppercase tracking-wider bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+              <div className="mt-2 flex items-center text-xs font-semibold uppercase tracking-wider bg-white/10 px-2 py-1 rounded-lg backdrop-blur-sm">
                 Start Now
-                <svg className="w-4 h-4 ml-1.5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>
