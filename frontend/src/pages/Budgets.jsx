@@ -27,7 +27,7 @@ export default function Budgets() {
   const [topUpPoints, setTopUpPoints] = useState(0)
   
   const queryClient = useQueryClient()
-  const { isHRAdmin, isManager, user } = useAuthStore()
+  const { isHRAdmin, isManager, user, activeRole } = useAuthStore()
 
   const { data: budgets, isLoading } = useQuery({
     queryKey: ['budgets'],
@@ -40,14 +40,14 @@ export default function Budgets() {
   })
 
   const { data: leads } = useQuery({
-    queryKey: ['users', { role: 'manager' }],
-    queryFn: () => usersAPI.getAll({ role: 'manager' }),
+    queryKey: ['users', { role: 'dept_lead' }],
+    queryFn: () => usersAPI.getAll({ role: 'dept_lead' }),
     enabled: activeTab === 'allocations' || activeTab === 'insights',
   })
 
   const { data: employees } = useQuery({
-    queryKey: ['users', { department_id: topUpDepartment, role: 'employee' }],
-    queryFn: () => usersAPI.getAll({ department_id: topUpDepartment, role: 'employee', status: 'active' }),
+    queryKey: ['users', { department_id: topUpDepartment, role: 'user' }],
+    queryFn: () => usersAPI.getAll({ department_id: topUpDepartment, role: 'user', status: 'active' }),
     enabled: showEmployeeTopUpModal && !!topUpDepartment,
   })
 
@@ -216,15 +216,19 @@ export default function Budgets() {
           <p className="text-sm text-gray-500">Manage organizational budgets and lead point allocations</p>
           {tenantInfo?.data && (
             <div className="mt-2 flex items-center gap-4">
-              <div className="text-xs text-gray-500">Total Allocated Budget</div>
-              <div className="text-lg font-semibold text-gray-900">{(tenantInfo.data.allocated_budget || 0).toLocaleString()} pts</div>
-              <div className="text-xs text-gray-400">•</div>
-              <div className="text-xs text-gray-500">Master Pool</div>
+              {activeRole === 'platform_admin' && (
+                <>
+                  <div className="text-xs text-gray-500">Total Allocated Budget</div>
+                  <div className="text-lg font-semibold text-gray-900">{(tenantInfo.data.allocated_budget || 0).toLocaleString()} pts</div>
+                  <div className="text-xs text-gray-400">•</div>
+                </>
+              )}
+              <div className="text-xs text-gray-500">Total Budget (Tenant)</div>
               <div className="text-sm font-medium text-gray-700">{(tenantInfo.data.master_budget_balance || 0).toLocaleString()} pts</div>
             </div>
           )}
         </div>
-        {activeTab === 'budgets' && (
+        {activeTab === 'budgets' && isHRAdmin() && (
           <button
             onClick={() => setShowCreateModal(true)}
             className="btn-primary flex items-center gap-2"
@@ -310,27 +314,25 @@ export default function Budgets() {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedBudget(budget)
+                          setShowAllocateModal(true)
+                        }}
+                        className="btn-secondary text-sm"
+                      >
+                        <HiOutlinePencil className="w-4 h-4 mr-1" />
+                        {budget.status === 'draft' ? 'Allocate' : 'Adjust'}
+                      </button>
                       {budget.status === 'draft' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setSelectedBudget(budget)
-                              setShowAllocateModal(true)
-                            }}
-                            className="btn-secondary text-sm"
-                          >
-                            <HiOutlinePencil className="w-4 h-4 mr-1" />
-                            Allocate
-                          </button>
-                          <button
-                            onClick={() => activateMutation.mutate(budget.id)}
-                            className="btn-primary text-sm"
-                            disabled={activateMutation.isPending}
-                          >
-                            <HiOutlineCheck className="w-4 h-4 mr-1" />
-                            Activate
-                          </button>
-                        </>
+                        <button
+                          onClick={() => activateMutation.mutate(budget.id)}
+                          className="btn-primary text-sm"
+                          disabled={activateMutation.isPending}
+                        >
+                          <HiOutlineCheck className="w-4 h-4 mr-1" />
+                          Activate
+                        </button>
                       )}
                     </div>
                   </div>
@@ -374,13 +376,19 @@ export default function Budgets() {
             <div className="card text-center py-12">
               <HiOutlineChartBar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No budgets yet</h3>
-              <p className="text-gray-500 mb-4">Create your first budget to start allocating points.</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="btn-primary"
-              >
-                Create Budget
-              </button>
+              <p className="text-gray-500 mb-4">
+                {isHRAdmin() 
+                  ? 'Create your first budget to start allocating points.' 
+                  : 'Wait for an administrator to create a budget for this period.'}
+              </p>
+              {isHRAdmin() && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-primary"
+                >
+                  Create Budget
+                </button>
+              )}
             </div>
           )}
         </>
@@ -440,15 +448,17 @@ export default function Budgets() {
                         {budget?.expiry_date ? format(new Date(budget.expiry_date), 'dd MMM yyyy') : '-'}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedLead(lead)
-                            setShowPointAllocationModal(true)
-                          }}
-                          className="btn-secondary text-xs"
-                        >
-                          {allocation ? 'Top Up' : 'Allocate'}
-                        </button>
+                        {isHRAdmin() && (
+                          <button
+                            onClick={() => {
+                              setSelectedLead(lead)
+                              setShowPointAllocationModal(true)
+                            }}
+                            className="btn-secondary text-xs"
+                          >
+                            {allocation ? 'Top Up' : 'Allocate'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -457,7 +467,7 @@ export default function Budgets() {
             </table>
             {(!leads?.data || leads.data.length === 0) && (
                 <div className="px-6 py-12 text-center text-gray-400 italic">
-                    No Tenant Leads (Managers) found in the organization.
+                    No Department Leads found in the organization.
                 </div>
             )}
           </div>

@@ -171,7 +171,7 @@ export default function Departments() {
     }
 
     if (allocation > (tenant?.master_budget_balance || 0)) {
-      toast.error('Allocation exceeds available master pool balance')
+      toast.error('Allocation exceeds available Total Budget (Tenant) balance')
       return
     }
 
@@ -203,7 +203,7 @@ export default function Departments() {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm text-gray-500">Tenant Master Pool</p>
+            <p className="text-sm text-gray-500">Total Budget (Tenant)</p>
             <p className="text-2xl font-bold text-perksu-purple">
               {formatBudgetValue(tenant?.master_budget_balance || 0)}
             </p>
@@ -321,7 +321,7 @@ export default function Departments() {
             </h3>
             
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Tenant Master Pool Balance</p>
+              <p className="text-sm text-gray-600">Total Budget (Tenant) Balance</p>
               <p className="text-xl font-bold text-perksu-purple">
                 {formatBudgetValue(tenant?.master_budget_balance || 0)}
               </p>
@@ -346,7 +346,7 @@ export default function Departments() {
               <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-600 mb-1">Preview:</p>
                 <p className="text-sm">
-                  New Master Pool: <span className="font-medium">{formatBudgetValue((tenant?.master_budget_balance || 0) - parseFloat(allocationAmount))}</span>
+                  New Total Budget (Tenant): <span className="font-medium">{formatBudgetValue((tenant?.master_budget_balance || 0) - parseFloat(allocationAmount))}</span>
                 </p>
                 <p className="text-sm">
                   New Dept Budget: <span className="font-medium">{formatBudgetValue(selectedDept.unallocated_budget + parseFloat(allocationAmount))}</span>
@@ -444,7 +444,7 @@ export default function Departments() {
                   value={newDeptAllocation}
                   onChange={(e) => setNewDeptAllocation(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-perksu-purple focus:border-transparent"
-                  placeholder="Points to allocate from master pool"
+                  placeholder="Points to allocate from tenant budget"
                   min="0"
                   step="0.01"
                 />
@@ -452,7 +452,7 @@ export default function Departments() {
                   Available: {formatBudgetValue(tenant?.master_budget_balance || 0)}
                 </p>
                 {newDeptAllocation && parseFloat(newDeptAllocation) > (tenant?.master_budget_balance || 0) && (
-                  <p className="text-sm text-red-600 mt-1">Amount exceeds available master pool balance</p>
+                  <p className="text-sm text-red-600 mt-1">Amount exceeds available tenant budget balance</p>
                 )}
               </div>
 

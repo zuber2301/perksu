@@ -469,6 +469,12 @@ class LeadAllocation(Base):
             return 0
         return round((float(self.spent_points) / float(self.allocated_points)) * 100, 2)
 
+    @property
+    def usage_percentage(self):
+        if float(self.allocated_points) == 0:
+            return 0
+        return round((float(self.spent_points) / float(self.allocated_points)) * 100, 2)
+
 
 class Badge(Base):
     __tablename__ = "badges"

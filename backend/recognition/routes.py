@@ -200,18 +200,31 @@ async def create_recognition(
     lead_allocation = None
 
     if total_points > 0:
-        if rec_type == "individual_award":
-            # Manager Wallet or Lead Allocation Validation
-            active_budget = (
-                db.query(Budget)
-                .filter(
-                    Budget.tenant_id == current_user.tenant_id,
-                    Budget.status == "active",
-                )
-                .first()
+        # Find active budget for the tenant
+        active_budget = (
+            db.query(Budget)
+            .filter(
+                Budget.tenant_id == current_user.tenant_id,
+                Budget.status == "active",
             )
+            .first()
+        )
 
-            if active_budget:
+        if not active_budget:
+            # Fallback to wallet if no active budget exists at all
+            manager_wallet = (
+                db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
+            )
+            if not manager_wallet or manager_wallet.balance < total_points:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No active budget found and insufficient wallet balance.",
+                )
+        else:
+            # We have an active budget. Now decide where to draw points from.
+            
+            # If it's an individual award, check LeadAllocation first (personal budget)
+            if rec_type == "individual_award":
                 lead_allocation = (
                     db.query(LeadAllocation)
                     .filter(
@@ -220,61 +233,40 @@ async def create_recognition(
                     )
                     .first()
                 )
+                
+                if lead_allocation:
+                    if lead_allocation.remaining_points < float(total_points):
+                        # If lead allocation exists but is insufficient, try DepartmentBudget fallback
+                        lead_allocation = None 
 
-            if lead_allocation:
-                if lead_allocation.remaining_points < float(total_points):
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Insufficient lead budget. Remaining: {lead_allocation.remaining_points}",
+            # If not individual_award OR lead_allocation was not found/insufficient
+            if not lead_allocation:
+                # Try DepartmentBudget
+                if current_user.department_id:
+                    dept_budget = (
+                        db.query(DepartmentBudget)
+                        .filter(
+                            DepartmentBudget.budget_id == active_budget.id,
+                            DepartmentBudget.department_id == current_user.department_id,
+                        )
+                        .first()
                     )
-            else:
-                # Fallback to wallet if no budget allocation exists
+
+                    if dept_budget:
+                        remaining = Decimal(str(dept_budget.allocated_points)) - Decimal(str(dept_budget.spent_points))
+                        if remaining < total_points:
+                            dept_budget = None # Insufficient
+                
+            # Final fallback to Wallet if neither LeadAllocation nor DepartmentBudget worked
+            if not lead_allocation and not dept_budget:
                 manager_wallet = (
                     db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
                 )
                 if not manager_wallet or manager_wallet.balance < total_points:
                     raise HTTPException(
                         status_code=400,
-                        detail="Insufficient wallet balance or lead budget allocation. Please contact your Admin.",
+                        detail="Insufficient department budget, lead allocation, or wallet balance.",
                     )
-        else:
-            # Budget Validation
-            active_budget = (
-                db.query(Budget)
-                .filter(
-                    Budget.tenant_id == current_user.tenant_id,
-                    Budget.status == "active",
-                )
-                .first()
-            )
-
-            if active_budget and current_user.department_id:
-                dept_budget = (
-                    db.query(DepartmentBudget)
-                    .filter(
-                        DepartmentBudget.budget_id == active_budget.id,
-                        DepartmentBudget.department_id == current_user.department_id,
-                    )
-                    .first()
-                )
-
-                if (
-                    not dept_budget
-                    or (
-                        Decimal(str(dept_budget.allocated_points))
-                        - Decimal(str(dept_budget.spent_points))
-                    )
-                    < total_points
-                ):
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Insufficient department budget. Required: {total_points}",
-                    )
-            else:
-                raise HTTPException(
-                    status_code=400,
-                    detail="No active budget or department found for point allocation",
-                )
 
     # 3. Create Recognition(s) & Process Ledger
     created_recognitions = []

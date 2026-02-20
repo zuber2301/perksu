@@ -5,15 +5,12 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, field_validator
 from tenants.schemas import DepartmentResponse
 
-VALID_ROLES = ["platform_admin", "tenant_manager", "hr_admin", "manager", "employee"]
+VALID_ROLES = ["platform_admin", "hr_admin", "dept_lead", "user"]
 VALID_ORG_ROLES = [
     "platform_admin",
-    "tenant_manager",
     "hr_admin",
-    "tenant_lead",
-    "manager",
-    "corporate_user",
-    "employee",
+    "dept_lead",
+    "user",
 ]
 
 
@@ -21,16 +18,13 @@ class UserBase(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
-    role: Literal["platform_admin", "tenant_manager", "hr_admin", "manager", "employee"]
+    role: Literal["platform_admin", "hr_admin", "dept_lead", "user"]
     org_role: Literal[
         "platform_admin",
-        "tenant_manager",
         "hr_admin",
-        "tenant_lead",
-        "manager",
-        "corporate_user",
-        "employee",
-    ] = "employee"
+        "dept_lead",
+        "user",
+    ] = "user"
     department_id: UUID
     manager_id: Optional[UUID] = None
     personal_email: Optional[EmailStr] = None
@@ -71,16 +65,13 @@ class UserUpdate(BaseModel):
     mobile_phone: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    role: Optional[Literal["platform_admin", "tenant_manager", "hr_admin", "manager", "employee"]] = None
+    role: Optional[Literal["platform_admin", "hr_admin", "dept_lead", "user"]] = None
     org_role: Optional[
         Literal[
             "platform_admin",
-            "tenant_manager",
             "hr_admin",
-            "tenant_lead",
-            "manager",
-            "corporate_user",
-            "employee",
+            "dept_lead",
+            "user",
         ]
     ] = None
     department_id: Optional[UUID] = None
@@ -100,7 +91,7 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
-    org_role: str = "employee"
+    org_role: str = "user"
     department_id: Optional[UUID] = None
     manager_id: Optional[UUID] = None
     avatar_url: Optional[str] = None
@@ -120,7 +111,7 @@ class UserListResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
-    org_role: str = "employee"
+    org_role: str = "user"
     department_id: Optional[UUID] = None
     department: Optional[DepartmentResponse] = None
     avatar_url: Optional[str] = None

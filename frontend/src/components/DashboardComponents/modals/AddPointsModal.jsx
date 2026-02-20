@@ -19,7 +19,7 @@ export default function AddPointsModal({ isOpen, onClose, department, availableP
       return
     }
     if (parsed > availablePoints) {
-      setError('Amount cannot exceed the tenant master pool')
+      setError('Amount cannot exceed the Total Budget (Tenant)')
       return
     }
     onSubmit(parsed)
@@ -35,7 +35,7 @@ export default function AddPointsModal({ isOpen, onClose, department, availableP
 
         <form onSubmit={handleSubmit} className="px-6 py-6 space-y-4">
           <div className="p-3 bg-blue-50 border border-blue-100 rounded">
-            <p className="text-xs text-gray-600">Tenant Master Pool Balance</p>
+            <p className="text-xs text-gray-600">Total Budget (Tenant) Balance</p>
             <p className="text-2xl font-bold">{formatCurrency(availablePoints)}</p>
           </div>
 
@@ -54,7 +54,7 @@ export default function AddPointsModal({ isOpen, onClose, department, availableP
           <div className="p-3 bg-gray-50 rounded">
             <p className="text-sm text-gray-600">Preview</p>
             <div className="flex justify-between items-center mt-2">
-              <div>New Master Pool</div>
+              <div>New Total Budget (Tenant)</div>
               <div className="font-semibold">{formatCurrency(remaining >= 0 ? remaining : 0)}</div>
             </div>
             <div className="flex justify-between items-center mt-1">

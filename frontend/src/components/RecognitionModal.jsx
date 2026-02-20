@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { HiX, HiOutlineStar, HiOutlineGift, HiOutlineUsers, HiOutlineSparkles, HiOutlineNewspaper, HiOutlineSearch } from 'react-icons/hi'
 import toast from 'react-hot-toast'
-import { recognitionApi, usersApi, tenantsApi } from '../lib/api'
+import { recognitionApi, usersApi, tenantsApi, budgetsAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 
 const RECOGNITION_TYPES = [
@@ -46,6 +46,12 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
   const { data: tenantData } = useQuery({
     queryKey: ['currentTenant'],
     queryFn: () => tenantsApi.getCurrent(),
+    enabled: isOpen
+  })
+
+  const { data: budgetData } = useQuery({
+    queryKey: ['myAvailablePoints'],
+    queryFn: () => budgetsAPI.getMyAvailablePoints(),
     enabled: isOpen
   })
 
@@ -212,6 +218,42 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                 </button>
               ))}
             </div>
+
+            {/* Budget Summary Bar */}
+            {budgetData?.data && (
+              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-xl mb-6 border border-gray-100">
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Available Budget</span>
+                    <div className="flex items-center gap-3">
+                      {budgetData.data.lead_points > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-perksu-purple"></div>
+                          <span className="text-sm font-bold text-gray-700">{budgetData.data.lead_points.toLocaleString()} <small className="text-[10px] text-gray-400">Personal</small></span>
+                        </div>
+                      )}
+                      {budgetData.data.department_points > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                          <span className="text-sm font-bold text-gray-700">{budgetData.data.department_points.toLocaleString()} <small className="text-[10px] text-gray-400">Dept</small></span>
+                        </div>
+                      )}
+                      {budgetData.data.lead_points === 0 && budgetData.data.department_points === 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                          <span className="text-sm font-bold text-gray-700">{budgetData.data.wallet_balance.toLocaleString()} <small className="text-[10px] text-gray-400">Wallet</small></span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {!budgetData.data.has_active_budget && (
+                  <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-100">
+                    No Active Budget Period
+                  </span>
+                )}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Recipients */}
