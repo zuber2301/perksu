@@ -231,8 +231,8 @@ async def create_tenant(
         password_hash=get_password_hash(tenant_data.admin_password),
         first_name=tenant_data.admin_first_name,
         last_name=tenant_data.admin_last_name,
-        role="hr_admin",  # Usually HR Admin is the tenant manager
-        org_role="tenant_manager",
+        role="hr_admin",  # HR Admin role
+        org_role="hr_admin",  # Consolidated to use org_role only
         department_id=hr_dept_id,
         is_super_admin=True,
         status="active",
@@ -917,7 +917,7 @@ async def get_departments_management(
 async def get_tenant_admin(current_user: User = Depends(get_current_user)) -> User:
     if getattr(current_user, "role", None) in ["hr_admin", "platform_admin"]:
         return current_user
-    if getattr(current_user, "org_role", None) == "tenant_manager":
+    if getattr(current_user, "org_role", None) in ["hr_admin", "platform_admin"]:
         return current_user
     raise HTTPException(status_code=403, detail="Tenant admin access required")
 

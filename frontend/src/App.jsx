@@ -47,7 +47,7 @@ function DashboardRoute() {
   if (user?.role === 'platform_admin') return <Tenants />
   
   // Tenant managers and other organizational roles see Dashboard
-  const dashboardRoles = ['tenant_manager', 'hr_admin', 'manager', 'employee']
+  const dashboardRoles = ['hr_admin', 'dept_lead', 'user', 'platform_admin']
   if (dashboardRoles.includes(user?.role)) return <Dashboard />
   
   // Fallback to login if role unknown
@@ -102,7 +102,7 @@ function App() {
           </PrivateRoute>
         } />
         <Route path="settings" element={
-          <PrivateRoute requiredRole={['hr_admin', 'tenant_manager']}>
+          <PrivateRoute requiredRole={['hr_admin']}>
             <Settings />
           </PrivateRoute>
         } />
@@ -117,13 +117,13 @@ function App() {
         
         {/* HR Admin Routes */}
         <Route path="settings/organization" element={
-          <PrivateRoute requiredRole={['hr_admin', 'tenant_manager']}>
+          <PrivateRoute requiredRole={['hr_admin']}>
             <TenantSettings />
           </PrivateRoute>
         } />
         
         <Route path="admin/invite" element={
-          <PrivateRoute requiredRole={['hr_admin', 'tenant_manager']}>
+          <PrivateRoute requiredRole={['hr_admin']}>
             <InviteLinkGenerator />
           </PrivateRoute>
         } />

@@ -22,13 +22,12 @@ import {
 const ROLE_DISPLAY_NAMES = {
   platform_admin: 'Perksu Admin',
   hr_admin: 'HR Admin',
-  tenant_manager: 'Tenant Manager',
-  manager: 'Manager',
-  employee: 'Employee'
+  dept_lead: 'Department Lead',
+  user: 'User'
 }
 
 export default function TopHeader() {
-  const { user, token, logout, updateUser } = useAuthStore()
+  const { user, token, logout, updateUser, activeRole, switchRole } = useAuthStore()
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const profileDropdownRef = useRef(null)
@@ -86,20 +85,28 @@ export default function TopHeader() {
     logout()
   }
 
-  const effectiveRole = user?.org_role || user?.role
+  const effectiveRole = activeRole || user?.org_role || user?.role
 
   let navigation = []
-  if (effectiveRole === 'tenant_manager') {
+  // Dashboard available for all personas
+  const baseNavigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: HiOutlineHome },
+  ]
+  
+  if (effectiveRole === 'hr_admin') {
     navigation = [
-      { name: 'Dashboard', href: '/dashboard', icon: HiOutlineHome },
+      ...baseNavigation,
       { name: 'Departments', href: '/departments', icon: HiOutlineOfficeBuilding },
       { name: 'User Management', href: '/users', icon: HiOutlineUsers },
       { name: 'Marketplace & Rewards', href: '/marketplace', icon: HiOutlineShoppingCart },
       { name: 'Analytics & Reports', href: '/analytics', icon: HiOutlineChartBar },
       { name: 'Settings', href: '/settings', icon: HiOutlineCog },
+      { name: 'Budgets', href: '/budgets', icon: HiOutlineCurrencyRupee },
+      { name: 'Audit', href: '/audit' },
     ]
-  } else if (user?.role === 'hr_admin') {
+  } else if (effectiveRole === 'dept_lead' || effectiveRole === 'user') {
     navigation = [
+      ...baseNavigation,
       { name: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
       { name: 'Feed 📱', href: '/feed' },
       { name: 'Wallet', href: '/wallet', icon: HiOutlineCash },
@@ -107,6 +114,7 @@ export default function TopHeader() {
     ]
   } else {
     navigation = [
+      ...baseNavigation,
       { name: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
       { name: 'Feed 📱', href: '/feed' },
       { name: 'Wallet', href: '/wallet', icon: HiOutlineCash },
@@ -139,26 +147,37 @@ export default function TopHeader() {
             ))}
           </div>
 
-          {/* Right side: Admin dropdown, Notifications, Profile */}
+          {/* Right side: Role Switcher, Profile */}
           <div className="flex items-center gap-4">
-            {/* Admin dropdown (for tenant_manager) */}
-            {effectiveRole === 'tenant_manager' && (
+            {/* Role Switcher (if user has multiple roles) */}
+            {user?.availableRoles?.length > 1 && (
               <div className="hidden lg:flex items-center">
                 <div className="relative" ref={adminDropdownRef}>
                   <button 
                     onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
                     className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
                   >
-                    <span className="hidden lg:inline">Admin</span>
+                    <span className="hidden lg:inline">Role: {ROLE_DISPLAY_NAMES[activeRole] || activeRole}</span>
                     <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                       <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.354a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                     </svg>
                   </button>
                   {adminDropdownOpen && (
                     <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                      <NavLink to="/budgets" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setAdminDropdownOpen(false)}>Budgets</NavLink>
-                      <NavLink to="/users" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setAdminDropdownOpen(false)}>Users</NavLink>
-                      <NavLink to="/audit" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setAdminDropdownOpen(false)}>Audit</NavLink>
+                      {user.availableRoles.map(role => (
+                        <button
+                          key={role}
+                          onClick={() => {
+                            switchRole(role)
+                            setAdminDropdownOpen(false)
+                            // Reload page to load the correct persona's pages
+                            window.location.reload()
+                          }}
+                          className={`block w-full text-left px-4 py-2 text-sm ${activeRole === role ? 'bg-perksu-purple/10 text-perksu-purple font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                        >
+                          {ROLE_DISPLAY_NAMES[role] || role}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>

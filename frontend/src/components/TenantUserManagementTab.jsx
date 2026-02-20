@@ -137,15 +137,15 @@ export default function TenantUserManagementTab({ tenant, setMessage }) {
         <div className="policy-info">
           <div className="policy-item">
             <strong>HR Admin:</strong>
-            <p>Full access to user management, recognition, and reporting</p>
+            <p>Full access to user management, recognition, budgets, and reporting</p>
           </div>
           <div className="policy-item">
-            <strong>Manager:</strong>
-            <p>Can recognize team members and view team wallets</p>
+            <strong>Department Lead:</strong>
+            <p>Can recognize team members, manage department, and view team wallets</p>
           </div>
           <div className="policy-item">
-            <strong>Super Admin:</strong>
-            <p>Complete access including budget control and settings</p>
+            <strong>User:</strong>
+            <p>Can participate in recognition and redemption activities</p>
           </div>
         </div>
       </div>

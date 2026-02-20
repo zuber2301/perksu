@@ -37,10 +37,10 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
       total_spent: simulatedBurn.monthlyProjection * 2,
       budget_remaining: simulatedBurn.monthlyProjection * 4,
       user_counts: {
-        tenant_manager: 1,
-        lead: 5,
-        employee: 120,
-        by_org_role: { tenant_manager: 1, lead: 5, employee: 120 },
+        hr_admin: 1,
+        dept_lead: 5,
+        user: 120,
+        by_org_role: { hr_admin: 1, dept_lead: 5, user: 120 },
       },
     };
 
@@ -113,13 +113,13 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
         <div className="stat-card">
           <h3>Total Users</h3>
           <p className="stat-value">{totalUsers}</p>
-          <p className="stat-label">Managers / Leads / Employees</p>
+          <p className="stat-label">Admins / Leads / Users</p>
           <div className="user-breakdown">
-            <small>Tenant Managers: {overview.user_counts?.tenant_manager ?? 0}</small>
+            <small>HR Admins: {overview.user_counts?.hr_admin ?? 0}</small>
             <br />
-            <small>Leads: {overview.user_counts?.lead ?? 0}</small>
+            <small>Dept Leads: {overview.user_counts?.dept_lead ?? 0}</small>
             <br />
-            <small>Employees: {overview.user_counts?.employee ?? overview.user_counts?.user ?? 0}</small>
+            <small>Users: {overview.user_counts?.user ?? 0}</small>
           </div>
         </div>
       </div>

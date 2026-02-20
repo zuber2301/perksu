@@ -242,8 +242,8 @@ class User(Base):
     last_name = Column(String(100), nullable=False)
     role = Column(String(50), nullable=False)
     org_role = Column(
-        String(50), nullable=False, default="employee"
-    )  # platform_admin, tenant_manager, hr_admin, tenant_lead, manager, corporate_user, employee
+        String(50), nullable=False, default="user"
+    )  # platform_admin, hr_admin, dept_lead, user
     department_id = Column(GUID(), ForeignKey("departments.id"), nullable=False)
     manager_id = Column(GUID(), ForeignKey("users.id"))
     avatar_url = Column(String(500))

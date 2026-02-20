@@ -403,14 +403,14 @@ async def allocate_to_employee(
 ):
     """Allocate points from a department budget to a specific employee wallet.
 
-    Allowed for HR Admins / Platform Admins, or the department lead/manager for the target department.
+    Allowed for HR Admins / Platform Admins, or the department lead for the target department.
     This updates the DepartmentBudget.spent_points and creates a WalletLedger entry.
     """
     # Permission check: HR/admins can allocate across departments; department leads only for their department
-    is_admin = current_user.role in ["hr_admin", "platform_admin", "tenant_manager"]
+    is_admin = current_user.role in ["hr_admin", "platform_admin"] or current_user.org_role in ["hr_admin", "platform_admin"]
     is_dept_lead = (
         getattr(current_user, "department_id", None) == department_id
-        and getattr(current_user, "org_role", None) in ["tenant_lead", "dept_lead", "manager"]
+        and getattr(current_user, "org_role", None) == "dept_lead"
     )
     if not (is_admin or is_dept_lead):
         raise HTTPException(status_code=403, detail="Permission denied")

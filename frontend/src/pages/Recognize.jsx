@@ -55,7 +55,7 @@ export default function Recognize() {
       description: 'Manager-to-employee high impact awards', 
       icon: HiOutlineSparkles, 
       gradient: 'from-orange-500 to-red-500', 
-      roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] 
+      roles: ['dept_lead', 'hr_admin', 'platform_admin'] 
     },
     { 
       id: 'group_award', 
@@ -63,7 +63,7 @@ export default function Recognize() {
       description: 'Celebrate team-wide wins & milestones', 
       icon: HiOutlineUsers, 
       gradient: 'from-blue-600 to-indigo-600', 
-      roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] 
+      roles: ['dept_lead', 'hr_admin', 'platform_admin'] 
     },
     { 
       id: 'ecard', 

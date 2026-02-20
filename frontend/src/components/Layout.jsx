@@ -29,27 +29,26 @@ const navigation = [
 
 const adminNavigation = [
   { name: 'Tenants', href: '/tenants', icon: HiOutlineOfficeBuilding, roles: ['platform_admin'] },
-  { name: 'Budgets', href: '/budgets', icon: HiOutlineChartBar, roles: ['manager', 'hr_admin', 'tenant_manager', 'platform_admin'] },
-  { name: 'Users', href: '/users', icon: HiOutlineUsers, roles: ['hr_admin', 'tenant_manager', 'platform_admin'] },
-  { name: 'Audit Log', href: '/audit', icon: HiOutlineClipboardList, roles: ['hr_admin', 'tenant_manager', 'platform_admin'] },
+  { name: 'Budgets', href: '/budgets', icon: HiOutlineChartBar, roles: ['dept_lead', 'hr_admin', 'platform_admin'] },
+  { name: 'Users', href: '/users', icon: HiOutlineUsers, roles: ['hr_admin', 'platform_admin'] },
+  { name: 'Audit Log', href: '/audit', icon: HiOutlineClipboardList, roles: ['hr_admin', 'platform_admin'] },
 ]
 
 const adminPanelNavigation = [
   { name: 'User Management', href: '/admin/users', icon: HiOutlineShieldCheck, roles: ['platform_admin'], section: 'Platform Admin' },
-  { name: 'Organization Settings', href: '/settings/organization', icon: HiOutlineCog, roles: ['hr_admin', 'tenant_manager', 'platform_admin'], section: 'HR Admin' },
-  { name: 'Generate Invites', href: '/admin/invite', icon: HiOutlineLink, roles: ['hr_admin', 'tenant_manager', 'platform_admin'], section: 'HR Admin' },
+  { name: 'Organization Settings', href: '/settings/organization', icon: HiOutlineCog, roles: ['hr_admin', 'platform_admin'], section: 'HR Admin' },
+  { name: 'Generate Invites', href: '/admin/invite', icon: HiOutlineLink, roles: ['hr_admin', 'platform_admin'], section: 'HR Admin' },
 ]
 
 const ROLE_DISPLAY_NAMES = {
   platform_admin: 'Perksu Admin',
   hr_admin: 'HR Admin',
-  tenant_manager: 'Tenant Manager',
-  manager: 'Manager',
-  employee: 'Employee'
+  dept_lead: 'Department Lead',
+  user: 'User'
 }
 
 const getAdminDropdownItems = (role) => {
-  if (role === 'hr_admin' || role === 'tenant_manager') {
+  if (role === 'hr_admin') {
     return [
       { label: 'Budgets', href: '/budgets', icon: HiOutlineChartBar },
       { label: 'Users', href: '/users', icon: HiOutlineUsers },

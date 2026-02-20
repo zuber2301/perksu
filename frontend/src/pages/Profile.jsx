@@ -7,9 +7,10 @@ import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase, HiOutlineSparkles, Hi
 const ROLE_DISPLAY_NAMES = {
   platform_admin: 'Perksu Admin',
   hr_admin: 'HR Admin',
-  tenant_manager: 'Tenant Manager',
-  manager: 'Manager',
-  employee: 'Employee'
+  platform_admin: 'Perksu Admin',
+  hr_admin: 'HR Admin',
+  dept_lead: 'Department Lead',
+  user: 'User'
 }
 
 export default function Profile() {
