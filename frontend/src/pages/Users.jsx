@@ -767,12 +767,11 @@ export default function Users() {
                   </div>
                 </div>
                 <div>
-                  <label className="label">Org Role</label>
-                  <select name="role" className="input" defaultValue={selectedUser?.role || 'employee'} required>
-                    <option value="employee">Employee</option>
-                    <option value="manager">Manager</option>
-                    <option value="hr_admin">HR Admin</option>
-                    <option value="tenant_manager">Tenant Manager</option>
+                  <label className="label">Access Role</label>
+                  <select name="role" className="input" defaultValue={selectedUser?.role || 'user'} required>
+                    <option value="user">User (Basic Access)</option>
+                    <option value="dept_lead">Dept Lead (Department Management)</option>
+                    <option value="hr_admin">HR Admin (Organization Admin)</option>
                   </select>
                 </div>
               </div>

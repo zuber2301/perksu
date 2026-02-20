@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { authAPI, tenantsAPI } from '../lib/api'
@@ -16,7 +16,8 @@ import {
   HiOutlineCog,
   HiOutlineSparkles,
   HiOutlineCash,
-  HiOutlineShoppingCart
+  HiOutlineShoppingCart,
+  HiOutlineMenu
 } from 'react-icons/hi'
 
 const ROLE_DISPLAY_NAMES = {
@@ -26,12 +27,20 @@ const ROLE_DISPLAY_NAMES = {
   user: 'User'
 }
 
-export default function TopHeader() {
+export default function TopHeader({ onMenuClick }) {
   const { user, token, logout, updateUser, activeRole, switchRole } = useAuthStore()
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const profileDropdownRef = useRef(null)
   const adminDropdownRef = useRef(null)
+  const location = useLocation()
+
+  // Get current page title from location
+  const getPageTitle = () => {
+    const path = location.pathname.split('/')[1]
+    if (!path) return 'Dashboard'
+    return path.charAt(0).toUpperCase() + path.slice(1).replace('-', ' ')
+  }
 
   // Fetch current tenant info
   const { data: tenant } = useQuery({
@@ -87,150 +96,134 @@ export default function TopHeader() {
 
   const effectiveRole = activeRole || user?.org_role || user?.role
 
-  let navigation = []
-  // Dashboard available for all personas
-  const baseNavigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: HiOutlineHome },
-  ]
-  
-  if (effectiveRole === 'hr_admin') {
-    navigation = [
-      ...baseNavigation,
-      { name: 'Departments', href: '/departments', icon: HiOutlineOfficeBuilding },
-      { name: 'User Management', href: '/users', icon: HiOutlineUsers },
-      { name: 'Marketplace & Rewards', href: '/marketplace', icon: HiOutlineShoppingCart },
-      { name: 'Analytics & Reports', href: '/analytics', icon: HiOutlineChartBar },
-      { name: 'Settings', href: '/settings', icon: HiOutlineCog },
-      { name: 'Budgets', href: '/budgets', icon: HiOutlineCurrencyRupee },
-      { name: 'Audit', href: '/audit' },
-    ]
-  } else if (effectiveRole === 'dept_lead' || effectiveRole === 'user') {
-    navigation = [
-      ...baseNavigation,
-      { name: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
-      { name: 'Feed 📱', href: '/feed' },
-      { name: 'Wallet', href: '/wallet', icon: HiOutlineCash },
-      { name: 'Redeem', href: '/redeem', icon: HiOutlineGift },
-    ]
-  } else {
-    navigation = [
-      ...baseNavigation,
-      { name: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
-      { name: 'Feed 📱', href: '/feed' },
-      { name: 'Wallet', href: '/wallet', icon: HiOutlineCash },
-      { name: 'Redeem', href: '/redeem', icon: HiOutlineGift },
-    ]
-  }
-
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-      {/* Primary navigation tabs */}
-      {navigation && (
-        <div className="flex items-center justify-between h-16 px-4 lg:px-8">
-          {/* Left side: Navigation tabs (pill style) */}
-          <div className="flex items-center gap-3">
-            {navigation.map((tab) => (
-              <NavLink
-                key={tab.href}
-                to={tab.href}
-                className={({ isActive }) => 
-                  `inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-perksu-purple/10 text-perksu-purple' : 'text-gray-700 hover:bg-gray-50'}`
-                }
-              >
-                {tab.icon && (
-                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-md ${""}`}>
-                    <tab.icon className="w-4 h-4" />
-                  </span>
-                )}
-                <span className="hidden sm:inline">{tab.name}</span>
-              </NavLink>
-            ))}
+      <div className="flex items-center justify-between h-16 px-4 lg:px-8">
+        {/* Left side: Mobile menu toggle and Page Title */}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onMenuClick}
+            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+          >
+            <HiOutlineMenu className="w-6 h-6" />
+          </button>
+          <div className="hidden sm:block">
+            <h1 className="text-lg font-semibold text-gray-900">{getPageTitle()}</h1>
           </div>
+        </div>
 
-          {/* Right side: Role Switcher, Profile */}
-          <div className="flex items-center gap-4">
-            {/* Role Switcher (if user has multiple roles) */}
-            {user?.availableRoles?.length > 1 && (
-              <div className="hidden lg:flex items-center">
-                <div className="relative" ref={adminDropdownRef}>
-                  <button 
-                    onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    <span className="hidden lg:inline">Role: {ROLE_DISPLAY_NAMES[activeRole] || activeRole}</span>
-                    <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.354a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  {adminDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+        {/* Right side: Role Switcher, Profile */}
+        <div className="flex items-center gap-4">
+          {/* Role Switcher (if user has multiple roles) */}
+          {user?.availableRoles?.length > 1 && (
+            <div className="flex items-center">
+              <div className="relative" ref={adminDropdownRef}>
+                <button 
+                  onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <span className="hidden sm:inline text-gray-500 font-normal mr-1">Role:</span>
+                  <span>{ROLE_DISPLAY_NAMES[activeRole] || activeRole}</span>
+                  <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.354a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                {adminDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden ring-1 ring-black ring-opacity-5">
+                    <div className="py-1">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+                        Switch Role
+                      </div>
                       {user.availableRoles.map(role => (
                         <button
                           key={role}
                           onClick={() => {
                             switchRole(role)
                             setAdminDropdownOpen(false)
-                            // Reload page to load the correct persona's pages
                             window.location.reload()
                           }}
-                          className={`block w-full text-left px-4 py-2 text-sm ${activeRole === role ? 'bg-perksu-purple/10 text-perksu-purple font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                          className={`block w-full text-left px-4 py-2.5 text-sm transition-colors ${activeRole === role ? 'bg-perksu-purple/10 text-perksu-purple font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
                         >
                           {ROLE_DISPLAY_NAMES[role] || role}
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-
-
-            {/* Profile / Tenant info */}
-            <div className="flex items-center gap-3">
-              <div className="relative" ref={profileDropdownRef}>
-                <button 
-                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-perksu-purple to-perksu-blue flex items-center justify-center text-white font-medium">
-                    {user?.first_name?.[0] || 'T'}{user?.last_name?.[0] || 'A'}
-                  </div>
-                  <div className="hidden md:flex flex-col text-sm leading-4 text-left">
-                    <span className="font-medium text-gray-900">{user?.first_name || 'Tenant'}</span>
-                    <span className="text-xs text-gray-500">{ROLE_DISPLAY_NAMES[user?.org_role] || ROLE_DISPLAY_NAMES[user?.role] || user?.org_role}</span>
-                  </div>
-                  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.354a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                {profileDropdownOpen && (
-                  <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                    {/* Tenant Info Section */}
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <div className="text-xs text-gray-500 font-medium uppercase">Account Info</div>
-                      <div className="mt-2 space-y-1">
-                        <div className="text-xs text-gray-600">
-                          <span className="font-medium">Tenant Name:</span> {tenant?.data?.name || tenant?.name || 'N/A'}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          <span className="font-medium">Role:</span> {ROLE_DISPLAY_NAMES[user?.org_role] || user?.org_role || 'N/A'}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          <span className="font-medium">Tenant ID:</span> {tenant?.data?.id ? tenant.data.id.split('-')[0] : (tenant?.id ? tenant.id.split('-')[0] : 'N/A')}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Menu Items */}
-                    <NavLink to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setProfileDropdownOpen(false)}>Profile</NavLink>
-                    <button onClick={() => { handleLogout(); setProfileDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Logout</button>
                   </div>
                 )}
               </div>
             </div>
+          )}
+
+
+
+          {/* Profile / Tenant info */}
+          <div className="flex items-center gap-3">
+            <div className="relative" ref={profileDropdownRef}>
+              <button 
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="flex items-center gap-3 p-1.5 rounded-full hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-perksu-purple to-perksu-blue flex items-center justify-center text-white font-medium shadow-sm">
+                  {user?.first_name?.[0] || 'T'}{user?.last_name?.[0] || 'A'}
+                </div>
+                <div className="hidden lg:flex flex-col text-sm leading-4 text-left mr-1">
+                  <span className="font-semibold text-gray-900">{user?.first_name || 'Tenant'}</span>
+                  <span className="text-xs text-gray-500">{ROLE_DISPLAY_NAMES[user?.org_role] || ROLE_DISPLAY_NAMES[user?.role] || user?.org_role}</span>
+                </div>
+                <svg className="w-4 h-4 text-gray-400 hidden lg:block" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.584l3.71-4.354a.75.75 0 111.14.976l-4.25 5a.75.75 0 01-1.14 0l-4.25-5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {profileDropdownOpen && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden ring-1 ring-black ring-opacity-5">
+                  {/* User Profile Info Header */}
+                  <div className="px-4 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-perksu-purple to-perksu-blue flex items-center justify-center text-white font-medium shadow-sm">
+                      {user?.first_name?.[0]}{user?.last_name?.[0]}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-gray-900">{user?.first_name} {user?.last_name}</span>
+                      <span className="text-xs text-gray-500">{user?.email}</span>
+                    </div>
+                  </div>
+
+                  {/* Tenant Info Section */}
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Organization Context</div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center text-xs text-gray-600">
+                        <span className="w-16 font-medium text-gray-400">Org:</span> {tenant?.data?.name || tenant?.name || 'Loading...'}
+                      </div>
+                      <div className="flex items-center text-xs text-gray-600">
+                        <span className="w-16 font-medium text-gray-400">ID:</span> <code className="bg-gray-100 px-1 rounded">{tenant?.data?.id ? tenant.data.id.split('-')[0] : (tenant?.id ? tenant.id.split('-')[0] : 'N/A')}</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="py-1">
+                    <NavLink 
+                      to="/profile" 
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-perksu-purple/5 hover:text-perksu-purple transition-colors" 
+                      onClick={() => setProfileDropdownOpen(false)}
+                    >
+                      <HiOutlineUser className="w-4 h-4" />
+                      My Profile
+                    </NavLink>
+                    <button 
+                      onClick={() => { handleLogout(); setProfileDropdownOpen(false); }} 
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <HiOutlineLogout className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </header>
   )
 }

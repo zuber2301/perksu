@@ -237,7 +237,7 @@ export default function Budgets() {
           <button
             onClick={() => {
               // If user is a department lead, preselect their department
-              if (user?.org_role === 'dept_lead' || user?.org_role === 'tenant_lead') {
+              if (user?.org_role === 'dept_lead') {
                 setTopUpDepartment(user.department_id)
               }
               setShowEmployeeTopUpModal(true)
@@ -851,9 +851,9 @@ export default function Budgets() {
 
               <div>
                 <label className="label">Department</label>
-                <select className="input" value={topUpDepartment || ''} onChange={(e) => setTopUpDepartment(e.target.value)} required disabled={user?.org_role === 'dept_lead' || user?.org_role === 'tenant_lead'}>
+                <select className="input" value={topUpDepartment || ''} onChange={(e) => setTopUpDepartment(e.target.value)} required disabled={user?.org_role === 'dept_lead'}>
                   <option value="">Select a department</option>
-                  {user?.org_role === 'dept_lead' || user?.org_role === 'tenant_lead' ? (
+                  {user?.org_role === 'dept_lead' ? (
                     departments?.data?.filter(d => d.id === user.department_id).map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))
