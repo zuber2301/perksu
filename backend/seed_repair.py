@@ -21,6 +21,8 @@ def seed_master():
                 subscription_tier="enterprise",
                 status="ACTIVE",
                 master_budget_balance=1000000,
+                budget_allocation_balance=1000000,
+                allocated_budget=1000000,
             )
             db.add(jspark)
             db.flush()

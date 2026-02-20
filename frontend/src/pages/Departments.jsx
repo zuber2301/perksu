@@ -10,7 +10,8 @@ import {
   HiOutlineCurrencyDollar,
   HiOutlineUsers,
   HiOutlineUserAdd,
-  HiOutlinePencil
+  HiOutlinePencil,
+  HiOutlineExclamationCircle
 } from 'react-icons/hi'
 import { HiOutlineEllipsisVertical } from 'react-icons/hi2'
 
@@ -30,17 +31,17 @@ export default function Departments() {
 
   const { data: tenant } = useQuery({
     queryKey: ['tenant', 'current'],
-    queryFn: () => tenantsAPI.getCurrent(),
+    queryFn: () => tenantsAPI.getCurrent().then(r => r.data),
   })
 
   const { data: deptManagement, isLoading } = useQuery({
     queryKey: ['departments', 'management'],
-    queryFn: () => tenantsAPI.getDepartmentManagement(),
+    queryFn: () => tenantsAPI.getDepartmentManagement().then(r => r.data),
   })
 
   const { data: users } = useQuery({
     queryKey: ['users'],
-    queryFn: () => usersAPI.getAll(),
+    queryFn: () => usersAPI.getAll().then(r => r.data),
   })
 
   const allocateMutation = useMutation({
@@ -242,7 +243,7 @@ export default function Departments() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {deptManagement?.data?.map((dept) => (
+              {deptManagement?.map((dept) => (
                 <tr 
                   key={dept.id} 
                   className={`hover:bg-gray-50 transition-colors ${
@@ -261,15 +262,15 @@ export default function Departments() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {dept.dept_lead_name || <span className="text-gray-400 italic">Unassigned</span>}
+                    {dept.lead_name || <span className="text-gray-400 italic">Unassigned</span>}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">
-                        {formatBudgetValue(dept.unallocated_budget)}
+                        {formatBudgetValue(dept.dept_budget_balance)}
                       </span>
-                      {dept.unallocated_budget === 0 && (
-                        <HiOutlineExclamation className="w-4 h-4 text-red-500" title="Zero balance - needs refill" />
+                      {dept.dept_budget_balance === 0 && (
+                        <HiOutlineExclamationCircle className="w-4 h-4 text-red-500" title="Zero balance - needs refill" />
                       )}
                     </div>
                   </td>
@@ -359,7 +360,7 @@ export default function Departments() {
                   New Total Budget (Tenant): <span className="font-medium">{formatBudgetValue((tenant?.master_budget_balance || 0) - parseFloat(allocationAmount))}</span>
                 </p>
                 <p className="text-sm">
-                  New Dept Budget: <span className="font-medium">{formatBudgetValue(selectedDept.unallocated_budget + parseFloat(allocationAmount))}</span>
+                  New Dept Budget: <span className="font-medium">{formatBudgetValue(selectedDept.dept_budget_balance + parseFloat(allocationAmount))}</span>
                 </p>
               </div>
             )}
@@ -401,7 +402,7 @@ export default function Departments() {
                 defaultValue=""
               >
                 <option value="" disabled>Select a user...</option>
-                {users?.data?.filter(u => u.dept_id === selectedDept.id)?.map((user) => (
+                {users?.filter(u => u.dept_id === selectedDept.id)?.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.first_name} {user.last_name} ({user.corporate_email})
                   </option>
@@ -477,7 +478,7 @@ export default function Departments() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-perksu-purple focus:border-transparent"
                 >
                   <option value="">Select a user to promote to department lead...</option>
-                  {users?.data?.filter(u => u.org_role !== 'dept_lead')?.map((user) => (
+                  {users?.filter(u => u.org_role !== 'dept_lead')?.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.first_name} {user.last_name} ({user.corporate_email})
                     </option>

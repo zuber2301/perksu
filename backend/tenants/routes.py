@@ -19,6 +19,7 @@ from tenants.schemas import (
     DepartmentCreate,
     DepartmentResponse,
     DepartmentUpdate,
+    DepartmentAllocate,
     InjectPointsRequest,
     TenantListResponse,
     TenantLoadBudget,
@@ -185,6 +186,8 @@ async def create_tenant(
         branding_config=tenant_data.branding_config or {},
         subscription_tier=tenant_data.subscription_tier,
         master_budget_balance=tenant_data.initial_balance,
+        budget_allocation_balance=tenant_data.initial_balance,
+        allocated_budget=tenant_data.initial_balance,
         status="ACTIVE",
     )
     db.add(tenant)
@@ -740,12 +743,11 @@ async def load_tenant_budget(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Update tenant balance and allocated budget
-    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + Decimal(str(budget_data.amount))
-    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + Decimal(str(budget_data.amount))
-    tenant.allocated_budget = (tenant.allocated_budget or 0) + Decimal(
-        str(budget_data.amount)
-    )
+    amount_dec = Decimal(str(budget_data.amount))
+    # Update tenant balances
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + amount_dec
+    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + amount_dec
+    tenant.allocated_budget = (tenant.allocated_budget or 0) + amount_dec
 
     # Record in ledger
     ledger_entry = MasterBudgetLedger(
@@ -756,6 +758,9 @@ async def load_tenant_budget(
         description=budget_data.description,
     )
     db.add(ledger_entry)
+    db.commit()
+    db.refresh(tenant)
+    return tenant
 
     db.commit()
     db.refresh(tenant)
@@ -913,6 +918,101 @@ async def get_departments_management(
     return items
 
 
+@router.post("/departments/{department_id}/allocate")
+async def allocate_department_budget(
+    department_id: UUID,
+    allocation_data: DepartmentAllocate,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db),
+):
+    """Allocate points from tenant master pool to a department's budget pool"""
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    amount_dec = Decimal(str(allocation_data.amount))
+    if tenant.master_budget_balance < amount_dec:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient tenant balance. Available: {tenant.master_budget_balance}, Requested: {amount_dec}"
+        )
+
+    # Find or create the active budget for this tenant
+    budget = db.query(Budget).filter(Budget.tenant_id == tenant.id, Budget.status == "active").first()
+    if not budget:
+        budget = db.query(Budget).filter(Budget.tenant_id == tenant.id).order_by(Budget.created_at.desc()).first()
+        if not budget:
+            budget = Budget(
+                tenant_id=tenant.id,
+                name="Main Rewards Pool",
+                fiscal_year=datetime.now().year,
+                total_points=0,
+                status="active"
+            )
+            db.add(budget)
+            db.flush()
+
+    # Find or create department budget entry
+    dept_budget = db.query(DepartmentBudget).filter(
+        DepartmentBudget.department_id == department_id,
+        DepartmentBudget.budget_id == budget.id
+    ).first()
+
+    if not dept_budget:
+        dept_budget = DepartmentBudget(
+            tenant_id=tenant.id,
+            budget_id=budget.id,
+            department_id=department_id,
+            allocated_points=0,
+            spent_points=0
+        )
+        db.add(dept_budget)
+        db.flush()
+
+    # Perform movement
+    tenant.master_budget_balance -= amount_dec
+    tenant.budget_allocation_balance -= amount_dec
+    dept_budget.allocated_points += amount_dec
+    # Update budget totals
+    budget.total_points = Decimal(str(budget.total_points or 0)) + amount_dec
+    budget.allocated_points = Decimal(str(budget.allocated_points or 0)) + amount_dec
+
+    db.commit()
+    return {"message": f"Successfully allocated {allocation_data.amount} points to department"}
+
+
+@router.get("/master-pool")
+async def get_master_pool(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Return the current tenant's master pool balance (HR Admin / Tenant Manager)"""
+    if not getattr(current_user, "tenant_id", None):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Sum up everything already allocated (strategic check)
+    current_dept_allocated = (
+        db.query(func.coalesce(func.sum(DepartmentBudget.allocated_points), 0))
+        .filter(DepartmentBudget.tenant_id == tenant.id)
+        .scalar()
+        or 0
+    )
+
+    # Use budget_allocation_balance as the primary balance for distribution
+    balance = float(tenant.budget_allocation_balance or tenant.master_budget_balance or 0)
+
+    return {
+        "balance": balance,
+        "availablePoints": balance,
+        "allocated": float(tenant.allocated_budget or 0),
+        "department_allocated_sum": float(current_dept_allocated),
+        "available_for_allocation": balance,
+    }
+
+
 # Helper permission for Tenant Admin actions
 async def get_tenant_admin(current_user: User = Depends(get_current_user)) -> User:
     if getattr(current_user, "role", None) in ["hr_admin", "platform_admin"]:
@@ -937,29 +1037,21 @@ async def add_points_to_department(
     if request.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    if Decimal(str(request.amount)) > Decimal(str(tenant.master_budget_balance or 0)):
-        raise HTTPException(status_code=400, detail="Insufficient master pool balance")
+    amount_dec = Decimal(str(request.amount))
+    
+    # Check against the available distribution pool
+    if amount_dec > Decimal(str(tenant.budget_allocation_balance or 0)):
+        raise HTTPException(status_code=400, detail="Insufficient distribution pool balance")
 
-    # Ensure tenant-level allocated budget cap is not exceeded by department allocations
-    current_dept_allocated = (
-        db.query(func.coalesce(func.sum(DepartmentBudget.allocated_points), 0))
-        .filter(DepartmentBudget.tenant_id == tenant.id)
-        .scalar()
-        or 0
-    )
-    if Decimal(str(current_dept_allocated)) + Decimal(str(request.amount)) > Decimal(str(tenant.allocated_budget or 0)):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Allocation would exceed tenant's total allocated budget ({tenant.allocated_budget or 0})",
-        )
-
-    tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance or 0)) - Decimal(str(request.amount))
+    # Update balances (deduct from both to keep in sync)
+    tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance or 0)) - amount_dec
+    tenant.budget_allocation_balance = Decimal(str(tenant.budget_allocation_balance or 0)) - amount_dec
 
     ledger = MasterBudgetLedger(
         tenant_id=tenant.id,
         transaction_type="debit",
         amount=request.amount,
-        balance_after=tenant.master_budget_balance,
+        balance_after=tenant.budget_allocation_balance,
         description=f"Allocated to department {department_id}: {request.description}",
     )
     db.add(ledger)

@@ -93,8 +93,8 @@ def get_dashboard_summary(
     user_ids = [u.id for u in tenant_users]
 
     # Calculate statistics
-    # Use budget_allocation_balance which is the 'Total Budget (Tenant)' for HR Admin
-    master_pool = float(tenant.budget_allocation_balance or 0)
+    # Use budget_allocation_balance with fallback to master_budget_balance
+    master_pool = float(tenant.budget_allocation_balance or tenant.master_budget_balance or 0)
     
     # Get all leads (dept_lead)
     leads_query = db.query(
@@ -116,22 +116,20 @@ def get_dashboard_summary(
     
     for lead in leads_query:
         try:
-            # For each lead, get their total allocated budget from DepartmentBudget
-            # Actually, DepartmentBudget is linked to Department, not lead directly, but a lead belongs to a department.
-            # Let's check how budgets are structured.
-            
-            # Simple aggregation for now
-            lead_budget = db.query(
-                func.sum(Budget.amount).label('total')
+            # Query lead_allocations for this specific user across all active budgets
+            lead_alloc_total = db.query(
+                func.sum(LeadAllocation.allocated_points).label('total')
+            ).join(
+                Budget, Budget.id == LeadAllocation.budget_id
             ).filter(
                 and_(
-                    Budget.owner_id == lead.id,
+                    LeadAllocation.lead_id == lead.id,
                     Budget.tenant_id == tenant.id,
                     Budget.status == 'active'
                 )
             ).first()
             
-            allocated = float(lead_budget.total or 0) if lead_budget else 0
+            allocated = float(lead_alloc_total.total or 0) if lead_alloc_total else 0
             total_delegated += allocated
             
             leads.append({
@@ -139,7 +137,7 @@ def get_dashboard_summary(
                 'name': f"{lead.first_name} {lead.last_name}",
                 'department': lead.department_name or 'Unassigned',
                 'budget': allocated,
-                'used': 0, # To be implemented: spent points tracking
+                'used': 0, # To be implemented: spent points tracking (via spent_points field in LeadAllocation)
             })
         except Exception as e:
             print(f"Error processing lead {lead.id}: {str(e)}")

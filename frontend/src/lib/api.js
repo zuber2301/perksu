@@ -154,16 +154,16 @@ export const auditAPI = {
 
 // Departments API
 export const departmentsAPI = {
-  getAll: () => api.get('/departments'),
-  getById: (id) => api.get(`/departments/${id}`),
-  create: (data) => api.post('/departments', data),
-  update: (id, data) => api.put(`/departments/${id}`, data),
-  delete: (id) => api.delete(`/departments/${id}`),
+  getAll: () => api.get('/tenants/departments'),
+  getById: (id) => api.get(`/tenants/departments/${id}`),
+  create: (data) => api.post('/tenants/departments', data),
+  update: (id, data) => api.put(`/tenants/departments/${id}`, data),
+  delete: (id) => api.delete(`/tenants/departments/${id}`),
   getManagementList: () => api.get('/tenants/management/departments'),
   addPoints: (departmentId, data) => api.post(`/tenants/departments/${departmentId}/add-points`, data),
   assignLead: (departmentId, data) => api.post(`/tenants/departments/${departmentId}/assign-lead`, data),
-  getMasterPool: () => api.get('/departments/master-pool'),
-  allocateBudget: (id, data) => api.post(`/departments/${id}/allocate`, data),
+  getMasterPool: () => api.get('/tenants/master-pool'),
+  allocateBudget: (id, data) => api.post(`/tenants/departments/${id}/add-points`, data),
 }
 
 // Marketplace API

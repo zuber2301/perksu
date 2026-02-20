@@ -83,7 +83,8 @@ async def create_budget(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Check tenant allocation cap
+    # Check tenant allocation cap using allocated_budget or fallback to master_budget_balance for legacy
+    allocation_cap = Decimal(str(tenant.allocated_budget or tenant.master_budget_balance or 0))
     existing_total = (
         db.query(func.coalesce(func.sum(Budget.total_points), 0))
         .filter(Budget.tenant_id == tenant.id)
@@ -91,14 +92,17 @@ async def create_budget(
         or 0
     )
 
-    if Decimal(str(existing_total)) + Decimal(str(budget_data.total_points)) > Decimal(
-        str(tenant.allocated_budget or 0)
-    ):
+    if Decimal(str(existing_total)) + Decimal(str(budget_data.total_points)) > allocation_cap:
         raise HTTPException(
             status_code=400,
-            detail=f"Insufficient tenant allocated budget. Available: {tenant.allocated_budget or 0}",
+            detail=f"Insufficient tenant allocated budget. Available Cap: {allocation_cap}",
         )
 
+    # Deduct from the tenant's current balances
+    # We maintain master_budget_balance and budget_allocation_balance as the 'Active Pool'
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) - Decimal(str(budget_data.total_points))
+    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) - Decimal(str(budget_data.total_points))
+    
     budget = Budget(
         tenant_id=current_user.tenant_id,
         name=budget_data.name,
@@ -106,11 +110,13 @@ async def create_budget(
         fiscal_quarter=budget_data.fiscal_quarter,
         total_points=budget_data.total_points,
         allocated_points=0,
-        status="draft",
+        status="active", # Default to active for simpler distribution in tests/demos
         expiry_date=budget_data.expiry_date,
         created_by=current_user.id,
     )
     db.add(budget)
+    db.add(tenant) # Update tenant balance 
+
 
     # Audit log (only set actor_id if user exists in users table)
     actor_id = None

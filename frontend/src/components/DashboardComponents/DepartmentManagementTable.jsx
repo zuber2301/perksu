@@ -14,7 +14,7 @@ export default function DepartmentManagementTable({ onRefresh }) {
     queryFn: () => departmentsAPI.getManagementList().then(r => r.data),
   })
 
-  const { data: masterPool } = useQuery({
+  const { data: masterPool, isLoading: isLoadingPool } = useQuery({
     queryKey: ['master-pool'],
     queryFn: () => departmentsAPI.getMasterPool().then(r => r.data),
   })
@@ -118,6 +118,7 @@ export default function DepartmentManagementTable({ onRefresh }) {
           onClose={() => setShowAddModal(false)}
           department={activeDept}
           availablePoints={masterPool?.balance || 0}
+          isLoading={isLoadingPool}
           onSubmit={(amount) => addPointsMutation.mutate({ departmentId: activeDept.id, amount })}
         />
       )}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { HiOutlineXMark } from 'react-icons/hi2'
 import { formatCurrency } from '../../../lib/currency'
 
-export default function AddPointsModal({ isOpen, onClose, department, availablePoints = 0, onSubmit }) {
+export default function AddPointsModal({ isOpen, onClose, department, availablePoints = 0, onSubmit, isLoading = false }) {
   const [amount, setAmount] = useState('')
   const [error, setError] = useState(null)
 
@@ -14,6 +14,9 @@ export default function AddPointsModal({ isOpen, onClose, department, availableP
   const handleSubmit = (e) => {
     e.preventDefault()
     setError(null)
+    
+    if (isLoading) return
+
     if (!amount || isNaN(parsed) || parsed <= 0) {
       setError('Please enter a valid amount')
       return
@@ -36,7 +39,9 @@ export default function AddPointsModal({ isOpen, onClose, department, availableP
         <form onSubmit={handleSubmit} className="px-6 py-6 space-y-4">
           <div className="p-3 bg-blue-50 border border-blue-100 rounded">
             <p className="text-xs text-gray-600">Total Budget (Tenant) Balance</p>
-            <p className="text-2xl font-bold">{formatCurrency(availablePoints)}</p>
+            <p className="text-2xl font-bold">
+              {isLoading ? 'Loading...' : formatCurrency(availablePoints)}
+            </p>
           </div>
 
           <div>

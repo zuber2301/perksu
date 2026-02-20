@@ -105,6 +105,11 @@ class TenantLoadBudget(BaseModel):
     description: Optional[str] = "Manual budget load"
 
 
+class DepartmentAllocate(BaseModel):
+    amount: float
+    description: Optional[str] = "Manual allocation from HR Admin"
+
+
 class TenantUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
