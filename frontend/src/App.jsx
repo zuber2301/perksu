@@ -72,35 +72,58 @@ function App() {
       }>
         <Route index element={<Navigate to="/dashboard" />} />
         <Route path="dashboard" element={<DashboardRoute />} />
-        <Route path="feed" element={<Feed />} />
-        <Route path="recognize" element={<Recognize />} />
-        <Route path="redeem" element={<Redeem />} />
-        <Route path="wallet" element={<Wallet />} />
-        <Route path="budgets" element={<Budgets />} />
-        <Route path="users" element={<Users />} />
-        <Route path="audit" element={<Audit />} />
+        <Route path="feed" element={
+          <PrivateRoute requiredRole={['user', 'dept_lead']}>
+            <Feed />
+          </PrivateRoute>
+        } />
+        <Route path="recognize" element={
+          <PrivateRoute requiredRole={['user', 'dept_lead']}>
+            <Recognize />
+          </PrivateRoute>
+        } />
+        <Route path="redeem" element={
+          <PrivateRoute requiredRole={['user', 'dept_lead', 'hr_admin']}>
+            <Redeem />
+          </PrivateRoute>
+        } />
+        <Route path="wallet" element={
+          <PrivateRoute requiredRole={['user', 'dept_lead']}>
+            <Wallet />
+          </PrivateRoute>
+        } />
+        <Route path="budgets" element={
+          <PrivateRoute requiredRole={['hr_admin', 'dept_lead']}>
+            <Budgets />
+          </PrivateRoute>
+        } />
+        <Route path="users" element={
+          <PrivateRoute requiredRole={['hr_admin']}>
+            <Users />
+          </PrivateRoute>
+        } />
+        <Route path="audit" element={
+          <PrivateRoute requiredRole={['hr_admin', 'platform_admin']}>
+            <Audit />
+          </PrivateRoute>
+        } />
         <Route path="tenants" element={
           <PrivateRoute requiredRole="platform_admin">
             <Tenants />
           </PrivateRoute>
         } />
-        <Route path="dashboard/manager" element={
-          <PrivateRoute>
-            <TenantManagerDashboard />
-          </PrivateRoute>
-        } />
         <Route path="departments" element={
-          <PrivateRoute>
+          <PrivateRoute requiredRole={['hr_admin']}>
             <Departments />
           </PrivateRoute>
         } />
         <Route path="marketplace" element={
-          <PrivateRoute>
+          <PrivateRoute requiredRole={['user', 'dept_lead']}>
             <Marketplace />
           </PrivateRoute>
         } />
         <Route path="analytics" element={
-          <PrivateRoute>
+          <PrivateRoute requiredRole={['hr_admin']}>
             <Analytics />
           </PrivateRoute>
         } />
@@ -110,6 +133,9 @@ function App() {
           </PrivateRoute>
         } />
         <Route path="profile" element={<Profile />} />
+        
+        {/* Backward Compatibility & Fallbacks */}
+        <Route path="dashboard/manager" element={<Navigate to="/dashboard" replace />} />
         
         {/* Admin Routes */}
         <Route path="admin/users" element={
@@ -130,6 +156,9 @@ function App() {
             <InviteLinkGenerator />
           </PrivateRoute>
         } />
+
+        {/* Catch-all 404 Redirect to Dashboard */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   )

@@ -59,6 +59,7 @@ export default function Layout() {
     if (effectiveRole === 'platform_admin') {
       return [
         ...base,
+        { section: 'Platform' },
         { name: 'Tenants', href: '/tenants', icon: HiOutlineOfficeBuilding },
         { name: 'Platform Users', href: '/admin/users', icon: HiOutlineShieldCheck },
         { name: 'Settings', href: '/settings', icon: HiOutlineCog },
@@ -68,11 +69,7 @@ export default function Layout() {
     if (effectiveRole === 'hr_admin') {
       return [
         ...base,
-        { name: 'Feed', href: '/feed', icon: HiOutlineNewspaper },
-        { name: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
-        { name: 'Wallet', href: '/wallet', icon: HiOutlineCash },
-        { name: 'Redeem', href: '/redeem', icon: HiOutlineGift },
-        { section: 'Management' },
+        { section: 'Organization' },
         { name: 'Users', href: '/users', icon: HiOutlineUsers },
         { name: 'Departments', href: '/departments', icon: HiOutlineOfficeBuilding },
         { name: 'Budgets', href: '/budgets', icon: HiOutlineCurrencyRupee },
@@ -84,12 +81,9 @@ export default function Layout() {
     if (effectiveRole === 'dept_lead') {
       return [
         ...base,
-        { name: 'Feed', href: '/feed', icon: HiOutlineNewspaper },
-        { name: 'Recognize', href: '/recognize', icon: HiOutlineSparkles },
-        { name: 'Wallet', href: '/wallet', icon: HiOutlineCash },
-        { name: 'Redeem', href: '/redeem', icon: HiOutlineGift },
         { section: 'Team' },
-        { name: 'Dept Budgets', href: '/budgets', icon: HiOutlineCurrencyRupee },
+        { name: 'Team Budgets', href: '/budgets', icon: HiOutlineCurrencyRupee },
+        // Removed Feed/Recognize - Lead must switch to 'User' persona to see personal activity
       ]
     }
 

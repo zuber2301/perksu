@@ -20,7 +20,7 @@ from models import (
 )
 from auth.utils import get_current_user
 
-router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
+router = APIRouter(tags=["Dashboard"])
 
 
 def _get_spending_categories(db: Session, tenant_id: str) -> List[Dict[str, Any]]:

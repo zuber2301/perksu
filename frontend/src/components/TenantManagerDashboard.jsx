@@ -24,7 +24,8 @@ import TopupRequestModal from './DashboardComponents/TopupRequestModal'
  * Main dashboard for HR Admins to view and manage company points allocation
  */
 export default function TenantManagerDashboard() {
-  // Modal states
+  // Tabs and Modal states
+  const [activeTab, setActiveTab] = useState('summary')
   const [showDistributeModal, setShowDistributeModal] = useState(false)
   const [showTopupModal, setShowTopupModal] = useState(false)
 
@@ -94,47 +95,100 @@ export default function TenantManagerDashboard() {
         </button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-8">
+        <button
+          onClick={() => setActiveTab('summary')}
+          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'summary'
+              ? 'border-perksu-purple text-perksu-purple'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Summary
+        </button>
+        <button
+          onClick={() => setActiveTab('departments')}
+          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'departments'
+              ? 'border-perksu-purple text-perksu-purple'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Organization
+        </button>
+        <button
+          onClick={() => setActiveTab('activity')}
+          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'activity'
+              ? 'border-perksu-purple text-perksu-purple'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Feed
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'analytics'
+              ? 'border-perksu-purple text-perksu-purple'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Insights
+        </button>
+      </div>
+
       {/* Main Content */}
       <div className="space-y-8">
-        {/* Hero Section */}
-        <HeroSection stats={dashboardData?.stats} currency={dashboardData?.currency} />
+        {activeTab === 'summary' && (
+          <>
+            {/* Hero Section */}
+            <HeroSection stats={dashboardData?.stats} currency={dashboardData?.currency} />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <DepartmentManagementTable onRefresh={refetch} />
+              </div>
+              <div className="lg:col-span-1">
+                <ActionSidebar
+                  tenantId={dashboardData?.tenant_id}
+                  onDistributeClick={() => setShowDistributeModal(true)}
+                  onTopupClick={() => setShowTopupModal(true)}
+                  onExportReport={refetch}
+                  stats={dashboardData?.stats}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Department Management Table (operational heart) */}
+        {activeTab === 'departments' && (
+          <div className="space-y-8">
             <DepartmentManagementTable onRefresh={refetch} />
-
-            {/* Delegation Status Table */}
             <DelegationStatusTable
               leads={dashboardData?.leads || []}
               currency={dashboardData?.currency}
               onRefresh={refetch}
             />
+          </div>
+        )}
 
-            {/* Recent Recognition Feed */}
+        {activeTab === 'activity' && (
+          <div className="max-w-4xl mx-auto">
             <RecentRecognitionFeed
               recognitions={dashboardData?.recent_recognitions || []}
               onRefresh={refetch}
             />
-
-            {/* Spending Analytics */}
-            <SpendingAnalytics
-              spendingData={dashboardData?.spending_analytics}
-              currency={dashboardData?.currency}
-            />
           </div>
+        )}
 
-          {/* Right Column - Action Sidebar */}
-          <ActionSidebar
-            tenantId={dashboardData?.tenant_id}
-            onDistributeClick={() => setShowDistributeModal(true)}
-            onTopupClick={() => setShowTopupModal(true)}
-            onExportReport={refetch}
-            stats={dashboardData?.stats}
+        {activeTab === 'analytics' && (
+          <SpendingAnalytics
+            spendingData={dashboardData?.spending_analytics}
+            currency={dashboardData?.currency}
           />
-        </div>
+        )}
       </div>
 
       {/* Modals */}

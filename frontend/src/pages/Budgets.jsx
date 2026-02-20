@@ -15,7 +15,10 @@ import {
 } from 'recharts'
 
 export default function Budgets() {
-  const [activeTab, setActiveTab] = useState('budgets') // budgets, allocations, insights
+  const { isHRAdmin, isManager, user, activeRole } = useAuthStore()
+  
+  // Set default tab based on persona
+  const [activeTab, setActiveTab] = useState(activeRole === 'dept_lead' ? 'allocations' : 'budgets') 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showAllocateModal, setShowAllocateModal] = useState(false)
   const [showPointAllocationModal, setShowPointAllocationModal] = useState(false)
@@ -27,7 +30,6 @@ export default function Budgets() {
   const [topUpPoints, setTopUpPoints] = useState(0)
   
   const queryClient = useQueryClient()
-  const { isHRAdmin, isManager, user, activeRole } = useAuthStore()
 
   const { data: budgets, isLoading } = useQuery({
     queryKey: ['budgets'],
@@ -256,16 +258,18 @@ export default function Budgets() {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('budgets')}
-          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
-            activeTab === 'budgets'
-              ? 'border-perksu-purple text-perksu-purple'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Organizational Budgets
-        </button>
+        {activeRole !== 'dept_lead' && (
+          <button
+            onClick={() => setActiveTab('budgets')}
+            className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'budgets'
+                ? 'border-perksu-purple text-perksu-purple'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Organizational Budgets
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('allocations')}
           className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
@@ -274,18 +278,20 @@ export default function Budgets() {
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          Lead Point Allocations
+          {activeRole === 'dept_lead' ? 'My Team Allocations' : 'Lead Point Allocations'}
         </button>
-        <button
-          onClick={() => setActiveTab('insights')}
-          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
-            activeTab === 'insights'
-              ? 'border-perksu-purple text-perksu-purple'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Spend Analysis
-        </button>
+        {activeRole !== 'dept_lead' && (
+          <button
+            onClick={() => setActiveTab('insights')}
+            className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'insights'
+                ? 'border-perksu-purple text-perksu-purple'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Spend Analysis
+          </button>
+        )}
       </div>
 
       {activeTab === 'budgets' ? (

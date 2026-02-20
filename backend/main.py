@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from audit.routes import router as audit_router
 from auth.routes import router as auth_router
 from budgets.routes import router as budgets_router
+from dashboard_routes import router as dashboard_router
 from config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,6 +61,7 @@ app.include_router(
     notifications_router, prefix="/api/notifications", tags=["Notifications"]
 )
 app.include_router(audit_router, prefix="/api/audit", tags=["Audit"])
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @app.get("/")

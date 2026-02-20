@@ -158,6 +158,7 @@ class Tenant(Base):
     merchandise_catalog = relationship("MerchandiseCatalog", back_populates="tenant")
     voucher_catalog = relationship("VoucherCatalog", back_populates="tenant")
     redemptions = relationship("Redemption", back_populates="tenant")
+    allocation_logs = relationship("AllocationLog", back_populates="tenant")
 
 
 class SystemAdmin(Base):
@@ -433,6 +434,49 @@ class WalletLedger(Base):
 
     # Relationships
     wallet = relationship("Wallet", back_populates="ledger_entries")
+
+
+class AllocationLog(Base):
+    __tablename__ = "allocation_logs"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(
+        GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    allocated_by = Column(
+        GUID(), ForeignKey("system_admins.id"), nullable=False
+    )
+    amount = Column(Numeric(15, 2), nullable=False)
+    currency = Column(String(3), default="INR")
+    reference_note = Column(Text)
+    status = Column(String(20), default="COMPLETED")  # COMPLETED, REVOKED
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    tenant = relationship("Tenant", back_populates="allocation_logs")
+    admin = relationship("SystemAdmin")
+
+
+class PlatformBillingLog(Base):
+    __tablename__ = "platform_billing_logs"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    admin_id = Column(
+        GUID(), ForeignKey("system_admins.id"), nullable=False
+    )
+    tenant_id = Column(
+        GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    amount = Column(Numeric(15, 2), nullable=False)
+    currency = Column(String(3), default="INR")
+    reference_note = Column(Text)
+    transaction_type = Column(String(50), nullable=False)  # CREDIT_INJECTION, CLAWBACK, ADJUSTMENT
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    tenant = relationship("Tenant")
+    admin = relationship("SystemAdmin")
 
 
 class LeadAllocation(Base):
