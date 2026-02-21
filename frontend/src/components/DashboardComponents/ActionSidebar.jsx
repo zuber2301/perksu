@@ -1,4 +1,5 @@
 import { HiOutlinePlusCircle, HiOutlineBell, HiOutlineDocumentArrowDown } from 'react-icons/hi2'
+import { HiOutlineUserGroup, HiOutlineSparkles } from 'react-icons/hi2'
 import { formatNumber } from '../../lib/currency'
 
 /**
@@ -10,6 +11,8 @@ export default function ActionSidebar({
   onDistributeClick,
   onTopupClick,
   onExportReport,
+  onPerEmployeeDistribute,
+  onBulkUserDistribute,
   stats
 }) {
   const handleExportReport = async () => {
@@ -48,6 +51,26 @@ export default function ActionSidebar({
       bgColor: 'bg-blue-50',
       textColor: 'text-blue-600',
       onClick: onDistributeClick,
+    },
+    {
+      id: 'per-employee',
+      title: 'Per-Employee Distribution',
+      description: 'Allocate budget to departments by headcount',
+      icon: HiOutlineUserGroup,
+      color: 'from-perksu-purple to-purple-700',
+      bgColor: 'bg-purple-50',
+      textColor: 'text-perksu-purple',
+      onClick: onPerEmployeeDistribute,
+    },
+    {
+      id: 'bulk-users',
+      title: 'Distribute to All Users',
+      description: "Credit every active employee's wallet",
+      icon: HiOutlineSparkles,
+      color: 'from-pink-500 to-pink-600',
+      bgColor: 'bg-pink-50',
+      textColor: 'text-pink-600',
+      onClick: onBulkUserDistribute,
     },
     {
       id: 'topup',

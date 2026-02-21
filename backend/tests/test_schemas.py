@@ -46,11 +46,11 @@ class TestUserSchemas:
             password="password123",
             first_name="New",
             last_name="User",
-            role="employee",
+            role="user",
             department_id=uuid.uuid4(),
         )
         assert data.email == "newuser@test.com"
-        assert data.role == "employee"
+        assert data.role == "user"
 
     def test_user_create_invalid_role(self):
         """Test user creation with invalid role"""

@@ -85,10 +85,9 @@ async def get_tenant_overview_stats(
         "total_spent": float(total_spent),
         "budget_remaining": float(tenant.master_budget_balance or 0),
         "user_counts": {
-            "tenant_manager": counts.get("tenant_manager", 0),
-            "lead": counts.get("lead", 0),
-            "user": counts.get("user", counts.get("employee", 0)),
-            "employee": counts.get("employee", 0),
+            "hr_admin": counts.get("hr_admin", 0),
+            "lead": counts.get("dept_lead", 0),
+            "user": counts.get("user", 0),
             "by_org_role": counts,
         },
         "timestamp": datetime.utcnow(),
@@ -638,7 +637,7 @@ async def reset_manager_permissions(
 
     # Reset to base permissions
     manager.is_super_admin = False
-    manager.role = "manager"
+    manager.role = "dept_lead"
     db.commit()
     db.refresh(manager)
 
@@ -1174,7 +1173,7 @@ async def assign_department_lead(
         .all()
     )
     for l in existing_leads:
-        l.org_role = "employee"
+        l.org_role = "user"
 
     user.org_role = "dept_lead"
 

@@ -53,8 +53,9 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
-    org_role: str = "employee"
+    org_role: str = "user"
     department_id: Optional[UUID] = None
+    department_name: Optional[str] = None
     avatar_url: Optional[str] = None
     is_super_admin: bool = False
     status: str

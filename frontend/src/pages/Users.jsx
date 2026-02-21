@@ -567,7 +567,7 @@ export default function Users() {
                           <li>• Use our official CSV template for formatting</li>
                           <li>• Emails must be unique within your organization</li>
                           <li>• Include a password (min 8 chars) for direct login</li>
-                          <li>• Role must be 'manager' or 'employee'</li>
+                          <li>• Role must be 'dept_lead' or 'user'</li>
                           <li>• Mobile must follow +91XXXXXXXXXX format</li>
                         </ul>
                       </div>

@@ -139,16 +139,26 @@ def process_bulk_upload(
             elif existing_user.mobile_phone == mobile_phone:
                 errors.append(f"Mobile number {mobile_phone} already exists")
 
-        # Dept validation
-        dept_id = departments.get(dept_name.lower())
+        # Dept validation — fall back to 'General' instead of hard-failing
+        dept_id = departments.get(dept_name.lower()) if dept_name else None
         if not dept_id:
-            if not dept_name:
-                errors.append("Department is required")
-            else:
-                errors.append(f"Department '{dept_name}' not found")
+            # Ensure a 'General' fallback department exists for this tenant
+            general = (
+                db.query(Department)
+                .filter(Department.tenant_id == tenant_id, Department.name == "General")
+                .first()
+            )
+            if not general:
+                general = Department(tenant_id=tenant_id, name="General")
+                db.add(general)
+                db.flush()
+                departments["general"] = general.id
+            dept_id = general.id
+            if dept_name and dept_name.lower() not in departments:
+                errors.append(f"Department '{dept_name}' not found — will be placed in General")
 
         # Role validation
-        valid_roles = ["hr_admin", "manager", "employee", "platform_admin", "tenant_manager"]
+        valid_roles = ["platform_admin", "hr_admin", "dept_lead", "user"]
         if role not in valid_roles:
             errors.append(f"Invalid role '{role}'")
 

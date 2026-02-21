@@ -18,6 +18,8 @@ import SpendingAnalytics from './DashboardComponents/SpendingAnalytics'
 import ActionSidebar from './DashboardComponents/ActionSidebar'
 import DistributePointsModal from './DashboardComponents/DistributePointsModal'
 import TopupRequestModal from './DashboardComponents/TopupRequestModal'
+import PerEmployeeDistributionModal from './DashboardComponents/modals/PerEmployeeDistributionModal'
+import BulkUserDistributionModal from './DashboardComponents/modals/BulkUserDistributionModal'
 
 /**
  * TenantManagerDashboard Component
@@ -28,6 +30,8 @@ export default function TenantManagerDashboard() {
   const [activeTab, setActiveTab] = useState('summary')
   const [showDistributeModal, setShowDistributeModal] = useState(false)
   const [showTopupModal, setShowTopupModal] = useState(false)
+  const [showPerEmployeeModal, setShowPerEmployeeModal] = useState(false)
+  const [showBulkUserModal, setShowBulkUserModal] = useState(false)
 
   // Fetch dashboard summary using React Query
   const { 
@@ -155,6 +159,8 @@ export default function TenantManagerDashboard() {
                   tenantId={dashboardData?.tenant_id}
                   onDistributeClick={() => setShowDistributeModal(true)}
                   onTopupClick={() => setShowTopupModal(true)}
+                  onPerEmployeeDistribute={() => setShowPerEmployeeModal(true)}
+                  onBulkUserDistribute={() => setShowBulkUserModal(true)}
                   onExportReport={refetch}
                   stats={dashboardData?.stats}
                 />
@@ -215,6 +221,31 @@ export default function TenantManagerDashboard() {
             refetch()
           }}
           tenantName={dashboardData?.tenant_name}
+        />
+      )}
+
+      {showPerEmployeeModal && (
+        <PerEmployeeDistributionModal
+          isOpen={showPerEmployeeModal}
+          onClose={() => setShowPerEmployeeModal(false)}
+          onSuccess={() => {
+            setShowPerEmployeeModal(false)
+            refetch()
+          }}
+          availableMasterPool={dashboardData?.stats?.master_pool || 0}
+        />
+      )}
+
+      {showBulkUserModal && (
+        <BulkUserDistributionModal
+          isOpen={showBulkUserModal}
+          onClose={() => setShowBulkUserModal(false)}
+          onSuccess={() => {
+            setShowBulkUserModal(false)
+            refetch()
+          }}
+          availableMasterPool={dashboardData?.stats?.master_pool || 0}
+          totalActiveUsers={dashboardData?.stats?.active_users_count || 0}
         />
       )}
     </div>

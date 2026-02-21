@@ -39,7 +39,9 @@ export default function Dashboard() {
           Welcome back, {user?.first_name}! 👋
         </h1>
         <p className="text-white/80">
-          {activeRole === 'dept_lead' ? 'Manage your team and track performance' : 'Ready to recognize your colleagues today?'}
+          {activeRole === 'dept_lead'
+            ? 'Manage your team and track performance'
+            : 'Explore rewards, recognize peers, and track your points'}
         </p>
       </div>
 

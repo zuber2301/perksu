@@ -75,7 +75,7 @@ def get_dashboard_summary(
     """
     
     # Authorization: Only HR Admin, Dept Lead or Platform Admin can access
-    allowed_roles = ['platform_admin', 'hr_admin', 'tenant_manager', 'dept_lead']
+    allowed_roles = ['platform_admin', 'hr_admin', 'dept_lead']
     if current_user.org_role not in allowed_roles:
         raise HTTPException(
             status_code=403, 
@@ -244,7 +244,7 @@ def submit_topup_request(
     Response: Creates notification for Platform Admin to review
     """
     # Authorization: Only Tenant Managers can request top-ups
-    if current_user.org_role not in ['tenant_manager', 'platform_admin']:
+    if current_user.org_role not in ['hr_admin', 'platform_admin']:
         raise HTTPException(
             status_code=403, 
             detail="Access denied. Only Tenant Managers can submit top-up requests."
@@ -306,7 +306,7 @@ def delegate_points_to_lead(
     Smart delegation: Move points from Master Pool to a Lead.
     Automatically handles budget top-up if needed.
     """
-    if current_user.org_role not in ['tenant_manager', 'hr_admin']:
+    if current_user.org_role not in ['hr_admin', 'platform_admin']:
         raise HTTPException(status_code=403, detail="Access denied")
 
     lead_id = request_data.get('lead_id')
@@ -394,10 +394,10 @@ def get_dashboard_variant(
     and an optional recommended client-side redirect path.
 
     Mapping rules:
-    - `platform_admin` -> variant `tenants` (redirect `/tenants`)
-    - `tenant_manager` -> variant `manager` (redirect `/dashboard`)
-    - `manager` / `tenant_lead` -> variant `lead` (redirect `/dashboard`)
-    - others -> variant `default` (redirect `/tenants`)
+    - `platform_admin` -> variant `tenants`  (redirect `/tenants`)
+    - `hr_admin`       -> variant `manager`   (redirect `/dashboard`)
+    - `dept_lead`      -> variant `lead`      (redirect `/dashboard`)
+    - `user`           -> variant `default`   (redirect `/dashboard`)
     """
     role = getattr(current_user, "role", None)
     org_role = getattr(current_user, "org_role", None)
@@ -405,13 +405,13 @@ def get_dashboard_variant(
     if role == "platform_admin" or org_role == "platform_admin":
         return {"variant": "tenants", "redirect": "/tenants"}
 
-    if role == "tenant_manager" or org_role == "tenant_manager":
+    if org_role == "hr_admin":
         return {"variant": "manager", "redirect": "/dashboard"}
 
-    if role == "manager" or org_role in ("tenant_lead", "manager"):
+    if org_role == "dept_lead":
         return {"variant": "lead", "redirect": "/dashboard"}
 
-    return {"variant": "default", "redirect": "/tenants"}
+    return {"variant": "default", "redirect": "/dashboard"}
 
 
 @router.get("/export-report/{tenant_id}")

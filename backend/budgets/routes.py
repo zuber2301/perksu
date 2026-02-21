@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -12,11 +13,17 @@ from budgets.schemas import (
     EmployeeAllocationRequest,
     LeadAllocationResponse,
     LeadPointAllocationRequest,
+    PerEmployeeDeptDistributionRequest,
+    PerEmployeeDeptDistributionResponse,
+    DeptDistributionPreviewItem,
+    BulkUserDistributionRequest,
+    BulkUserDistributionResponse,
 )
 from fastapi import APIRouter, Depends, HTTPException
 from models import (
     AuditLog,
     Budget,
+    Department,
     Tenant,
     DepartmentBudget,
     LeadAllocation,
@@ -30,6 +37,274 @@ from sqlalchemy.orm import Session
 from database import get_db
 
 router = APIRouter()
+
+
+# ── Per-Employee Department Distribution ──────────────────────────────────────
+
+def _get_or_create_active_budget(db: Session, tenant: Tenant) -> Budget:
+    """Return the active budget for a tenant, auto-creating one if needed."""
+    budget = db.query(Budget).filter(
+        Budget.tenant_id == tenant.id,
+        Budget.status == "active",
+    ).first()
+    if not budget:
+        budget = Budget(
+            tenant_id=tenant.id,
+            name="Main Rewards Pool",
+            fiscal_year=datetime.now().year,
+            total_points=0,
+            allocated_points=0,
+            status="active",
+        )
+        db.add(budget)
+        db.flush()
+    return budget
+
+
+@router.post("/distribute/per-employee", response_model=PerEmployeeDeptDistributionResponse)
+async def distribute_per_employee_to_departments(
+    data: PerEmployeeDeptDistributionRequest,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    HR Admin workflow: Distribute budget to departments using a per-employee rate.
+
+    For each targeted department: allocation = active_employee_count × points_per_user.
+    Points come from the tenant master pool.  Accessible by hr_admin only.
+    """
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if data.points_per_user <= 0:
+        raise HTTPException(status_code=400, detail="points_per_user must be a positive integer")
+
+    # Determine target departments
+    if data.department_ids:
+        departments = (
+            db.query(Department)
+            .filter(
+                Department.tenant_id == current_user.tenant_id,
+                Department.id.in_(data.department_ids),
+            )
+            .all()
+        )
+    else:
+        departments = (
+            db.query(Department)
+            .filter(Department.tenant_id == current_user.tenant_id)
+            .all()
+        )
+
+    if not departments:
+        raise HTTPException(status_code=404, detail="No departments found")
+
+    # Build per-dept breakdown and total
+    breakdown = []
+    total_to_allocate = 0
+    for dept in departments:
+        count = (
+            db.query(func.count(User.id))
+            .filter(User.department_id == dept.id, User.status == "active")
+            .scalar()
+            or 0
+        )
+        dept_points = count * data.points_per_user
+        total_to_allocate += dept_points
+        breakdown.append((dept, count, dept_points))
+
+    if total_to_allocate == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="No active employees found in the selected departments; nothing to allocate.",
+        )
+
+    # Check master pool balance
+    available = float(tenant.master_budget_balance or 0)
+    if total_to_allocate > available:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient master pool balance. Required: {total_to_allocate}, Available: {available:.0f}",
+        )
+
+    budget = _get_or_create_active_budget(db, tenant)
+
+    # Apply allocations
+    preview_items: List[DeptDistributionPreviewItem] = []
+    for dept, count, dept_points in breakdown:
+        if dept_points == 0:
+            continue
+
+        dept_budget = (
+            db.query(DepartmentBudget)
+            .filter(
+                DepartmentBudget.department_id == dept.id,
+                DepartmentBudget.budget_id == budget.id,
+            )
+            .first()
+        )
+        if dept_budget:
+            dept_budget.allocated_points = Decimal(str(dept_budget.allocated_points)) + Decimal(str(dept_points))
+        else:
+            dept_budget = DepartmentBudget(
+                tenant_id=current_user.tenant_id,
+                budget_id=budget.id,
+                department_id=dept.id,
+                allocated_points=Decimal(str(dept_points)),
+                spent_points=0,
+            )
+            db.add(dept_budget)
+
+        preview_items.append(
+            DeptDistributionPreviewItem(
+                department_id=dept.id,
+                department_name=dept.name,
+                employee_count=count,
+                points_to_allocate=dept_points,
+            )
+        )
+
+    # Deduct from tenant master pool
+    tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance)) - Decimal(str(total_to_allocate))
+    if tenant.budget_allocation_balance is not None:
+        tenant.budget_allocation_balance = (
+            Decimal(str(tenant.budget_allocation_balance)) - Decimal(str(total_to_allocate))
+        )
+
+    # Keep budget totals in sync
+    budget.total_points = Decimal(str(budget.total_points or 0)) + Decimal(str(total_to_allocate))
+    budget.allocated_points = Decimal(str(budget.allocated_points or 0)) + Decimal(str(total_to_allocate))
+
+    # Audit log
+    audit = AuditLog(
+        tenant_id=current_user.tenant_id,
+        actor_id=current_user.id,
+        action="per_employee_dept_distribution",
+        entity_type="budget",
+        entity_id=budget.id,
+        new_values={
+            "points_per_user": data.points_per_user,
+            "total_allocated": total_to_allocate,
+            "departments_count": len(preview_items),
+        },
+    )
+    db.add(audit)
+    db.commit()
+
+    return PerEmployeeDeptDistributionResponse(
+        total_points_allocated=total_to_allocate,
+        departments_updated=len(preview_items),
+        breakdown=preview_items,
+        master_pool_remaining=float(tenant.master_budget_balance),
+    )
+
+
+# ── Bulk All-Users Distribution ───────────────────────────────────────────────
+
+@router.post("/distribute/all-users", response_model=BulkUserDistributionResponse)
+async def distribute_to_all_users(
+    data: BulkUserDistributionRequest,
+    current_user: User = Depends(get_hr_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    HR Admin workflow: Credit every active user in the tenant with points_per_user.
+
+    Points are taken from the tenant master pool and deposited directly into each
+    user's wallet.  Accessible by hr_admin only.
+    """
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if data.points_per_user <= 0:
+        raise HTTPException(status_code=400, detail="points_per_user must be a positive integer")
+
+    users = (
+        db.query(User)
+        .filter(User.tenant_id == current_user.tenant_id, User.status == "active")
+        .all()
+    )
+
+    if not users:
+        raise HTTPException(status_code=400, detail="No active users found in this tenant")
+
+    total_points = len(users) * data.points_per_user
+
+    # Check master pool
+    available = float(tenant.master_budget_balance or 0)
+    if total_points > available:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient master pool balance. Required: {total_points}, Available: {available:.0f}",
+        )
+
+    description = data.description or "Bulk distribution by HR Admin"
+    pts_dec = Decimal(str(data.points_per_user))
+
+    for user in users:
+        wallet = (
+            db.query(Wallet)
+            .filter(Wallet.user_id == user.id, Wallet.tenant_id == current_user.tenant_id)
+            .first()
+        )
+        if not wallet:
+            wallet = Wallet(
+                tenant_id=current_user.tenant_id,
+                user_id=user.id,
+                balance=0,
+                lifetime_earned=0,
+                lifetime_spent=0,
+            )
+            db.add(wallet)
+            db.flush()
+
+        wallet.balance = Decimal(str(wallet.balance)) + pts_dec
+        wallet.lifetime_earned = Decimal(str(wallet.lifetime_earned)) + pts_dec
+
+        ledger = WalletLedger(
+            tenant_id=current_user.tenant_id,
+            wallet_id=wallet.id,
+            transaction_type="credit",
+            source="hr_allocation",
+            points=pts_dec,
+            balance_after=wallet.balance,
+            description=description,
+            created_by=current_user.id,
+        )
+        db.add(ledger)
+
+    # Deduct from tenant master pool
+    total_dec = Decimal(str(total_points))
+    tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance)) - total_dec
+    if tenant.budget_allocation_balance is not None:
+        tenant.budget_allocation_balance = (
+            Decimal(str(tenant.budget_allocation_balance)) - total_dec
+        )
+
+    # Audit log
+    audit = AuditLog(
+        tenant_id=current_user.tenant_id,
+        actor_id=current_user.id,
+        action="bulk_user_distribution",
+        entity_type="tenant",
+        entity_id=tenant.id,
+        new_values={
+            "points_per_user": data.points_per_user,
+            "total_users": len(users),
+            "total_points_distributed": total_points,
+            "description": description,
+        },
+    )
+    db.add(audit)
+    db.commit()
+
+    return BulkUserDistributionResponse(
+        total_users_credited=len(users),
+        total_points_distributed=total_points,
+        master_pool_remaining=float(tenant.master_budget_balance),
+    )
 
 
 @router.get("/", response_model=List[BudgetResponse])

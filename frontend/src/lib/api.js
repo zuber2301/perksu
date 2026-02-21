@@ -85,6 +85,8 @@ export const budgetsAPI = {
   allocateToLead: (data) => api.post('/budgets/leads/allocate', data),
   allocateToEmployee: (budgetId, departmentId, data) => api.post(`/budgets/${budgetId}/departments/${departmentId}/allocate_employee`, data),
   getMyAvailablePoints: () => api.get('/budgets/my-available-points'),
+  distributePerEmployee: (data) => api.post('/budgets/distribute/per-employee', data),
+  distributeToAllUsers: (data) => api.post('/budgets/distribute/all-users', data),
 }
 
 // Recognition API

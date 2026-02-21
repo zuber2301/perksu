@@ -49,7 +49,7 @@ def setup_redemption_data(db):
         first_name="Manager",
         last_name="User",
         role="hr_admin",
-        org_role="tenant_manager",
+        org_role="hr_admin",
         department_id=dept.id,
         status="active"
     )
@@ -63,8 +63,8 @@ def setup_redemption_data(db):
         password_hash=get_password_hash("password"),
         first_name="Lead",
         last_name="User",
-        role="employee",
-        org_role="tenant_lead",
+        role="user",
+        org_role="dept_lead",
         department_id=dept.id,
         manager_id=manager.id,
         status="active"

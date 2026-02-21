@@ -119,11 +119,11 @@ async def delegate_points_to_lead(
     Tenant Manager: Delegate points from allocation pool to a lead/department head.
     This transfers from tenant.points_allocation_balance to lead's lead_distribution_balance.
     """
-    # Verify current user is a tenant manager
-    if current_user.org_role not in ["tenant_manager", "hr_admin"]:
+    # Verify current user is an HR Admin or Platform Admin
+    if current_user.org_role not in ["hr_admin", "platform_admin"]:
         raise HTTPException(
             status_code=403,
-            detail="Only Tenant Managers can delegate points to leads",
+            detail="Only HR Admins can delegate points to leads",
         )
 
     try:
@@ -159,7 +159,7 @@ async def award_points_to_user(
     - Both users exist in tenant
     """
     # Verify current user has right to distribute
-    if current_user.org_role not in ["tenant_manager", "hr_admin", "tenant_lead", "manager"]:
+    if current_user.org_role not in ["hr_admin", "dept_lead", "platform_admin"]:
         raise HTTPException(
             status_code=403,
             detail="You don't have permission to award points",

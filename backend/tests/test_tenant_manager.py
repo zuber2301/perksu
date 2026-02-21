@@ -470,7 +470,7 @@ class TestAdminUserManagement:
         # Verify permissions were reset
         db.refresh(test_tenant_manager)
         assert test_tenant_manager.is_super_admin is False
-        assert test_tenant_manager.role == "manager"
+        assert test_tenant_manager.role == "dept_lead"
 
 
 class TestPlatformAdminFeatures:

@@ -3,8 +3,7 @@ import { persist } from 'zustand/middleware'
 
 // Role hierarchy (highest to lowest)
 const ROLE_HIERARCHY = {
-  platform_admin: 5,
-  tenant_manager: 4,
+  platform_admin: 4,
   hr_admin: 3,
   dept_lead: 2,
   user: 1,
@@ -63,12 +62,12 @@ export const useAuthStore = create(
 
       isHRAdmin: () => {
         const { activeRole } = get()
-        return ['hr_admin', 'tenant_manager', 'platform_admin'].includes(activeRole)
+        return ['hr_admin', 'platform_admin'].includes(activeRole)
       },
 
       isManager: () => {
         const { activeRole } = get()
-        return ['dept_lead', 'hr_admin', 'tenant_manager', 'platform_admin'].includes(activeRole)
+        return ['dept_lead', 'hr_admin', 'platform_admin'].includes(activeRole)
       },
     }),
     {

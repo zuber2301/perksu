@@ -123,8 +123,8 @@ async def recommend_voucher(
     current_user: User = Depends(get_current_user),
 ):
     """Lead recommends a voucher to their team"""
-    if current_user.org_role not in ["tenant_lead", "manager"]:
-        raise HTTPException(status_code=403, detail="Only leads or managers can recommend rewards")
+    if current_user.org_role not in ["dept_lead", "hr_admin", "platform_admin"]:
+        raise HTTPException(status_code=403, detail="Only department leads can recommend rewards")
 
     # Find direct reports
     reports = db.query(User).filter(User.manager_id == current_user.id).all()
@@ -666,8 +666,8 @@ async def get_team_redemption_activity(
     current_user: User = Depends(get_current_user),
 ):
     """Lead sees what their team is redeeming (privacy-preserving)"""
-    if current_user.org_role not in ["tenant_lead", "manager"]:
-        raise HTTPException(status_code=403, detail="Only leads or managers can view team activity")
+    if current_user.org_role not in ["dept_lead", "hr_admin", "platform_admin"]:
+        raise HTTPException(status_code=403, detail="Only department leads can view team activity")
 
     # Find direct reports
     reports = db.query(User).filter(User.manager_id == current_user.id).all()

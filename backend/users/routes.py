@@ -87,7 +87,7 @@ async def get_users(
     # For HR/Managers, show all by default unless they specify.
     if status:
         query = query.filter(User.status == status)
-    elif current_user.role not in ["platform_admin", "hr_admin", "tenant_manager"]:
+    elif current_user.role not in ["platform_admin", "hr_admin"]:
         query = query.filter(User.status == "active")
 
     users = query.offset(skip).limit(limit).all()
@@ -419,6 +419,14 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     update_data = user_data.model_dump(exclude_unset=True)
+
+    # Never allow department_id to be unset
+    if "department_id" in update_data and update_data["department_id"] is None:
+        raise HTTPException(
+            status_code=400,
+            detail="department_id is required and cannot be removed from a user.",
+        )
+
     for key, value in update_data.items():
         setattr(user, key, value)
 

@@ -7,9 +7,23 @@ from uuid import UUID
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from auth.utils import get_password_hash
-from models import User, Wallet
+from models import Department, User, Wallet
 
 from database import SessionLocal
+
+
+def _get_or_create_general_dept(db, tenant_id: UUID):
+    """Return (or create) the 'General' department for a given tenant."""
+    dept = (
+        db.query(Department)
+        .filter(Department.tenant_id == tenant_id, Department.name == "General")
+        .first()
+    )
+    if not dept:
+        dept = Department(tenant_id=tenant_id, name="General")
+        db.add(dept)
+        db.flush()
+    return dept
 
 
 def import_users_from_csv(file_path: str):
@@ -25,14 +39,29 @@ def import_users_from_csv(file_path: str):
                 last_name = row["last_name"]
                 role = row["role"]
                 password = row["password"]
-                tenant_id = row["tenant_id"]
+                tenant_id = UUID(row["tenant_id"])
                 status = row.get("status", "active")
+                dept_name = row.get("department", "").strip()
 
                 # Check if user exists
                 existing_user = db.query(User).filter(User.email == email).first()
                 if existing_user:
                     print(f"User {email} already exists. Skipping.")
                     continue
+
+                # Resolve department — mandatory; fall back to 'General'
+                dept = None
+                if dept_name:
+                    dept = (
+                        db.query(Department)
+                        .filter(
+                            Department.tenant_id == tenant_id,
+                            Department.name.ilike(dept_name),
+                        )
+                        .first()
+                    )
+                if not dept:
+                    dept = _get_or_create_general_dept(db, tenant_id)
 
                 # Create user
                 new_user = User(
@@ -43,7 +72,8 @@ def import_users_from_csv(file_path: str):
                     last_name=last_name,
                     role=role,
                     password_hash=get_password_hash(password),
-                    tenant_id=UUID(tenant_id),
+                    tenant_id=tenant_id,
+                    department_id=dept.id,
                     status=status,
                 )
                 db.add(new_user)

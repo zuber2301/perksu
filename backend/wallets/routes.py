@@ -82,8 +82,8 @@ async def get_user_wallet(
 
     # Check if current user can view this wallet
     if current_user.role not in ["hr_admin", "platform_admin"]:
-        if current_user.role == "manager":
-            # Manager can view their direct reports
+        if current_user.role == "dept_lead":
+            # Dept lead can view their direct reports
             if (
                 target_user.manager_id != current_user.id
                 and target_user.id != current_user.id

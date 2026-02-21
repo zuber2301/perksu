@@ -1,8 +1,8 @@
 import { useAuthStore } from '../store/authStore'
 import { useQuery } from '@tanstack/react-query'
-import { walletsAPI, recognitionAPI } from '../lib/api'
+import { walletsAPI, recognitionAPI, authAPI } from '../lib/api'
 import StatCard from '../components/StatCard'
-import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase, HiOutlineSparkles, HiOutlineCash, HiOutlineTrendingUp, HiOutlineEmojiHappy } from 'react-icons/hi'
+import { HiOutlineUser, HiOutlineMail, HiOutlineBriefcase, HiOutlineOfficeBuilding, HiOutlineSparkles, HiOutlineCash, HiOutlineTrendingUp, HiOutlineEmojiHappy } from 'react-icons/hi'
 
 const ROLE_DISPLAY_NAMES = {
   platform_admin: 'Perksu Admin',
@@ -12,7 +12,16 @@ const ROLE_DISPLAY_NAMES = {
 }
 
 export default function Profile() {
-  const { user, activeRole } = useAuthStore()
+  const { user: storeUser, activeRole } = useAuthStore()
+
+  // Fetch fresh user data so department_name and other fields are always current
+  const { data: freshUser } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => authAPI.me(),
+  })
+
+  // Prefer fresh server data, fall back to cached store data
+  const user = freshUser || storeUser
 
   const { data: wallet, isLoading: walletLoading } = useQuery({
     queryKey: ['myWallet'],
@@ -61,6 +70,17 @@ export default function Profile() {
               <p className="font-medium text-gray-900">{ROLE_DISPLAY_NAMES[user?.org_role] || user?.org_role?.replace('_', ' ')}</p>
             </div>
           </div>
+          {user?.department_name && (
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                <HiOutlineBriefcase className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Department</p>
+                <p className="font-medium text-gray-900">{user.department_name}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

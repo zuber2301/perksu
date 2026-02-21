@@ -46,8 +46,8 @@ function DashboardRoute() {
   // Platform admin persona sees Tenants view at /dashboard
   if (activeRole === 'platform_admin') return <Tenants />
   
-  // HR Admin / Tenant Manager sees the management dashboard
-  if (['hr_admin', 'tenant_manager'].includes(activeRole)) return <TenantManagerDashboard />
+  // HR Admin sees the management dashboard
+  if (['hr_admin'].includes(activeRole)) return <TenantManagerDashboard />
   
   // Dept Lead and standard User see the individual dashboard
   const userRoles = ['dept_lead', 'user']

@@ -376,8 +376,13 @@ async def login_for_access_token(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
+async def get_current_user_info(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current authenticated user information"""
+    from models import Department
+    dept_name = None
+    if current_user.department_id:
+        dept = db.query(Department).filter(Department.id == current_user.department_id).first()
+        dept_name = dept.name if dept else None
     return UserResponse(
         id=current_user.id,
         tenant_id=current_user.tenant_id,
@@ -387,6 +392,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
         role=current_user.role,
         org_role=current_user.org_role,
         department_id=current_user.department_id,
+        department_name=dept_name,
         avatar_url=current_user.avatar_url,
         status=current_user.status,
     )
