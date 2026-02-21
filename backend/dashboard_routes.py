@@ -16,7 +16,7 @@ import uuid
 from database import get_db
 from models import (
     Tenant, User, AllocationLog, Wallet, Recognition,
-    LeadAllocation, Redemption, Department, Budget,
+    LeadAllocation, Redemption, Department, Budget, DepartmentBudget,
 )
 from auth.utils import get_current_user
 
@@ -97,8 +97,19 @@ def get_dashboard_summary(
     # AND include unallocated points in the active budget
     tenant_master_pool = float(tenant.budget_allocation_balance or tenant.master_budget_balance or 0)
     active_budget = db.query(Budget).filter(Budget.tenant_id == tenant.id, Budget.status == "active").first()
+    
     budget_unallocated = float(active_budget.remaining_points) if active_budget else 0
     master_pool = tenant_master_pool + budget_unallocated
+    
+    # Total Delegated: Points that have left the master pool and are in departments or with leads
+    total_delegated = float(active_budget.allocated_points) if active_budget else 0
+    
+    # Total Spent: Points awarded to employees (tracked in department_budgets and lead_allocations)
+    total_spent_by_leads = 0
+    if active_budget:
+        spent_dept = db.query(func.sum(DepartmentBudget.spent_points)).filter(DepartmentBudget.budget_id == active_budget.id).scalar() or 0
+        spent_lead = db.query(func.sum(LeadAllocation.spent_points)).filter(LeadAllocation.budget_id == active_budget.id).scalar() or 0
+        total_spent_by_leads = float(spent_dept) + float(spent_lead)
 
     # Get all leads (dept_lead)
     leads_query = db.query(
@@ -116,8 +127,6 @@ def get_dashboard_summary(
     ).all()
 
     leads = []
-    total_delegated = 0
-    total_spent_by_leads = 0
     
     for lead in leads_query:
         try:
@@ -137,8 +146,7 @@ def get_dashboard_summary(
             
             allocated = float(lead_alloc_total.total_allocated or 0) if lead_alloc_total else 0
             spent = float(lead_alloc_total.total_spent or 0) if lead_alloc_total else 0
-            total_delegated += allocated
-            total_spent_by_leads += spent
+            # We don't increment total_delegated here anymore as we use the budget-level total
             
             leads.append({
                 'id': str(lead.id),
