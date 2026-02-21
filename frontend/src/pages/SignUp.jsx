@@ -109,7 +109,7 @@ export default function SignUp() {
   const signUpMutation = useMutation({
     mutationFn: (data) => api.post('/auth/signup', data),
     onSuccess: (response) => {
-      const { access_token, user } = response.data
+      const { access_token, user } = response
       setAuth(user, access_token)
       setStep('success')
       

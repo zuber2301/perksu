@@ -17,7 +17,7 @@ export default function TenantUserManagementTab({ tenant, setMessage }) {
       const response = await api.get(
         `/tenants/admin/tenants/${tenant.tenant_id}/users`
       );
-      setManagers(response.data);
+      setManagers(response);
     } catch (err) {
       setMessage({
         type: 'error',

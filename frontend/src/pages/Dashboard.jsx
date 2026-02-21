@@ -73,43 +73,43 @@ export default function Dashboard() {
         <>
           {/* Stats grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <WalletBalance wallet={wallet?.data} />
+            <WalletBalance wallet={wallet} />
             
             <StatCard
               title="Recognitions Given"
-              value={stats?.data?.total_given || 0}
+              value={stats?.total_given || 0}
               icon={<HiOutlineSparkles className="w-6 h-6 text-white" />}
               gradient
               loading={statsLoading}
               footerLeft={
                 <span className="text-white/80 font-medium">
-                  Current Quarter: {formatCurrency(stats?.data?.points_given || 0)}
+                  Current Quarter: {formatCurrency(stats?.points_given || 0)}
                 </span>
               }
             />
 
             <StatCard
               title="Recognitions Received"
-              value={stats?.data?.total_received || 0}
+              value={stats?.total_received || 0}
               icon={<HiOutlineTrendingUp className="w-6 h-6 text-white" />}
               gradient
               loading={statsLoading}
               footerLeft={
                 <span className="text-white/80 font-medium">
-                  Total Rewards: {formatCurrency(stats?.data?.points_received || 0)}
+                  Total Rewards: {formatCurrency(stats?.points_received || 0)}
                 </span>
               }
             />
 
             <StatCard
               title="Top Badge"
-              value={stats?.data?.top_badges?.[0]?.name || 'None yet'}
+              value={stats?.top_badges?.[0]?.name || 'None yet'}
               icon={<HiOutlineGift className="w-6 h-6 text-white" />}
               gradient
               loading={statsLoading}
               footerLeft={
                 <span className="text-white/80">
-                  {stats?.data?.top_badges?.[0]?.count || 0} times received
+                  {stats?.top_badges?.[0]?.count || 0} times received
                 </span>
               }
             />
@@ -118,9 +118,9 @@ export default function Dashboard() {
           {/* Recent activity */}
           <div className="card">
             <h2 className="text-xl font-semibold mb-6">Recent Activity</h2>
-            {feed?.data?.length > 0 ? (
+            {feed?.length > 0 ? (
               <div className="space-y-4">
-                {feed.data.map((item) => (
+                {feed.map((item) => (
                   <FeedCard key={item.id} item={item} compact />
                 ))}
               </div>

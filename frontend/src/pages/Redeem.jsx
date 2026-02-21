@@ -32,7 +32,7 @@ export default function Redeem() {
       toast.success('Redemption successful! 🎉')
       queryClient.invalidateQueries(['myWallet'])
       queryClient.invalidateQueries(['myRedemptions'])
-      setSelectedVoucher(response.data)
+      setSelectedVoucher(response)
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Redemption failed')
@@ -40,7 +40,7 @@ export default function Redeem() {
   })
 
   const handleRedeem = (voucher) => {
-    if (parseFloat(wallet?.data?.balance) < parseFloat(voucher.points_required)) {
+    if (parseFloat(wallet?.balance) < parseFloat(voucher.points_required)) {
       toast.error('Insufficient points balance')
       return
     }
@@ -57,7 +57,7 @@ export default function Redeem() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-white/80 text-sm">Available Points</p>
-            <p className="text-4xl font-bold">{wallet?.data?.balance || 0}</p>
+            <p className="text-4xl font-bold">{wallet?.balance || 0}</p>
           </div>
           <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
             <HiOutlineGift className="w-8 h-8" />
@@ -95,14 +95,14 @@ export default function Redeem() {
         <>
           {/* Catalog */}
           <RewardsCatalog
-            vouchers={vouchers?.data || []}
-            walletBalance={wallet?.data?.balance || 0}
+            vouchers={vouchers || []}
+            walletBalance={wallet?.balance || 0}
             onRedeem={handleRedeem}
             isRedeeming={redeemMutation.isPending}
           />
         </>
       ) : (
-        <RedemptionHistory redemptions={redemptions?.data || []} />
+        <RedemptionHistory redemptions={redemptions || []} />
       )}
 
       {/* Success modal */}

@@ -38,7 +38,7 @@ export default function InviteLinkGenerator() {
   const generateMutation = useMutation({
     mutationFn: (hours) => api.post(`/tenants/invite-link?hours=${hours}`),
     onSuccess: (response) => {
-      setGeneratedLink(response.data)
+      setGeneratedLink(response)
       toast.success('Invite link generated successfully!')
     },
     onError: (error) => {

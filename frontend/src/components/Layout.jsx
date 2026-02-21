@@ -66,7 +66,7 @@ export default function Layout() {
       ]
     }
 
-    if (effectiveRole === 'hr_admin') {
+    if (['hr_admin', 'tenant_manager'].includes(effectiveRole)) {
       return [
         ...base,
         { section: 'Organization' },

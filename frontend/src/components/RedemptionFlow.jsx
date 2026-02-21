@@ -52,7 +52,7 @@ export default function RedemptionFlow({ item, onClose, onComplete }) {
         actual_cost: item.voucher_denomination || 0
       });
 
-      setRedemptionId(response.data.redemption_id);
+      setRedemptionId(response.redemption_id);
       setOtpExpiry(Date.now() + 10 * 60 * 1000);
       setStep(STEPS.OTP);
     } catch (err) {
@@ -84,14 +84,14 @@ export default function RedemptionFlow({ item, onClose, onComplete }) {
         // Poll for status
         const poll = setInterval(async () => {
           try {
-            const resp = await api.get(`/redemptions/${response.data.redemption_id}`);
-            const status = resp.data.status;
+            const resp = await api.get(`/redemptions/${response.redemption_id}`);
+            const status = resp.status;
             if (status === 'COMPLETED') {
               clearInterval(poll);
               setStep(STEPS.SUCCESS);
             } else if (status === 'FAILED') {
               clearInterval(poll);
-              setError(resp.data.failed_reason || 'Voucher issuance failed');
+              setError(resp.failed_reason || 'Voucher issuance failed');
               setStep(STEPS.FAILED);
             }
           } catch (err) {

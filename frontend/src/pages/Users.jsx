@@ -57,7 +57,7 @@ export default function Users() {
     mutationFn: (data) => usersAPI.create(data),
     onSuccess: (res) => {
       // toast.success('User created successfully') // Temporarily disable default toast to show our custom modal
-      setLastCreatedUser(res.data)
+      setLastCreatedUser(res)
       setShowSuccessModal(true)
       queryClient.invalidateQueries(['users'])
       setShowCreateModal(false)
@@ -87,10 +87,10 @@ export default function Users() {
       return usersAPI.upload(formData)
     },
     onSuccess: (res) => {
-      setBatchInfo(res.data)
+      setBatchInfo(res)
       setUploadStep('preview')
       // Fetch staging data
-      fetchStaging(res.data.batch_id)
+      fetchStaging(res.batch_id)
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Upload failed')
@@ -100,7 +100,7 @@ export default function Users() {
   const fetchStaging = async (batchId) => {
     try {
       const res = await usersAPI.getStaging(batchId)
-      setStagingData(res.data)
+      setStagingData(res)
     } catch (err) {
       toast.error('Failed to fetch preview data')
     }
@@ -109,7 +109,7 @@ export default function Users() {
   const confirmImportMutation = useMutation({
     mutationFn: (batchId) => usersAPI.confirmImport(batchId),
     onSuccess: (res) => {
-      toast.success(res.data.message)
+      toast.success(res.message)
       queryClient.invalidateQueries(['users'])
       setUploadStep('processing') // Show success screen
     },
@@ -121,7 +121,7 @@ export default function Users() {
   const bulkActionMutation = useMutation({
     mutationFn: (data) => usersAPI.bulkAction(data),
     onSuccess: (res) => {
-      toast.success(res.data.message)
+      toast.success(res.message)
       queryClient.invalidateQueries(['users'])
       setSelectedUserIds([])
     },
@@ -171,7 +171,7 @@ export default function Users() {
   const downloadTemplate = async () => {
     try {
       const res = await usersAPI.downloadTemplate()
-      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const url = window.URL.createObjectURL(new Blob([res]))
       const link = document.createElement('a')
       link.href = url
       link.setAttribute('download', 'user_template.csv')
@@ -221,7 +221,7 @@ export default function Users() {
     )
   }
 
-  const filteredUsers = users?.data?.filter((user) =>
+  const filteredUsers = users?.filter((user) =>
     `${user.first_name} ${user.last_name} ${user.email} ${user.personal_email || ''} ${user.mobile_phone || ''}`
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
@@ -299,7 +299,7 @@ export default function Users() {
           className="input h-11"
         >
           <option value="">All Departments</option>
-          {departments?.data?.map((dept) => (
+          {departments?.map((dept) => (
             <option key={dept.id} value={dept.id}>{dept.name}</option>
           ))}
         </select>
@@ -383,7 +383,7 @@ export default function Users() {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-600">
-                    {departments?.data?.find((d) => d.id === user.department_id)?.name || '-'}
+                    {departments?.find((d) => d.id === user.department_id)?.name || '-'}
                   </td>
                   <td className="px-4 py-4">
                     <span className={`badge ${getStatusColor(user.status)}`}>
@@ -534,7 +534,7 @@ export default function Users() {
                       onDrop={(e) => {
                         e.preventDefault();
                         setIsDragging(false);
-                        const file = e.dataTransfer.files[0];
+                        const file = eTransfer.files[0];
                         if (file) uploadMutation.mutate(file);
                       }}
                       className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-3xl transition-all cursor-pointer group relative ${isDragging ? 'bg-perksu-purple/10 border-perksu-purple' : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-perksu-purple/30'}`}
@@ -781,7 +781,7 @@ export default function Users() {
                   <label className="label">Department</label>
                   <select name="department_id" className="input" defaultValue={selectedUser?.department_id || ''} required>
                     <option value="">Select department</option>
-                    {departments?.data?.map((dept) => (
+                    {departments?.map((dept) => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
                   </select>

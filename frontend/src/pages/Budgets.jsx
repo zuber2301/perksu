@@ -158,7 +158,7 @@ export default function Budgets() {
     const formData = new FormData(e.target)
     const allocations = []
     
-    departments?.data?.forEach((dept) => {
+    departments?.forEach((dept) => {
       const points = formData.get(`points_${dept.id}`)
       if (points && parseFloat(points) > 0) {
         allocations.push({
@@ -216,17 +216,17 @@ export default function Budgets() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Budget Management</h1>
           <p className="text-sm text-gray-500">Manage organizational budgets and lead point allocations</p>
-          {tenantInfo?.data && (
+          {tenantInfo && (
             <div className="mt-2 flex items-center gap-4">
               {activeRole === 'platform_admin' && (
                 <>
                   <div className="text-xs text-gray-500">Total Allocated Budget</div>
-                  <div className="text-lg font-semibold text-gray-900">{(tenantInfo.data.allocated_budget || 0).toLocaleString()} pts</div>
+                  <div className="text-lg font-semibold text-gray-900">{(tenantInfo.allocated_budget || 0).toLocaleString()} pts</div>
                   <div className="text-xs text-gray-400">•</div>
                 </>
               )}
               <div className="text-xs text-gray-500">Total Budget (Tenant)</div>
-              <div className="text-sm font-medium text-gray-700">{(tenantInfo.data.master_budget_balance || 0).toLocaleString()} pts</div>
+              <div className="text-sm font-medium text-gray-700">{(tenantInfo.master_budget_balance || 0).toLocaleString()} pts</div>
             </div>
           )}
         </div>
@@ -303,9 +303,9 @@ export default function Budgets() {
                 <div key={i} className="h-32 bg-gray-200 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : budgets?.data?.length > 0 ? (
+          ) : budgets?.length > 0 ? (
             <div className="space-y-4">
-              {budgets.data.map((budget) => (
+              {budgets.map((budget) => (
                 <div key={budget.id} className="card">
                   <div className="flex items-start justify-between mb-4">
                     <div>
@@ -415,9 +415,9 @@ export default function Budgets() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {leads?.data?.map((lead) => {
-                  const allocation = leadAllocations?.data?.find(a => a.lead_id === lead.id) || null;
-                  const budget = budgets?.data?.find(b => b.id === allocation?.budget_id) || null;
+                {leads?.map((lead) => {
+                  const allocation = leadAllocations?.find(a => a.lead_id === lead.id) || null;
+                  const budget = budgets?.find(b => b.id === allocation?.budget_id) || null;
                   const usagePct = allocation ? safePercent(allocation.spent_points, allocation.allocated_points) : 0
                   const allocatedPoints = allocation ? (parseFloat(allocation.allocated_points) || 0) : 0
                   const spentPoints = allocation ? (parseFloat(allocation.spent_points) || 0) : 0
@@ -427,7 +427,7 @@ export default function Budgets() {
                     <tr key={lead.id} className="hover:bg-gray-50 transition-colors">                      <td className="px-6 py-4">
                         <p className="font-bold text-gray-900">{lead.first_name} {lead.last_name}</p>
                         <p className="text-xs text-gray-500">
-                           {lead.department_id ? departments?.data?.find(d => d.id === lead.department_id)?.name : 'No Department'}
+                           {lead.department_id ? departments?.find(d => d.id === lead.department_id)?.name : 'No Department'}
                         </p>
                       </td>
                       <td className="px-6 py-4 text-center font-semibold text-gray-900">
@@ -471,7 +471,7 @@ export default function Budgets() {
                 })}
               </tbody>
             </table>
-            {(!leads?.data || leads.data.length === 0) && (
+            {(!leads || leads.length === 0) && (
                 <div className="px-6 py-12 text-center text-gray-400 italic">
                     No Department Leads found in the organization.
                 </div>
@@ -661,8 +661,8 @@ export default function Budgets() {
               {selectedBudget.name} - Available: {selectedBudget.remaining_points} points
             </p>
             <form onSubmit={handleAllocate} className="space-y-4">
-              {departments?.data?.map((dept) => {
-                const existing = departmentBudgets?.data?.find(
+              {departments?.map((dept) => {
+                const existing = departmentBudgets?.find(
                   (db) => db.department_id === dept.id
                 )
                 return (
@@ -770,7 +770,7 @@ export default function Budgets() {
                   defaultValue={selectedBudget?.id}
                 >
                   <option value="">Select a budget</option>
-                  {budgets?.data?.filter(b => b.status === 'active').map(b => (
+                  {budgets?.filter(b => b.status === 'active').map(b => (
                     <option key={b.id} value={b.id}>{b.name} (FY{b.fiscal_year}) - {b.remaining_points} left</option>
                   ))}
                 </select>
@@ -854,12 +854,12 @@ export default function Budgets() {
                   required
                   value={selectedBudget?.id || ''}
                   onChange={(e) => {
-                    const b = budgets?.data?.find(x => x.id === e.target.value)
+                    const b = budgets?.find(x => x.id === e.target.value)
                     setSelectedBudget(b)
                   }}
                 >
                   <option value="">Select a budget</option>
-                  {budgets?.data?.filter(b => b.status === 'active').map(b => (
+                  {budgets?.filter(b => b.status === 'active').map(b => (
                     <option key={b.id} value={b.id}>{b.name} - {b.remaining_points} left</option>
                   ))}
                 </select>
@@ -870,11 +870,11 @@ export default function Budgets() {
                 <select className="input" value={topUpDepartment || ''} onChange={(e) => setTopUpDepartment(e.target.value)} required disabled={user?.org_role === 'dept_lead'}>
                   <option value="">Select a department</option>
                   {user?.org_role === 'dept_lead' ? (
-                    departments?.data?.filter(d => d.id === user.department_id).map(d => (
+                    departments?.filter(d => d.id === user.department_id).map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))
                   ) : (
-                    departments?.data?.map(d => (
+                    departments?.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))
                   )}
@@ -890,7 +890,7 @@ export default function Budgets() {
                   {/** Here we use departments + an existing users query (leads) — keep simple and show all users. */}
                   {/** We'll lazy-load users via usersAPI.getAll when modal shows; but budgets page already fetched leads earlier. */}
                   {/** For simplicity show leads + others by calling usersAPI.getAll when needed in next iteration. */}
-                  {employees?.data?.map(u => (
+                  {employees?.map(u => (
                     <option key={u.id} value={u.id}>{u.first_name} {u.last_name} — {u.email}</option>
                   ))}
                 </select>

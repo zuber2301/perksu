@@ -66,7 +66,7 @@ export default function Audit() {
             className="input"
           >
             <option value="">All Actions</option>
-            {actions?.data?.map((action) => (
+            {actions?.map((action) => (
               <option key={action} value={action}>{action.replace(/_/g, ' ')}</option>
             ))}
           </select>
@@ -76,7 +76,7 @@ export default function Audit() {
             className="input"
           >
             <option value="">All Entity Types</option>
-            {entityTypes?.data?.map((type) => (
+            {entityTypes?.map((type) => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
@@ -102,7 +102,7 @@ export default function Audit() {
             ))}
           </div>
         </div>
-      ) : logs?.data?.length > 0 ? (
+      ) : logs?.length > 0 ? (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -116,7 +116,7 @@ export default function Audit() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {logs.data.map((log) => (
+                {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50">
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {format(new Date(log.created_at), 'MMM d, yyyy')}

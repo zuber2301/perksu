@@ -57,7 +57,7 @@ export default function Wallet() {
           </div>
           <div>
             <p className="text-white/80 text-sm">Current Balance</p>
-            <p className="text-4xl font-bold">{wallet?.data?.balance || 0} points</p>
+            <p className="text-4xl font-bold">{wallet?.balance || 0} points</p>
           </div>
         </div>
         
@@ -67,14 +67,14 @@ export default function Wallet() {
               <HiOutlineArrowUp className="w-4 h-4 text-green-300" />
               <span className="text-sm text-white/80">Lifetime Earned</span>
             </div>
-            <p className="text-2xl font-semibold">{wallet?.data?.lifetime_earned || 0}</p>
+            <p className="text-2xl font-semibold">{wallet?.lifetime_earned || 0}</p>
           </div>
           <div className="bg-white/10 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-1">
               <HiOutlineArrowDown className="w-4 h-4 text-red-300" />
               <span className="text-sm text-white/80">Lifetime Spent</span>
             </div>
-            <p className="text-2xl font-semibold">{wallet?.data?.lifetime_spent || 0}</p>
+            <p className="text-2xl font-semibold">{wallet?.lifetime_spent || 0}</p>
           </div>
         </div>
       </div>
@@ -89,9 +89,9 @@ export default function Wallet() {
               <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : ledger?.data?.length > 0 ? (
+        ) : ledger?.length > 0 ? (
           <div className="space-y-3">
-            {ledger.data.map((entry) => (
+            {ledger.map((entry) => (
               <div
                 key={entry.id}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"

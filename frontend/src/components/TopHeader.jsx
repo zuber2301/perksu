@@ -52,7 +52,7 @@ export default function TopHeader({ onMenuClick }) {
   // Refresh current user to ensure we have the latest org_role
   useQuery({
     queryKey: ['me'],
-    queryFn: () => authAPI.me().then((r) => r.data),
+    queryFn: () => authAPI.me(),
     enabled: !!token,
     onSuccess: (data) => {
       if (data) updateUser(data)
@@ -82,7 +82,7 @@ export default function TopHeader({ onMenuClick }) {
     authAPI
       .me()
       .then((r) => {
-        if (!cancelled && r?.data) updateUser(r.data)
+        if (!cancelled && r) updateUser(r)
       })
       .catch(() => {})
     return () => {
@@ -192,10 +192,10 @@ export default function TopHeader({ onMenuClick }) {
                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Organization Context</div>
                     <div className="space-y-1.5">
                       <div className="flex items-center text-xs text-gray-600">
-                        <span className="w-16 font-medium text-gray-400">Org:</span> {tenant?.data?.name || tenant?.name || 'Loading...'}
+                        <span className="w-16 font-medium text-gray-400">Org:</span> {tenant?.name || 'Loading...'}
                       </div>
                       <div className="flex items-center text-xs text-gray-600">
-                        <span className="w-16 font-medium text-gray-400">ID:</span> <code className="bg-gray-100 px-1 rounded">{tenant?.data?.id ? tenant.data.id.split('-')[0] : (tenant?.id ? tenant.id.split('-')[0] : 'N/A')}</code>
+                        <span className="w-16 font-medium text-gray-400">ID:</span> <code className="bg-gray-100 px-1 rounded">{tenant?.id ? tenant.id.split('-')[0] : 'N/A'}</code>
                       </div>
                     </div>
                   </div>

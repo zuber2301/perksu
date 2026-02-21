@@ -38,9 +38,9 @@ export default function Feed() {
             </div>
           ))}
         </div>
-      ) : feed?.data?.length > 0 ? (
+      ) : feed?.length > 0 ? (
         <div className="space-y-4">
-          {feed.data.map((item) => (
+          {feed.map((item) => (
             <FeedCard key={item.id} item={item} />
           ))}
         </div>

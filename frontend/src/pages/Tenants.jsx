@@ -37,7 +37,7 @@ export default function Tenants() {
     queryKey: ['tenants'],
     queryFn: async () => {
       const response = await tenantsAPI.getAll()
-      return response.data
+      return response
     },
   })
 

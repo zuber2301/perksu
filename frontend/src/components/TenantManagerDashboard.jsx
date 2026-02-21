@@ -43,7 +43,7 @@ export default function TenantManagerDashboard() {
     refetchInterval: 60000, // Refresh every minute
   })
 
-  const dashboardData = summaryResponse?.data?.data || summaryResponse?.data
+  const dashboardData = summaryResponse
 
   if (isLoading) {
     return (

@@ -31,8 +31,8 @@ export default function TenantManager() {
       });
 
       const response = await api.get(`/tenants/admin/tenants?${params}`);
-      setTenants(response.data.items);
-      setTotal(response.data.total);
+      setTenants(response.items);
+      setTotal(response.total);
       setError(null);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to fetch tenants');

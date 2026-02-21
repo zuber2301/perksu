@@ -95,28 +95,28 @@ export default function Profile() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <StatCard
             title="Points Balance"
-            value={wallet?.data?.balance || 0}
+            value={wallet?.balance || 0}
             icon={<HiOutlineCash className="w-6 h-6 text-white" />}
             gradient
             loading={walletLoading}
           />
           <StatCard
             title="Lifetime Earned"
-            value={wallet?.data?.lifetime_earned || 0}
+            value={wallet?.lifetime_earned || 0}
             icon={<HiOutlineTrendingUp className="w-6 h-6 text-white" />}
             gradient
             loading={walletLoading}
           />
           <StatCard
             title="Recognitions Given"
-            value={stats?.data?.total_given || 0}
+            value={stats?.total_given || 0}
             icon={<HiOutlineSparkles className="w-6 h-6 text-white" />}
             gradient
             loading={statsLoading}
           />
           <StatCard
             title="Recognitions Received"
-            value={stats?.data?.total_received || 0}
+            value={stats?.total_received || 0}
             icon={<HiOutlineEmojiHappy className="w-6 h-6 text-white" />}
             gradient
             loading={statsLoading}
@@ -125,11 +125,11 @@ export default function Profile() {
       </div>
 
       {/* Top Badges */}
-      {stats?.data?.top_badges?.length > 0 && (
+      {stats?.top_badges?.length > 0 && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">Top Badges</h2>
           <div className="space-y-3">
-            {stats.data.top_badges.map((badge, index) => (
+            {stats.top_badges.map((badge, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-r from-perksu-orange to-perksu-pink flex items-center justify-center text-white text-sm font-bold">

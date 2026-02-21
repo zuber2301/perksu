@@ -11,12 +11,12 @@ export default function DepartmentManagementTable({ onRefresh }) {
   const queryClient = useQueryClient()
   const { data: departments = [] , refetch } = useQuery({
     queryKey: ['departments-management'],
-    queryFn: () => departmentsAPI.getManagementList().then(r => r.data),
+    queryFn: () => departmentsAPI.getManagementList(),
   })
 
   const { data: masterPool, isLoading: isLoadingPool } = useQuery({
     queryKey: ['master-pool'],
-    queryFn: () => departmentsAPI.getMasterPool().then(r => r.data),
+    queryFn: () => departmentsAPI.getMasterPool(),
   })
 
   const [activeDept, setActiveDept] = useState(null)
@@ -56,7 +56,7 @@ export default function DepartmentManagementTable({ onRefresh }) {
     setActiveDept(dept)
     // fetch users in dept
     const resp = await usersAPI.getAll(null, dept.id)
-    setAssignUsers(resp.data || [])
+    setAssignUsers(resp || [])
     setShowAssignModal(true)
   }
 

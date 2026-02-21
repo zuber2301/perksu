@@ -54,7 +54,7 @@ export default function TenantOverviewTab({ tenant, onUpdate }) {
     setLoading(true);
     try {
       const resp = await tenantsApi.getOverview(tenant.tenant_id);
-      const data = resp.data || resp;
+      const data = resp || resp;
       setOverview(data);
       // set optional metrics if present (guard against missing fields)
       setBurnRate(data.burnRate ?? data.burn_rate ?? {});

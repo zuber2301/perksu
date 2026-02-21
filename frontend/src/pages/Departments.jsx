@@ -31,17 +31,17 @@ export default function Departments() {
 
   const { data: tenant } = useQuery({
     queryKey: ['tenant', 'current'],
-    queryFn: () => tenantsAPI.getCurrent().then(r => r.data),
+    queryFn: () => tenantsAPI.getCurrent(),
   })
 
   const { data: deptManagement, isLoading } = useQuery({
     queryKey: ['departments', 'management'],
-    queryFn: () => tenantsAPI.getDepartmentManagement().then(r => r.data),
+    queryFn: () => tenantsAPI.getDepartmentManagement(),
   })
 
   const { data: users } = useQuery({
     queryKey: ['users'],
-    queryFn: () => usersAPI.getAll().then(r => r.data),
+    queryFn: () => usersAPI.getAll(),
   })
 
   const allocateMutation = useMutation({
@@ -83,7 +83,7 @@ export default function Departments() {
     mutationFn: async (data) => {
       // First, create the department
       const deptResponse = await tenantsAPI.createDepartment({ name: data.name })
-      const newDeptId = deptResponse.data.id || deptResponse.id
+      const newDeptId = deptResponse.id || deptResponse.id
       
       // Then, if there's an initial allocation, add points
       if (data.initial_allocation && data.initial_allocation > 0) {
@@ -95,7 +95,7 @@ export default function Departments() {
         await tenantsAPI.assignDepartmentLead(newDeptId, data.lead_user_id)
       }
       
-      return { ...deptResponse.data, dept_id: newDeptId, department_id: newDeptId }
+      return { ...deptResponse, dept_id: newDeptId, department_id: newDeptId }
     },
     onSuccess: (response) => {
       toast.success(`Department created successfully!`)

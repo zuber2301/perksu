@@ -32,9 +32,9 @@ export default function RedemptionAdminDashboard() {
         api.get('/api/redemption/admin/vendor-balance')
       ]);
 
-      setAnalytics(analyticsRes.data);
-      setPendingRequests(requestsRes.data);
-      setVendorBalances(vendorsRes.data);
+      setAnalytics(analyticsRes);
+      setPendingRequests(requestsRes);
+      setVendorBalances(vendorsRes);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {

@@ -36,7 +36,7 @@ export default function TenantSettings() {
     queryKey: ['currentTenant'],
     queryFn: async () => {
       const response = await api.get('/tenants/current')
-      return response.data
+      return response
     },
   })
 
@@ -50,7 +50,7 @@ export default function TenantSettings() {
   const updateWhitelistMutation = useMutation({
     mutationFn: (domains) => api.put('/tenants/current/domain-whitelist', { domains }),
     onSuccess: (response) => {
-      setDomainWhitelist(response.data.domain_whitelist || response.data.domains)
+      setDomainWhitelist(response.domain_whitelist || response.domains)
       setIsEditing(false)
       setNewDomain('')
       setError('')

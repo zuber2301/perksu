@@ -75,7 +75,7 @@ def get_dashboard_summary(
     """
     
     # Authorization: Only HR Admin, Dept Lead or Platform Admin can access
-    allowed_roles = ['platform_admin', 'hr_admin', 'dept_lead']
+    allowed_roles = ['platform_admin', 'hr_admin', 'tenant_manager', 'dept_lead']
     if current_user.org_role not in allowed_roles:
         raise HTTPException(
             status_code=403, 
@@ -94,8 +94,12 @@ def get_dashboard_summary(
 
     # Calculate statistics
     # Use budget_allocation_balance with fallback to master_budget_balance
-    master_pool = float(tenant.budget_allocation_balance or tenant.master_budget_balance or 0)
-    
+    # AND include unallocated points in the active budget
+    tenant_master_pool = float(tenant.budget_allocation_balance or tenant.master_budget_balance or 0)
+    active_budget = db.query(Budget).filter(Budget.tenant_id == tenant.id, Budget.status == "active").first()
+    budget_unallocated = float(active_budget.remaining_points) if active_budget else 0
+    master_pool = tenant_master_pool + budget_unallocated
+
     # Get all leads (dept_lead)
     leads_query = db.query(
         User.id,
@@ -193,21 +197,18 @@ def get_dashboard_summary(
     spending_data = _get_spending_categories(db, str(tenant.id))
 
     return {
-        'success': True,
-        'data': {
-            'tenant_id': str(tenant.id),
-            'tenant_name': tenant.name,
-            'currency': tenant.currency or 'INR',
-            'stats': {
-                'master_pool': master_pool,
-                'total_delegated': total_delegated,
-                'total_in_wallets': total_in_wallets,
-                'active_users_count': int(active_users),
-            },
-            'leads': leads,
-            'recent_recognitions': recognitions_data,
-            'spending_analytics': spending_data,
-        }
+        'tenant_id': str(tenant.id),
+        'tenant_name': tenant.name,
+        'currency': tenant.currency or 'INR',
+        'stats': {
+            'master_pool': master_pool,
+            'total_delegated': total_delegated,
+            'total_in_wallets': total_in_wallets,
+            'active_users_count': int(active_users),
+        },
+        'leads': leads,
+        'recent_recognitions': recognitions_data,
+        'spending_analytics': spending_data,
     }
 
 

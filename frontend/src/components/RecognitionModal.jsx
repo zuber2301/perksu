@@ -65,7 +65,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
   })
 
   // Get tiers from tenant branding_config or use defaults
-  const tiers = tenantData?.data?.branding_config?.award_tiers || {
+  const tiers = tenantData?.branding_config?.award_tiers || {
     Gold: 5000,
     Silver: 2500,
     Bronze: 1000
@@ -102,7 +102,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
     enabled: isOpen
   })
 
-  const users = usersData?.data || []
+  const users = usersData || []
 
   const { data: badgesData } = useQuery({
     queryKey: ['badges'],
@@ -110,7 +110,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
     enabled: isOpen
   })
 
-  const badges = badgesData?.data || []
+  const badges = badgesData || []
 
   const recognitionMutation = useMutation({
     mutationFn: (data) => recognitionApi.create(data),
@@ -229,34 +229,34 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
             </div>
 
             {/* Budget Summary Bar */}
-            {budgetData?.data && (
+            {budgetData && (
               <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-xl mb-6 border border-gray-100">
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Available Budget</span>
                     <div className="flex items-center gap-3">
-                      {budgetData.data.lead_points > 0 && (
+                      {budgetData.lead_points > 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-perksu-purple"></div>
-                          <span className="text-sm font-bold text-gray-700">{budgetData.data.lead_points.toLocaleString()} <small className="text-[10px] text-gray-400">Personal</small></span>
+                          <span className="text-sm font-bold text-gray-700">{budgetData.lead_points.toLocaleString()} <small className="text-[10px] text-gray-400">Personal</small></span>
                         </div>
                       )}
-                      {budgetData.data.department_points > 0 && (
+                      {budgetData.department_points > 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                          <span className="text-sm font-bold text-gray-700">{budgetData.data.department_points.toLocaleString()} <small className="text-[10px] text-gray-400">Dept</small></span>
+                          <span className="text-sm font-bold text-gray-700">{budgetData.department_points.toLocaleString()} <small className="text-[10px] text-gray-400">Dept</small></span>
                         </div>
                       )}
-                      {budgetData.data.lead_points === 0 && budgetData.data.department_points === 0 && (
+                      {budgetData.lead_points === 0 && budgetData.department_points === 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
-                          <span className="text-sm font-bold text-gray-700">{budgetData.data.wallet_balance.toLocaleString()} <small className="text-[10px] text-gray-400">Wallet</small></span>
+                          <span className="text-sm font-bold text-gray-700">{budgetData.wallet_balance.toLocaleString()} <small className="text-[10px] text-gray-400">Wallet</small></span>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-                {!budgetData.data.has_active_budget && (
+                {!budgetData.has_active_budget && (
                   <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-100">
                     No Active Budget Period
                   </span>

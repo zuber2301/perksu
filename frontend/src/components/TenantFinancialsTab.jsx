@@ -24,7 +24,7 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
   // Fetch up-to-date tenant details (so we can show master balance and allocated_budget reliably)
   const { data: tenantDetails } = useQuery({
     queryKey: ['tenant', tenant.tenant_id],
-    queryFn: async () => { const resp = await api.get(`/tenants/${tenant.tenant_id}`); return resp.data },
+    queryFn: async () => { const resp = await api.get(`/tenants/${tenant.tenant_id}`); return resp },
     enabled: !!tenant?.tenant_id,
   })
 
@@ -40,7 +40,7 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
       const response = await api.get(
         `/tenants/admin/tenants/${tenant.tenant_id}/transactions?skip=${page * pageSize}&limit=${pageSize}`
       );
-      setTransactions(response.data);
+      setTransactions(response);
     } catch (err) {
       setMessage({
         type: 'error',

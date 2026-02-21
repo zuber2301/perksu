@@ -23,8 +23,8 @@ export default function RootAdminDashboard() {
         api.get('/tenants/admin/platform/system-admins'),
       ]);
 
-      setHealth(healthRes.data);
-      setSystemAdmins(adminsRes.data);
+      setHealth(healthRes);
+      setSystemAdmins(adminsRes);
       setMessage(null);
     } catch (err) {
       setMessage({
@@ -47,14 +47,14 @@ export default function RootAdminDashboard() {
       setSystemAdmins((prevAdmins) =>
         prevAdmins.map((admin) =>
           admin.id === adminId
-            ? { ...admin, is_super_admin: response.data.is_super_admin }
+            ? { ...admin, is_super_admin: response.is_super_admin }
             : admin
         )
       );
 
       setMessage({
         type: 'success',
-        text: response.data.message,
+        text: response.message,
       });
 
       setTimeout(() => setMessage(null), 3000);
@@ -74,11 +74,11 @@ export default function RootAdminDashboard() {
         `/tenants/admin/platform/maintenance-mode?enabled=${!maintenanceMode}`
       );
 
-      setMaintenanceMode(response.data.maintenance_mode_enabled);
+      setMaintenanceMode(response.maintenance_mode_enabled);
 
       setMessage({
         type: 'success',
-        text: response.data.message,
+        text: response.message,
       });
 
       setTimeout(() => setMessage(null), 3000);

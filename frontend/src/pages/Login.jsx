@@ -52,7 +52,7 @@ export default function Login() {
   const loginMutation = useMutation({
     mutationFn: () => authAPI.login(email, password),
     onSuccess: (response) => {
-      const { access_token, user } = response.data
+      const { access_token, user } = response
       setAuth(user, access_token)
       toast.success(`Welcome back, ${user.first_name}!`)
       redirectAfterLogin(user)
@@ -69,7 +69,7 @@ export default function Login() {
       authMethod === 'email'
     ),
     onSuccess: (response) => {
-      const { access_token, user } = response.data
+      const { access_token, user } = response
       setAuth(user, access_token)
       toast.success(`Welcome back, ${user.first_name}!`)
       redirectAfterLogin(user)

@@ -30,7 +30,7 @@ export default function SparkNodeStore() {
   const fetchUserWallet = async () => {
     try {
       const response = await api.get('/api/wallet/balance');
-      setUserWallet(response.data);
+      setUserWallet(response);
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch wallet:', error);

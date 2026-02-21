@@ -21,7 +21,7 @@ export default function VoucherCatalog({ searchQuery, onRedeem, userBalance }) {
       const response = await api.get('/api/redemption/vouchers', {
         params: { status: 'active' }
       });
-      setVouchers(response.data);
+      setVouchers(response);
       setError(null);
     } catch (err) {
       setError('Failed to load vouchers');

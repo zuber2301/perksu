@@ -47,13 +47,13 @@ export default function PointsAllocationDashboard() {
       const result = await response.json()
 
       if (result.success) {
-        setAllocationLogs(result.data.transactions)
+        setAllocationLogs(result.transactions)
         setPagination(prev => ({
           ...prev,
           allocation: {
-            page: result.data.page,
-            total: result.data.total,
-            pages: result.data.pages,
+            page: result.page,
+            total: result.total,
+            pages: result.pages,
           },
         }))
       }
@@ -83,13 +83,13 @@ export default function PointsAllocationDashboard() {
       const result = await response.json()
 
       if (result.success) {
-        setBillingLogs(result.data.transactions)
+        setBillingLogs(result.transactions)
         setPagination(prev => ({
           ...prev,
           billing: {
-            page: result.data.page,
-            total: result.data.total,
-            pages: result.data.pages,
+            page: result.page,
+            total: result.total,
+            pages: result.pages,
           },
         }))
       }
@@ -117,13 +117,13 @@ export default function PointsAllocationDashboard() {
       const result = await response.json()
 
       if (result.success) {
-        setWalletLedger(result.data.transactions)
+        setWalletLedger(result.transactions)
         setPagination(prev => ({
           ...prev,
           wallet: {
-            page: result.data.page,
-            total: result.data.total,
-            pages: result.data.pages,
+            page: result.page,
+            total: result.total,
+            pages: result.pages,
           },
         }))
       }

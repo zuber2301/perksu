@@ -130,7 +130,7 @@ export default function Recognize() {
       <div className="card">
         <h2 className="text-lg font-semibold mb-4">Available Badges</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {badges?.data?.map((badge) => (
+          {badges?.map((badge) => (
             <div
               key={badge.id}
               className="p-4 rounded-lg border border-gray-200 text-center hover:border-perksu-purple hover:bg-perksu-purple/5 transition-colors"
@@ -146,11 +146,11 @@ export default function Recognize() {
       </div>
 
       {/* Recent recognitions */}
-      {recentRecognitions?.data?.length > 0 && (
+      {recentRecognitions?.length > 0 && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">Recent Recognitions</h2>
           <div className="space-y-4">
-            {recentRecognitions.data.slice(0, 5).map((rec) => (
+            {recentRecognitions.slice(0, 5).map((rec) => (
               <FeedCard key={rec.id} item={{
                 id: rec.id,
                 event_type: 'recognition',

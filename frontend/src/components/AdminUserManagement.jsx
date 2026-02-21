@@ -54,7 +54,7 @@ export default function AdminUserManagement({ tenantId }) {
         ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v !== null))
       }
       const response = await api.get(`/users/admin/by-tenant/${tenantId}`, { params })
-      return response.data
+      return response
     },
     enabled: !!tenantId,
   })
@@ -64,7 +64,7 @@ export default function AdminUserManagement({ tenantId }) {
     queryKey: ['departments'],
     queryFn: async () => {
       const response = await api.get('/tenants/departments')
-      return response.data
+      return response
     },
   })
 

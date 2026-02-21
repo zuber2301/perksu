@@ -26,7 +26,7 @@ export default function MerchandiseCatalog({ searchQuery, onRedeem, userBalance 
         params.category = selectedCategory;
       }
       const response = await api.get('/api/redemption/merchandise', { params });
-      setMerchandise(response.data);
+      setMerchandise(response);
       setError(null);
     } catch (err) {
       setError('Failed to load merchandise');
