@@ -192,6 +192,8 @@ export const analyticsAPI = {
 // Dashboard API
 export const dashboardAPI = {
   getSummary: () => api.get('/dashboard/summary'),
+  delegatePoints: (data) => api.post('/dashboard/delegate-points', data),
+  submitTopup: (data) => api.post('/dashboard/topup-request', data),
 }
 
 // Alias exports for component compatibility

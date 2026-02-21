@@ -73,7 +73,7 @@ export default function HeroSection({ stats, currency = 'INR' }) {
                   {card.title === 'Company Pool (Master)'
                     ? Math.round(((stats.total_delegated + stats.total_in_wallets) / stats.master_pool) * 100) || 0
                     : card.title === 'Total Delegated'
-                    ? Math.round((stats.total_in_wallets / stats.total_delegated) * 100) || 0
+                    ? Math.round((stats.total_spent_by_leads / stats.total_delegated) * 100) || 0
                     : 'Active'}
                   %
                 </span>
@@ -86,7 +86,7 @@ export default function HeroSection({ stats, currency = 'INR' }) {
                       card.title === 'Company Pool (Master)'
                         ? Math.round(((stats.total_delegated + stats.total_in_wallets) / stats.master_pool) * 100) || 0
                         : card.title === 'Total Delegated'
-                        ? Math.round((stats.total_in_wallets / stats.total_delegated) * 100) || 0
+                        ? Math.round((stats.total_spent_by_leads / stats.total_delegated) * 100) || 0
                         : 100
                     }%`,
                   }}

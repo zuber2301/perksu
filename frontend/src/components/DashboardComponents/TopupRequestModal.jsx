@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HiOutlineXMark } from 'react-icons/hi2'
+import { dashboardApi } from '../../lib/api'
 
 /**
  * TopupRequestModal Component
@@ -38,30 +39,18 @@ export default function TopupRequestModal({
         throw new Error('Please specify the amount requested')
       }
 
-      const response = await fetch('/api/v1/dashboard/topup-request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          amount: parseFloat(formData.amount),
-          justification: formData.justification,
-          urgency: formData.urgency,
-        })
+      await dashboardApi.submitTopup({
+        amount: parseFloat(formData.amount),
+        justification: formData.justification,
+        urgency: formData.urgency,
       })
-
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.detail || 'Failed to submit request')
-      }
 
       setSuccess(true)
       setTimeout(() => {
         onSuccess()
       }, 2000)
     } catch (err) {
-      setError(err.message)
+      setError(err?.response?.data?.detail || err.message)
     } finally {
       setLoading(false)
     }

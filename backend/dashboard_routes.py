@@ -117,12 +117,14 @@ def get_dashboard_summary(
 
     leads = []
     total_delegated = 0
+    total_spent_by_leads = 0
     
     for lead in leads_query:
         try:
             # Query lead_allocations for this specific user across all active budgets
             lead_alloc_total = db.query(
-                func.sum(LeadAllocation.allocated_points).label('total')
+                func.sum(LeadAllocation.allocated_points).label('total_allocated'),
+                func.sum(LeadAllocation.spent_points).label('total_spent')
             ).join(
                 Budget, Budget.id == LeadAllocation.budget_id
             ).filter(
@@ -133,15 +135,17 @@ def get_dashboard_summary(
                 )
             ).first()
             
-            allocated = float(lead_alloc_total.total or 0) if lead_alloc_total else 0
+            allocated = float(lead_alloc_total.total_allocated or 0) if lead_alloc_total else 0
+            spent = float(lead_alloc_total.total_spent or 0) if lead_alloc_total else 0
             total_delegated += allocated
+            total_spent_by_leads += spent
             
             leads.append({
                 'id': str(lead.id),
                 'name': f"{lead.first_name} {lead.last_name}",
                 'department': lead.department_name or 'Unassigned',
                 'budget': allocated,
-                'used': 0, # To be implemented: spent points tracking (via spent_points field in LeadAllocation)
+                'used': spent, # Added spent points tracking
             })
         except Exception as e:
             print(f"Error processing lead {lead.id}: {str(e)}")
@@ -203,6 +207,7 @@ def get_dashboard_summary(
         'stats': {
             'master_pool': master_pool,
             'total_delegated': total_delegated,
+            'total_spent_by_leads': total_spent_by_leads,
             'total_in_wallets': total_in_wallets,
             'active_users_count': int(active_users),
         },
@@ -281,6 +286,94 @@ def submit_topup_request(
         raise
     except Exception as err:
         raise HTTPException(status_code=500, detail=f"Error submitting request: {str(err)}")
+
+
+@router.post("/delegate-points")
+def delegate_points_to_lead(
+    request_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Smart delegation: Move points from Master Pool to a Lead.
+    Automatically handles budget top-up if needed.
+    """
+    if current_user.org_role not in ['tenant_manager', 'hr_admin']:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    lead_id = request_data.get('lead_id')
+    amount = float(request_data.get('amount', 0))
+    note = request_data.get('reference_note', '')
+
+    if not lead_id or amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid lead_id or amount")
+
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    
+    # Check total available (Master Pool + Active Budget unallocated)
+    active_budget = db.query(Budget).filter(
+        Budget.tenant_id == tenant.id, 
+        Budget.status == "active"
+    ).first()
+    
+    budget_unallocated = float(active_budget.remaining_points) if active_budget else 0
+    tenant_master_pool = float(tenant.budget_allocation_balance or 0)
+    
+    total_available = tenant_master_pool + budget_unallocated
+    
+    if amount > total_available:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient points. Available: {total_available}"
+        )
+
+    try:
+        # 1. Ensure we have an active budget
+        if not active_budget:
+            active_budget = Budget(
+                tenant_id=tenant.id,
+                name=f"Budget {datetime.now().strftime('%B %Y')}",
+                total_points=0,
+                allocated_points=0,
+                status="active"
+            )
+            db.add(active_budget)
+            db.flush()
+
+        # 2. If amount > budget_unallocated, we need to move points from tenant_master_pool to budget
+        if amount > budget_unallocated:
+            needed_from_master = amount - budget_unallocated
+            tenant.budget_allocation_balance = Decimal(str(tenant.budget_allocation_balance)) - Decimal(str(needed_from_master))
+            active_budget.total_points = Decimal(str(active_budget.total_points)) + Decimal(str(needed_from_master))
+            db.add(tenant)
+
+        # 3. Allocate to lead
+        lead_alloc = db.query(LeadAllocation).filter(
+            LeadAllocation.budget_id == active_budget.id,
+            LeadAllocation.lead_id == lead_id
+        ).first()
+
+        if lead_alloc:
+            lead_alloc.allocated_points = Decimal(str(lead_alloc.allocated_points)) + Decimal(str(amount))
+        else:
+            lead_alloc = LeadAllocation(
+                tenant_id=tenant.id,
+                budget_id=active_budget.id,
+                lead_id=lead_id,
+                allocated_points=amount,
+                spent_points=0
+            )
+            db.add(lead_alloc)
+
+        # 4. Update budget's allocated_points
+        active_budget.allocated_points = Decimal(str(active_budget.allocated_points)) + Decimal(str(amount))
+        
+        db.commit()
+        return {"success": True, "message": f"Successfully delegated {amount} points"}
+    except Exception as e:
+        db.rollback()
+        print(f"Delegation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/variant")

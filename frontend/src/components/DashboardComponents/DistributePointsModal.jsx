@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { HiOutlineXMark } from 'react-icons/hi2'
 import { formatNumber } from '../../lib/currency'
+import { dashboardApi } from '../../lib/api'
 
 /**
  * DistributePointsModal Component
@@ -45,27 +46,15 @@ export default function DistributePointsModal({
         throw new Error(`Amount cannot exceed available points (${availablePoints})`)
       }
 
-      const response = await fetch('/api/v1/points/delegate-to-lead', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          lead_id: formData.recipientId,
-          amount: parseFloat(formData.amount),
-          reference_note: formData.reference,
-        })
+      await dashboardApi.delegatePoints({
+        lead_id: formData.recipientId,
+        amount: parseFloat(formData.amount),
+        reference_note: formData.reference,
       })
-
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.detail || 'Failed to distribute points')
-      }
 
       onSuccess()
     } catch (err) {
-      setError(err.message)
+      setError(err?.response?.data?.detail || err.message)
     } finally {
       setLoading(false)
     }
