@@ -372,15 +372,15 @@ async def initiate_redemption(
         raise HTTPException(status_code=400, detail="Redemptions are paused due to low master account balance")
 
     markup = float(tenant.markup_percent or 0) / 100.0
-    expected_points = float(data.actual_cost) * (1 + markup)
+    expected_points = int(round(float(data.actual_cost) * (1 + markup)))
     
     # Allow small rounding differences but basically enforce the markup
-    if float(data.point_cost) < (expected_points - 0.01):
+    if int(data.point_cost) < expected_points:
         raise HTTPException(status_code=400, detail=f"Invalid point cost. Expected at least {expected_points}")
 
     # Check wallet balance
     wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
-    if not wallet or float(wallet.balance) < float(data.point_cost):
+    if not wallet or (wallet.balance or 0) < int(data.point_cost):
         raise HTTPException(status_code=400, detail="Insufficient points balance")
 
     # Verify item exists and is available

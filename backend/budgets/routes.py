@@ -1,4 +1,3 @@
-from decimal import Decimal
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
@@ -121,11 +120,11 @@ async def distribute_per_employee_to_departments(
         )
 
     # Check master pool balance
-    available = float(tenant.master_budget_balance or 0)
+    available = int(tenant.master_budget_balance or 0)
     if total_to_allocate > available:
         raise HTTPException(
             status_code=400,
-            detail=f"Insufficient master pool balance. Required: {total_to_allocate}, Available: {available:.0f}",
+            detail=f"Insufficient master pool balance. Required: {total_to_allocate}, Available: {available}",
         )
 
     budget = _get_or_create_active_budget(db, tenant)
@@ -145,13 +144,13 @@ async def distribute_per_employee_to_departments(
             .first()
         )
         if dept_budget:
-            dept_budget.allocated_points = Decimal(str(dept_budget.allocated_points)) + Decimal(str(dept_points))
+            dept_budget.allocated_points = (dept_budget.allocated_points or 0) + int(dept_points)
         else:
             dept_budget = DepartmentBudget(
                 tenant_id=current_user.tenant_id,
                 budget_id=budget.id,
                 department_id=dept.id,
-                allocated_points=Decimal(str(dept_points)),
+                allocated_points=int(dept_points),
                 spent_points=0,
             )
             db.add(dept_budget)
@@ -166,15 +165,15 @@ async def distribute_per_employee_to_departments(
         )
 
     # Deduct from tenant master pool
-    tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance)) - Decimal(str(total_to_allocate))
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) - int(total_to_allocate)
     if tenant.budget_allocation_balance is not None:
         tenant.budget_allocation_balance = (
-            Decimal(str(tenant.budget_allocation_balance)) - Decimal(str(total_to_allocate))
+            (tenant.budget_allocation_balance or 0) - int(total_to_allocate)
         )
 
     # Keep budget totals in sync
-    budget.total_points = Decimal(str(budget.total_points or 0)) + Decimal(str(total_to_allocate))
-    budget.allocated_points = Decimal(str(budget.allocated_points or 0)) + Decimal(str(total_to_allocate))
+    budget.total_points = (budget.total_points or 0) + int(total_to_allocate)
+    budget.allocated_points = (budget.allocated_points or 0) + int(total_to_allocate)
 
     # Audit log
     audit = AuditLog(
@@ -196,7 +195,7 @@ async def distribute_per_employee_to_departments(
         total_points_allocated=total_to_allocate,
         departments_updated=len(preview_items),
         breakdown=preview_items,
-        master_pool_remaining=float(tenant.master_budget_balance),
+        master_pool_remaining=int(tenant.master_budget_balance),
     )
 
 
@@ -233,15 +232,15 @@ async def distribute_to_all_users(
     total_points = len(users) * data.points_per_user
 
     # Check master pool
-    available = float(tenant.master_budget_balance or 0)
+    available = int(tenant.master_budget_balance or 0)
     if total_points > available:
         raise HTTPException(
             status_code=400,
-            detail=f"Insufficient master pool balance. Required: {total_points}, Available: {available:.0f}",
+            detail=f"Insufficient master pool balance. Required: {total_points}, Available: {available}",
         )
 
     description = data.description or "Bulk distribution by HR Admin"
-    pts_dec = Decimal(str(data.points_per_user))
+    points_per_user = int(data.points_per_user)
 
     for user in users:
         wallet = (
@@ -260,15 +259,15 @@ async def distribute_to_all_users(
             db.add(wallet)
             db.flush()
 
-        wallet.balance = Decimal(str(wallet.balance)) + pts_dec
-        wallet.lifetime_earned = Decimal(str(wallet.lifetime_earned)) + pts_dec
+        wallet.balance = (wallet.balance or 0) + points_per_user
+        wallet.lifetime_earned = (wallet.lifetime_earned or 0) + points_per_user
 
         ledger = WalletLedger(
             tenant_id=current_user.tenant_id,
             wallet_id=wallet.id,
             transaction_type="credit",
             source="hr_allocation",
-            points=pts_dec,
+            points=points_per_user,
             balance_after=wallet.balance,
             description=description,
             created_by=current_user.id,
@@ -276,11 +275,10 @@ async def distribute_to_all_users(
         db.add(ledger)
 
     # Deduct from tenant master pool
-    total_dec = Decimal(str(total_points))
-    tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance)) - total_dec
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) - int(total_points)
     if tenant.budget_allocation_balance is not None:
         tenant.budget_allocation_balance = (
-            Decimal(str(tenant.budget_allocation_balance)) - total_dec
+            (tenant.budget_allocation_balance or 0) - int(total_points)
         )
 
     # Audit log
@@ -303,7 +301,7 @@ async def distribute_to_all_users(
     return BulkUserDistributionResponse(
         total_users_credited=len(users),
         total_points_distributed=total_points,
-        master_pool_remaining=float(tenant.master_budget_balance),
+        master_pool_remaining=int(tenant.master_budget_balance),
     )
 
 
@@ -335,8 +333,8 @@ async def get_budgets(
             "fiscal_quarter": budget.fiscal_quarter,
             "total_points": budget.total_points,
             "allocated_points": budget.allocated_points,
-            "remaining_points": Decimal(str(budget.total_points))
-            - Decimal(str(budget.allocated_points)),
+            "remaining_points": (budget.total_points or 0)
+            - (budget.allocated_points or 0),
             "status": budget.status,
             "expiry_date": budget.expiry_date,
             "created_by": budget.created_by,
@@ -359,7 +357,7 @@ async def create_budget(
         raise HTTPException(status_code=404, detail="Tenant not found")
 
     # Check tenant allocation cap using allocated_budget or fallback to master_budget_balance for legacy
-    allocation_cap = Decimal(str(tenant.allocated_budget or tenant.master_budget_balance or 0))
+    allocation_cap = int(tenant.allocated_budget or tenant.master_budget_balance or 0)
     existing_total = (
         db.query(func.coalesce(func.sum(Budget.total_points), 0))
         .filter(Budget.tenant_id == tenant.id)
@@ -367,7 +365,7 @@ async def create_budget(
         or 0
     )
 
-    if Decimal(str(existing_total)) + Decimal(str(budget_data.total_points)) > allocation_cap:
+    if int(existing_total) + int(budget_data.total_points) > allocation_cap:
         raise HTTPException(
             status_code=400,
             detail=f"Insufficient tenant allocated budget. Available Cap: {allocation_cap}",
@@ -375,8 +373,8 @@ async def create_budget(
 
     # Deduct from the tenant's current balances
     # We maintain master_budget_balance and budget_allocation_balance as the 'Active Pool'
-    tenant.master_budget_balance = (tenant.master_budget_balance or 0) - Decimal(str(budget_data.total_points))
-    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) - Decimal(str(budget_data.total_points))
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) - int(budget_data.total_points)
+    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) - int(budget_data.total_points)
     
     budget = Budget(
         tenant_id=current_user.tenant_id,
@@ -424,8 +422,7 @@ async def create_budget(
         "fiscal_quarter": budget.fiscal_quarter,
         "total_points": budget.total_points,
         "allocated_points": budget.allocated_points,
-        "remaining_points": Decimal(str(budget.total_points))
-        - Decimal(str(budget.allocated_points)),
+        "remaining_points": (budget.total_points or 0) - (budget.allocated_points or 0),
         "status": budget.status,
         "expiry_date": budget.expiry_date,
         "created_by": budget.created_by,
@@ -478,18 +475,16 @@ async def get_my_available_points(
                 .first()
             )
             if dept_budget:
-                dept_points = Decimal(str(dept_budget.allocated_points)) - Decimal(
-                    str(dept_budget.spent_points)
-                )
+                dept_points = (dept_budget.allocated_points or 0) - (dept_budget.spent_points or 0)
 
     # Also get wallet balance
     wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
     wallet_balance = wallet.balance if wallet else 0
 
     return {
-        "lead_points": float(lead_points),
-        "department_points": float(dept_points),
-        "wallet_balance": float(wallet_balance),
+        "lead_points": int(lead_points),
+        "department_points": int(dept_points),
+        "wallet_balance": int(wallet_balance),
         "has_active_budget": active_budget is not None,
     }
 
@@ -530,7 +525,7 @@ async def allocate_points_to_lead(
         raise HTTPException(status_code=404, detail="Budget not found")
 
     # Check if budget has enough remaining points
-    if budget.remaining_points < float(allocation_data.points):
+    if (budget.remaining_points or 0) < int(allocation_data.points):
         raise HTTPException(
             status_code=400,
             detail=f"Insufficient budget. Available: {budget.remaining_points}",
@@ -548,21 +543,21 @@ async def allocate_points_to_lead(
 
     if lead_alloc:
         lead_alloc.allocated_points = (
-            Decimal(str(lead_alloc.allocated_points)) + allocation_data.points
+            (lead_alloc.allocated_points or 0) + int(allocation_data.points)
         )
     else:
         lead_alloc = LeadAllocation(
             tenant_id=current_user.tenant_id,
             budget_id=allocation_data.budget_id,
             lead_id=allocation_data.lead_id,
-            allocated_points=allocation_data.points,
+            allocated_points=int(allocation_data.points),
             spent_points=0,
         )
         db.add(lead_alloc)
 
     # Update budget allocated points
     budget.allocated_points = (
-        Decimal(str(budget.allocated_points)) + allocation_data.points
+        (budget.allocated_points or 0) + int(allocation_data.points)
     )
 
     # Audit log
@@ -611,8 +606,7 @@ async def get_budget(
         "fiscal_quarter": budget.fiscal_quarter,
         "total_points": budget.total_points,
         "allocated_points": budget.allocated_points,
-        "remaining_points": Decimal(str(budget.total_points))
-        - Decimal(str(budget.allocated_points)),
+        "remaining_points": (budget.total_points or 0) - (budget.allocated_points or 0),
         "status": budget.status,
         "expiry_date": budget.expiry_date,
         "created_by": budget.created_by,
@@ -678,8 +672,7 @@ async def update_budget(
         "fiscal_quarter": budget.fiscal_quarter,
         "total_points": budget.total_points,
         "allocated_points": budget.allocated_points,
-        "remaining_points": Decimal(str(budget.total_points))
-        - Decimal(str(budget.allocated_points)),
+        "remaining_points": (budget.total_points or 0) - (budget.allocated_points or 0),
         "status": budget.status,
         "expiry_date": budget.expiry_date,
         "created_by": budget.created_by,
@@ -714,7 +707,7 @@ async def allocate_budget_to_departments(
         .scalar()
     )
 
-    available = Decimal(str(budget.total_points)) - Decimal(str(current_allocated))
+    available = (budget.total_points or 0) - int(current_allocated or 0)
 
     if total_allocation > available:
         raise HTTPException(
@@ -737,7 +730,7 @@ async def allocate_budget_to_departments(
 
         if existing:
             existing.allocated_points = (
-                Decimal(str(existing.allocated_points)) + allocation.allocated_points
+                (existing.allocated_points or 0) + int(allocation.allocated_points)
             )
             if allocation.monthly_cap:
                 existing.monthly_cap = allocation.monthly_cap
@@ -755,7 +748,7 @@ async def allocate_budget_to_departments(
             created.append(dept_budget)
 
     # Update budget allocated points
-    budget.allocated_points = Decimal(str(budget.allocated_points)) + total_allocation
+    budget.allocated_points = (budget.allocated_points or 0) + int(total_allocation)
 
     # Audit log (only set actor_id if user exists in users table)
     actor_id = None
@@ -819,8 +812,8 @@ async def get_department_budgets(
                 "department_id": db_item.department_id,
                 "allocated_points": db_item.allocated_points,
                 "spent_points": db_item.spent_points,
-                "remaining_points": Decimal(str(db_item.allocated_points))
-                - Decimal(str(db_item.spent_points)),
+                "remaining_points": (db_item.allocated_points or 0)
+                - (db_item.spent_points or 0),
                 "monthly_cap": db_item.monthly_cap,
                 "created_at": db_item.created_at,
             }
@@ -864,10 +857,8 @@ async def allocate_to_employee(
         raise HTTPException(status_code=404, detail="Department budget not found")
 
     # Ensure there are enough remaining points in the department budget
-    remaining = Decimal(str(dept_budget.allocated_points)) - Decimal(
-        str(dept_budget.spent_points)
-    )
-    if Decimal(str(allocation.points)) > remaining:
+    remaining = (dept_budget.allocated_points or 0) - (dept_budget.spent_points or 0)
+    if int(allocation.points) > remaining:
         raise HTTPException(
             status_code=400,
             detail=f"Insufficient department budget. Available: {remaining}",
@@ -904,11 +895,9 @@ async def allocate_to_employee(
         db.flush()  # ensure wallet.id is available
 
     # Credit wallet
-    old_balance = Decimal(str(wallet.balance))
-    wallet.balance = old_balance + Decimal(str(allocation.points))
-    wallet.lifetime_earned = Decimal(str(wallet.lifetime_earned)) + Decimal(
-        str(allocation.points)
-    )
+    old_balance = int(wallet.balance or 0)
+    wallet.balance = old_balance + int(allocation.points)
+    wallet.lifetime_earned = (wallet.lifetime_earned or 0) + int(allocation.points)
 
     # Create ledger entry
     ledger = WalletLedger(
@@ -924,9 +913,7 @@ async def allocate_to_employee(
     db.add(ledger)
 
     # Update department budget spent points
-    dept_budget.spent_points = Decimal(str(dept_budget.spent_points)) + Decimal(
-        str(allocation.points)
-    )
+    dept_budget.spent_points = (dept_budget.spent_points or 0) + int(allocation.points)
 
     # Audit (only set actor_id if user exists in users table)
     actor_id = None
@@ -946,7 +933,7 @@ async def allocate_to_employee(
         entity_id=dept_budget.id,
         old_values={
             "spent_points": str(
-                Decimal(str(dept_budget.spent_points)) - Decimal(str(allocation.points))
+                (dept_budget.spent_points or 0) - int(allocation.points)
             )
         },
         new_values={

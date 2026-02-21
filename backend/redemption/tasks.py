@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 
 from celery_app import celery_app
 from models import Redemption, RedemptionLedger, Wallet, WalletLedger
@@ -83,7 +82,7 @@ def issue_voucher_task(self, redemption_id: str):
                     wallet_id=wallet.id,
                     transaction_type="credit",
                     source="reversal",
-                    points=Decimal(redemption.point_cost),
+                    points=int(redemption.point_cost),
                     balance_after=wallet.balance,
                     reference_type="Redemption",
                     reference_id=redemption.id,
@@ -123,7 +122,7 @@ def issue_voucher_task(self, redemption_id: str):
                         wallet_id=wallet.id,
                         transaction_type="credit",
                         source="reversal",
-                        points=Decimal(redemption.point_cost),
+                        points=int(redemption.point_cost),
                         balance_after=wallet.balance,
                         reference_type="Redemption",
                         reference_id=redemption.id,

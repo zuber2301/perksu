@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import List
 from uuid import UUID
 
@@ -660,7 +659,7 @@ async def get_platform_health(
     total_users = db.query(User).count()
 
     return {
-        "total_points": float(total_points),
+        "total_points": int(total_points),
         "active_tenants": active_tenants,
         "total_tenants": total_tenants,
         "total_users": total_users,
@@ -949,9 +948,9 @@ async def get_departments_management(
             "id": str(d.id),
             "name": d.name,
             "lead_name": lead_name,
-            "dept_budget_balance": float(dept_budget_balance),
-            "user_wallet_sum": float(user_wallet_sum),
-            "total_liability": float(dept_budget_balance + user_wallet_sum),
+            "dept_budget_balance": int(dept_budget_balance),
+            "user_wallet_sum": int(user_wallet_sum),
+            "total_liability": int(dept_budget_balance + user_wallet_sum),
             "employee_count": db.query(func.count(User.id)).filter(User.department_id == d.id).scalar(),
         })
 
@@ -970,11 +969,11 @@ async def allocate_department_budget(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    amount_dec = Decimal(str(allocation_data.amount))
-    if tenant.master_budget_balance < amount_dec:
+    amount_to_allocate = int(allocation_data.amount)
+    if tenant.master_budget_balance < amount_to_allocate:
         raise HTTPException(
             status_code=400, 
-            detail=f"Insufficient tenant balance. Available: {tenant.master_budget_balance}, Requested: {amount_dec}"
+            detail=f"Insufficient tenant balance. Available: {tenant.master_budget_balance}, Requested: {amount_to_allocate}"
         )
 
     # Find or create the active budget for this tenant
@@ -1010,12 +1009,12 @@ async def allocate_department_budget(
         db.flush()
 
     # Perform movement
-    tenant.master_budget_balance -= amount_dec
-    tenant.budget_allocation_balance -= amount_dec
-    dept_budget.allocated_points += amount_dec
+    tenant.master_budget_balance -= amount_to_allocate
+    tenant.budget_allocation_balance -= amount_to_allocate
+    dept_budget.allocated_points += amount_to_allocate
     # Update budget totals
-    budget.total_points = Decimal(str(budget.total_points or 0)) + amount_dec
-    budget.allocated_points = Decimal(str(budget.allocated_points or 0)) + amount_dec
+    budget.total_points = (budget.total_points or 0) + amount_to_allocate
+    budget.allocated_points = (budget.allocated_points or 0) + amount_to_allocate
 
     db.commit()
     return {"message": f"Successfully allocated {allocation_data.amount} points to department"}
@@ -1043,18 +1042,18 @@ async def get_master_pool(
 
     # Use budget_allocation_balance as the primary balance for distribution
     # ALSO include remaining points in any 'active' budget that haven't been allocated to departments yet
-    master_balance = float(tenant.budget_allocation_balance or tenant.master_budget_balance or 0)
+    master_balance = int(tenant.budget_allocation_balance or tenant.master_budget_balance or 0)
     
     active_budget = db.query(Budget).filter(Budget.tenant_id == tenant.id, Budget.status == "active").first()
-    budget_unallocated = float(active_budget.remaining_points) if active_budget else 0
+    budget_unallocated = int(active_budget.remaining_points) if active_budget else 0
     
     total_available = master_balance + budget_unallocated
 
     return {
         "balance": total_available,
         "availablePoints": total_available,
-        "allocated": float(tenant.allocated_budget or 0),
-        "department_allocated_sum": float(current_dept_allocated),
+        "allocated": int(tenant.allocated_budget or 0),
+        "department_allocated_sum": int(current_dept_allocated),
         "available_for_allocation": total_available,
         "master_pool_balance": master_balance,
         "budget_pool_balance": budget_unallocated
@@ -1085,7 +1084,7 @@ async def add_points_to_department(
     if request.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    amount_dec = Decimal(str(request.amount))
+    requested_amount = int(request.amount)
     
     # 1. Try to find an active budget that already has unallocated points
     active_budget = (
@@ -1095,33 +1094,33 @@ async def add_points_to_department(
         .first()
     )
     
-    budget_unallocated = Decimal(str(active_budget.remaining_points)) if active_budget else Decimal(0)
+    budget_unallocated = int(active_budget.remaining_points) if active_budget else 0
     
     # 2. Case A: Active budget has enough points. Just move them.
-    if active_budget and budget_unallocated >= amount_dec:
-        active_budget.allocated_points = Decimal(str(active_budget.allocated_points)) + amount_dec
+    if active_budget and budget_unallocated >= requested_amount:
+        active_budget.allocated_points = (active_budget.allocated_points or 0) + requested_amount
     
     # 3. Case B: Need to pull from Master Pool (either fully or partially)
     else:
         # Check if master pool has enough
-        master_pool = Decimal(str(tenant.budget_allocation_balance or 0))
-        if amount_dec > master_pool + budget_unallocated:
+        master_pool = int(tenant.budget_allocation_balance or 0)
+        if requested_amount > master_pool + budget_unallocated:
              raise HTTPException(
                 status_code=400, 
-                detail=f"Insufficient points. Total Available: {float(master_pool + budget_unallocated)}"
+                detail=f"Insufficient points. Total Available: {int(master_pool + budget_unallocated)}"
             )
         
         # Pull what we can from active budget, then rest from master pool
-        from_master = amount_dec - budget_unallocated
+        from_master = requested_amount - budget_unallocated
         
         # Deduct from tenant master pool
-        tenant.master_budget_balance = Decimal(str(tenant.master_budget_balance or 0)) - from_master
-        tenant.budget_allocation_balance = Decimal(str(tenant.budget_allocation_balance or 0)) - from_master
+        tenant.master_budget_balance = (tenant.master_budget_balance or 0) - from_master
+        tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) - from_master
         
         ledger = MasterBudgetLedger(
             tenant_id=tenant.id,
             transaction_type="debit",
-            amount=float(from_master),
+            amount=int(from_master),
             balance_after=tenant.budget_allocation_balance,
             description=f"Allocated to department {department_id} from master pool",
         )
@@ -1129,16 +1128,16 @@ async def add_points_to_department(
         
         # If we have an active budget, expand its total_points; Else create one
         if active_budget:
-            active_budget.total_points = Decimal(str(active_budget.total_points)) + from_master
-            active_budget.allocated_points = Decimal(str(active_budget.allocated_points)) + amount_dec
+            active_budget.total_points = (active_budget.total_points or 0) + from_master
+            active_budget.allocated_points = (active_budget.allocated_points or 0) + requested_amount
         else:
             from datetime import datetime
             active_budget = Budget(
                 tenant_id=tenant.id,
                 name=f"Ad-hoc Allocation {datetime.utcnow().date()}",
                 fiscal_year=datetime.utcnow().year,
-                total_points=amount_dec,
-                allocated_points=amount_dec,
+                total_points=requested_amount,
+                allocated_points=requested_amount,
                 status="active",
                 created_by=current_user.id,
             )
@@ -1156,32 +1155,21 @@ async def add_points_to_department(
             tenant_id=tenant.id,
             budget_id=active_budget.id,
             department_id=department_id,
-            allocated_points=amount_dec,
+            allocated_points=requested_amount,
             spent_points=0,
         )
         db.add(dept_budget)
     else:
-        dept_budget.allocated_points = Decimal(str(dept_budget.allocated_points or 0)) + amount_dec
+        dept_budget.allocated_points = (dept_budget.allocated_points or 0) + requested_amount
 
     db.commit()
-
-    return {
-        "message": f"Successfully allocated {request.amount} points to department",
-        "new_dept_balance": float(dept_budget.allocated_points - dept_budget.spent_points)
-    }
-
-    updated_dept_balance = (
-        db.query(func.coalesce(func.sum(DepartmentBudget.allocated_points - DepartmentBudget.spent_points), 0))
-        .filter(DepartmentBudget.department_id == department_id)
-        .scalar() or 0
-    )
-
     db.refresh(tenant)
 
     return {
+        "message": f"Successfully allocated {request.amount} points to department",
+        "new_dept_balance": int(dept_budget.allocated_points - dept_budget.spent_points),
         "department_id": str(department_id),
-        "dept_budget_balance": float(updated_dept_balance),
-        "master_balance": float(tenant.master_budget_balance),
+        "master_balance": int(tenant.master_budget_balance),
     }
 
 

@@ -184,54 +184,6 @@ export default function Budgets() {
     }
   }
 
-  const quickActions = [
-    {
-      id: 'distribute',
-      title: 'Distribute Points',
-      description: 'Send points to a specific Lead or User directly',
-      icon: HiOutlinePlusCircle,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      onClick: () => setShowDistributeModal(true),
-    },
-    {
-      id: 'per-employee',
-      title: 'Per-Employee Distribution',
-      description: 'Allocate budget to departments based on headcount',
-      icon: HiOutlineUserGroup,
-      color: 'text-perksu-purple',
-      bgColor: 'bg-purple-50',
-      onClick: () => setShowPerEmployeeModal(true),
-    },
-    {
-      id: 'bulk-users',
-      title: 'Bulk User Distribution',
-      description: "Credit points to all active employees' wallets",
-      icon: HiOutlineSparkles,
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-50',
-      onClick: () => setShowBulkUserModal(true),
-    },
-    {
-      id: 'topup',
-      title: 'Top-up Request',
-      description: 'Request additional budget points from system admin',
-      icon: HiOutlineBell,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      onClick: () => setShowTopupModal(true),
-    },
-    {
-      id: 'export',
-      title: 'Export Transactions',
-      description: 'Download full history of budget allocations (CSV)',
-      icon: HiOutlineDocumentArrowDown,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-      onClick: handleExportReport,
-    },
-  ]
-
   const handleCreateBudget = (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
@@ -312,7 +264,7 @@ export default function Budgets() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Budget Management</h1>
-          <p className="text-sm text-gray-500">Manage organizational budgets and lead point allocations</p>
+          <p className="text-sm text-gray-500">Manage organizational budgets and department allocations</p>
           {tenantInfo && (
             <div className="mt-2 flex items-center gap-4">
               {activeRole === 'platform_admin' && (
@@ -367,16 +319,18 @@ export default function Budgets() {
             Organizational Budgets
           </button>
         )}
-        <button
-          onClick={() => setActiveTab('allocations')}
-          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
-            activeTab === 'allocations'
-              ? 'border-perksu-purple text-perksu-purple'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          {activeRole === 'dept_lead' ? 'My Team Allocations' : 'Lead Point Allocations'}
-        </button>
+        {activeRole === 'dept_lead' && (
+          <button
+            onClick={() => setActiveTab('allocations')}
+            className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'allocations'
+                ? 'border-perksu-purple text-perksu-purple'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            My Team Allocations
+          </button>
+        )}
         {activeRole !== 'dept_lead' && (
           <button
             onClick={() => setActiveTab('insights')}
@@ -392,7 +346,40 @@ export default function Budgets() {
       </div>
 
       {activeTab === 'budgets' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="space-y-6">
+          {/* Internal Navigation / Quick Actions as Tabs */}
+          <div className="bg-white border-b border-gray-100 px-2 flex items-center gap-1">
+            <button 
+              onClick={() => setShowPerEmployeeModal(true)}
+              className="px-4 py-3 text-sm font-bold text-gray-500 hover:text-perksu-purple hover:bg-perksu-purple/5 transition-all flex items-center gap-2 border-b-2 border-transparent hover:border-perksu-purple"
+            >
+              <HiOutlineUserGroup className="w-4 h-4" />
+              Headcount Load
+            </button>
+            <button 
+              onClick={() => setShowBulkUserModal(true)}
+              className="px-4 py-3 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 transition-all flex items-center gap-2 border-b-2 border-transparent hover:border-pink-600"
+            >
+              <HiOutlineSparkles className="w-4 h-4" />
+              Bulk Distribute
+            </button>
+            <button 
+              onClick={() => setShowTopupModal(true)}
+              className="px-4 py-3 text-sm font-bold text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 transition-all flex items-center gap-2 border-b-2 border-transparent hover:border-yellow-600"
+            >
+              <HiOutlineBell className="w-4 h-4" />
+              Request Points
+            </button>
+            <button 
+              onClick={handleExportReport}
+              className="px-4 py-3 text-sm font-bold text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all flex items-center gap-2 border-b-2 border-transparent hover:border-emerald-600"
+            >
+              <HiOutlineDocumentArrowDown className="w-4 h-4" />
+              Export Data
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2 space-y-4">
             {/* Budgets list stats */}
             {isLoading ? (
@@ -498,33 +485,6 @@ export default function Budgets() {
           </div>
 
           <div className="lg:col-span-1 space-y-6">
-            {/* Quick Actions Card */}
-            <div className="card !p-0 overflow-hidden border-perksu-purple/10">
-              <div className="px-6 py-4 bg-perksu-purple/5 border-b border-perksu-purple/10">
-                <h3 className="text-sm font-bold text-perksu-purple uppercase tracking-widest">Quick Actions</h3>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {quickActions.map((action) => (
-                  <button
-                    key={action.id}
-                    onClick={action.onClick}
-                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl ${action.bgColor} flex items-center justify-center ${action.color} group-hover:scale-110 transition`}>
-                        <action.icon className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-bold text-gray-900">{action.title}</p>
-                        <p className="text-[10px] text-gray-500">{action.description}</p>
-                      </div>
-                    </div>
-                    <HiOutlinePlus className="w-4 h-4 text-gray-300 group-hover:text-perksu-purple transition" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Help/Support info */}
             <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6">
                <h4 className="text-xs font-bold text-blue-800 uppercase tracking-widest mb-2">Allocation Support</h4>

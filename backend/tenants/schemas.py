@@ -95,7 +95,7 @@ class TenantProvisionCreate(TenantBase):
     admin_password: str
     admin_first_name: str
     admin_last_name: str
-    initial_balance: float = 0.0
+    initial_balance: int = 0
     subscription_tier: str = "basic"
     branding_config: Optional[Dict[str, Any]] = None
 

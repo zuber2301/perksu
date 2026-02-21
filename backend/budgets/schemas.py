@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
@@ -102,14 +101,14 @@ class LeadPointAllocationRequest(BaseModel):
 
 class EmployeeAllocationRequest(BaseModel):
     user_id: UUID
-    points: Decimal
+    points: int
 
 
 class EmployeeAllocationResponse(BaseModel):
     wallet_id: UUID
     user_id: UUID
-    points_allocated: Decimal
-    new_balance: Decimal
+    points_allocated: int
+    new_balance: int
     created_at: datetime
 
     class Config:
@@ -138,7 +137,7 @@ class PerEmployeeDeptDistributionResponse(BaseModel):
     total_points_allocated: int
     departments_updated: int
     breakdown: List[DeptDistributionPreviewItem]
-    master_pool_remaining: float
+    master_pool_remaining: int
 
 
 class BulkUserDistributionRequest(BaseModel):
@@ -152,4 +151,4 @@ class BulkUserDistributionRequest(BaseModel):
 class BulkUserDistributionResponse(BaseModel):
     total_users_credited: int
     total_points_distributed: int
-    master_pool_remaining: float
+    master_pool_remaining: int
