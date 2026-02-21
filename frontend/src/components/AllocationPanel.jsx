@@ -107,17 +107,14 @@ export default function AllocationPanel({ tenantId, tenantName, onAllocationSucc
             <input
               id="amount"
               type="number"
-              min="100"
-              step="100"
+              min="1"
+              step="1"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter number of points (e.g., 50000)"
+              placeholder="Enter amount (e.g., 50000)"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={loading}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
-              pts
-            </span>
           </div>
         </div>
 

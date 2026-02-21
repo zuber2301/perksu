@@ -4,6 +4,7 @@ import { HiX, HiOutlineStar, HiOutlineGift, HiOutlineUsers, HiOutlineSparkles, H
 import toast from 'react-hot-toast'
 import { recognitionApi, usersApi, tenantsApi, budgetsAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
+import { formatCurrency } from '../lib/currency'
 
 const RECOGNITION_TYPES = [
   { id: 'standard', name: 'Standard', icon: HiOutlineStar },
@@ -238,19 +239,19 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                       {budgetData.lead_points > 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-perksu-purple"></div>
-                          <span className="text-sm font-bold text-gray-700">{budgetData.lead_points.toLocaleString()} <small className="text-[10px] text-gray-400">Personal</small></span>
+                          <span className="text-sm font-bold text-gray-700">{formatCurrency(budgetData.lead_points)} <small className="text-[10px] text-gray-400">Personal</small></span>
                         </div>
                       )}
                       {budgetData.department_points > 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                          <span className="text-sm font-bold text-gray-700">{budgetData.department_points.toLocaleString()} <small className="text-[10px] text-gray-400">Dept</small></span>
+                          <span className="text-sm font-bold text-gray-700">{formatCurrency(budgetData.department_points)} <small className="text-[10px] text-gray-400">Dept</small></span>
                         </div>
                       )}
                       {budgetData.lead_points === 0 && budgetData.department_points === 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
-                          <span className="text-sm font-bold text-gray-700">{budgetData.wallet_balance.toLocaleString()} <small className="text-[10px] text-gray-400">Wallet</small></span>
+                          <span className="text-sm font-bold text-gray-700">{formatCurrency(budgetData.wallet_balance)} <small className="text-[10px] text-gray-400">Wallet</small></span>
                         </div>
                       )}
                     </div>
@@ -350,8 +351,7 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                         }`}
                       >
                         <span className="text-xs font-bold">{name}</span>
-                        <span className="text-lg font-black">{val}</span>
-                        <span className="text-[10px] uppercase">pts</span>
+                        <span className="text-lg font-black">{formatCurrency(val)}</span>
                       </button>
                     ))}
                   </div>
@@ -390,16 +390,15 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                       <input
                         type="number"
                         value={points}
-                        onChange={(e) => setPoints(Number(e.target.value))}
-                        min="100"
-                        step="100"
+                        onChange={(e) => setPoints(Math.floor(Number(e.target.value)))}
+                        min="1"
                         className="w-full bg-white border-2 border-gray-100 rounded-lg p-2 font-bold outline-none focus:border-perksu-purple"
                       />
                     </div>
                     <div className="text-center bg-white px-4 py-2 rounded-lg border-2 border-gray-100">
                       <span className="block text-xs font-bold text-gray-400 uppercase">Total Cost</span>
                       <span className="text-lg font-black text-perksu-purple">
-                        {isEqualSplit ? points : points * recipients.length} pts
+                        {formatCurrency(isEqualSplit ? points : points * recipients.length)}
                       </span>
                     </div>
                   </div>
@@ -450,9 +449,8 @@ export default function RecognitionModal({ isOpen, onClose, initialSelectedUser,
                     <input
                       type="number"
                       value={points}
-                      onChange={(e) => setPoints(Number(e.target.value))}
-                      min="100"
-                      step="100"
+                      onChange={(e) => setPoints(Math.floor(Number(e.target.value)))}
+                      min="1"
                       className="w-24 py-3 rounded-xl border-2 border-gray-100 text-center font-bold outline-none focus:border-perksu-purple"
                     />
                   </div>

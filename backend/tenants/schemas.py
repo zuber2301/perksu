@@ -101,12 +101,17 @@ class TenantProvisionCreate(TenantBase):
 
 
 class TenantLoadBudget(BaseModel):
-    amount: float
+    amount: int
     description: Optional[str] = "Manual budget load"
 
 
+class TenantRecallBudget(BaseModel):
+    amount: int
+    justification: str
+
+
 class DepartmentAllocate(BaseModel):
-    amount: float
+    amount: int
     description: Optional[str] = "Manual allocation from HR Admin"
 
 
@@ -171,8 +176,9 @@ class TenantResponse(TenantBase):
 
     # Financials
     subscription_tier: Optional[str] = "basic"
-    master_budget_balance: Optional[float] = 0.0
-    allocated_budget: Optional[float] = 0.0  # Total allocated budget loaded by platform admin
+    master_budget_balance: Optional[int] = 0
+    budget_allocation_balance: Optional[int] = 0
+    allocated_budget: Optional[int] = 0  # Total allocated budget loaded by platform admin
 
     # Status
     status: Optional[str] = "ACTIVE"
@@ -188,7 +194,8 @@ class TenantStatsResponse(BaseModel):
     tenant_id: UUID
     tenant_name: str
     active_users: int
-    master_balance: float
+    master_balance: int
+    budget_allocation_balance: int = 0
     last_activity: Optional[datetime] = None
     status: str
 
@@ -201,7 +208,7 @@ class TenantListResponse(BaseModel):
 
 
 class InjectPointsRequest(BaseModel):
-    amount: float
+    amount: int
     description: str
 
 
@@ -209,8 +216,8 @@ class TransactionResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     transaction_type: str
-    amount: float
-    balance_after: float
+    amount: int
+    balance_after: int
     description: str
     created_at: datetime
 

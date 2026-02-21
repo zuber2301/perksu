@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { walletsAPI } from '../lib/api'
 import { format } from 'date-fns'
 import { HiOutlineArrowUp, HiOutlineArrowDown, HiOutlineCash } from 'react-icons/hi'
+import { formatCurrency } from '../lib/currency'
 
 export default function Wallet() {
   const { data: wallet, isLoading: walletLoading } = useQuery({
@@ -57,7 +58,7 @@ export default function Wallet() {
           </div>
           <div>
             <p className="text-white/80 text-sm">Current Balance</p>
-            <p className="text-4xl font-bold">{wallet?.balance || 0} points</p>
+            <p className="text-4xl font-bold">{formatCurrency(wallet?.balance || 0)}</p>
           </div>
         </div>
         
@@ -67,14 +68,14 @@ export default function Wallet() {
               <HiOutlineArrowUp className="w-4 h-4 text-green-300" />
               <span className="text-sm text-white/80">Lifetime Earned</span>
             </div>
-            <p className="text-2xl font-semibold">{wallet?.lifetime_earned || 0}</p>
+            <p className="text-2xl font-semibold">{formatCurrency(wallet?.lifetime_earned || 0)}</p>
           </div>
           <div className="bg-white/10 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-1">
               <HiOutlineArrowDown className="w-4 h-4 text-red-300" />
               <span className="text-sm text-white/80">Lifetime Spent</span>
             </div>
-            <p className="text-2xl font-semibold">{wallet?.lifetime_spent || 0}</p>
+            <p className="text-2xl font-semibold">{formatCurrency(wallet?.lifetime_spent || 0)}</p>
           </div>
         </div>
       </div>
@@ -124,10 +125,10 @@ export default function Wallet() {
                   <p className={`text-lg font-semibold ${
                     entry.transaction_type === 'credit' ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {entry.transaction_type === 'credit' ? '+' : '-'}{entry.points}
+                    {entry.transaction_type === 'credit' ? '+' : '-'}{formatCurrency(entry.points)}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Balance: {entry.balance_after}
+                    Balance: {formatCurrency(entry.balance_after)}
                   </p>
                 </div>
               </div>

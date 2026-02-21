@@ -11,6 +11,7 @@ import {
   HiOutlineTruck,
 } from 'react-icons/hi'
 import toast from 'react-hot-toast'
+import { formatCurrency } from '../lib/currency'
 
 const STATUS_CONFIG = {
   PENDING:      { label: 'Pending',      color: 'bg-amber-100 text-amber-800',   icon: HiOutlineClock    },
@@ -88,7 +89,7 @@ export default function RedemptionHistory({ orders = [], isLoading = false }) {
                 <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
                   <span className="flex items-center gap-0.5">
                     <HiOutlineSparkles className="w-3 h-3 text-perksu-purple" />
-                    {order.points_spent} pts
+                    {formatCurrency(order.points_spent)}
                   </span>
                   <span>{format(new Date(order.created_at), 'dd MMM yyyy')}</span>
                   {order.category && <span>{emoji} {order.category}</span>}

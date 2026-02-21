@@ -9,7 +9,7 @@ import {
   HiOutlineCheckCircle,
   HiOutlineInformationCircle,
 } from 'react-icons/hi2'
-import { formatNumber } from '../../../lib/currency'
+import { formatNumber, formatCurrency } from '../../../lib/currency'
 
 /**
  * PerEmployeeDistributionModal
@@ -76,7 +76,7 @@ export default function PerEmployeeDistributionModal({
     mutationFn: (payload) => budgetsAPI.distributePerEmployee(payload),
     onSuccess: (res) => {
       toast.success(
-        `Distributed ${formatNumber(res.total_points_allocated)} pts across ${res.departments_updated} departments`
+        `Distributed ${formatCurrency(res.total_points_allocated)} across ${res.departments_updated} departments`
       )
       queryClient.invalidateQueries(['departments-management'])
       queryClient.invalidateQueries(['master-pool'])
@@ -124,7 +124,7 @@ export default function PerEmployeeDistributionModal({
             <HiOutlineBanknotes className="w-5 h-5 text-blue-600 shrink-0" />
             <div>
               <p className="text-xs text-gray-500">Available Master Pool</p>
-              <p className="text-lg font-bold text-blue-700">{formatNumber(availableMasterPool)} pts</p>
+              <p className="text-lg font-bold text-blue-700">{formatCurrency(availableMasterPool)}</p>
             </div>
           </div>
 
@@ -142,7 +142,7 @@ export default function PerEmployeeDistributionModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-perksu-purple text-sm"
             />
             <p className="text-xs text-gray-400 mt-1">
-              Each department will receive: active employees × {pts || '?'} pts
+              Each department will receive: active employees × {pts > 0 ? formatCurrency(pts) : '?'}
             </p>
           </div>
 
@@ -200,7 +200,7 @@ export default function PerEmployeeDistributionModal({
                       </div>
                       {pts > 0 && isChecked && (
                         <span className="text-xs font-semibold text-perksu-purple shrink-0">
-                          +{formatNumber(deptTotal)}
+                          +{formatCurrency(deptTotal)}
                         </span>
                       )}
                     </label>
@@ -227,13 +227,13 @@ export default function PerEmployeeDistributionModal({
                   <div className="flex justify-between">
                     <span className="text-gray-600">Total points needed:</span>
                     <span className={`font-bold ${isOverBudget ? 'text-red-600' : 'text-green-700'}`}>
-                      {formatNumber(totalPoints)}
+                      {formatCurrency(totalPoints)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Remaining after distribution:</span>
                     <span className={`font-semibold ${isOverBudget ? 'text-red-600' : 'text-gray-800'}`}>
-                      {formatNumber(availableMasterPool - totalPoints)}
+                      {formatCurrency(availableMasterPool - totalPoints)}
                     </span>
                   </div>
                   {isOverBudget && (
@@ -262,7 +262,7 @@ export default function PerEmployeeDistributionModal({
             disabled={!canSubmit || mutation.isPending}
             className="flex-1 px-4 py-2 bg-perksu-purple text-white rounded-xl hover:bg-perksu-purple/90 transition font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {mutation.isPending ? 'Distributing…' : `Distribute ${totalPoints > 0 ? formatNumber(totalPoints) + ' pts' : ''}`}
+            {mutation.isPending ? 'Distributing…' : `Distribute ${totalPoints > 0 ? formatCurrency(totalPoints) : ''}`}
           </button>
         </div>
       </div>

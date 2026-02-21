@@ -4,15 +4,23 @@ import { budgetsAPI, tenantsAPI, usersAPI, walletsAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import { formatCurrency } from '../lib/currency'
 import { 
   HiOutlinePlus, HiOutlinePencil, HiOutlineChartBar, HiOutlineCheck, 
   HiOutlineUsers, HiOutlineCash, HiOutlineSparkles, HiOutlineTrendingUp,
-  HiOutlineFire, HiOutlineCube, HiOutlineDotsVertical, HiOutlineCalendar
+  HiOutlineFire, HiOutlineCube, HiOutlineDotsVertical, HiOutlineCalendar,
+  HiOutlinePlusCircle, HiOutlineBell, HiOutlineUserGroup
 } from 'react-icons/hi'
+import { HiOutlineDocumentArrowDown } from 'react-icons/hi2'
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts'
+
+import DistributePointsModal from '../components/DashboardComponents/DistributePointsModal'
+import TopupRequestModal from '../components/DashboardComponents/TopupRequestModal'
+import PerEmployeeDistributionModal from '../components/DashboardComponents/modals/PerEmployeeDistributionModal'
+import BulkUserDistributionModal from '../components/DashboardComponents/modals/BulkUserDistributionModal'
 
 export default function Budgets() {
   const { isHRAdmin, isManager, user, activeRole } = useAuthStore()
@@ -25,6 +33,11 @@ export default function Budgets() {
   const [selectedBudget, setSelectedBudget] = useState(null)
   const [selectedLead, setSelectedLead] = useState(null)
   const [showEmployeeTopUpModal, setShowEmployeeTopUpModal] = useState(false)
+  const [showDistributeModal, setShowDistributeModal] = useState(false)
+  const [showTopupModal, setShowTopupModal] = useState(false)
+  const [showPerEmployeeModal, setShowPerEmployeeModal] = useState(false)
+  const [showBulkUserModal, setShowBulkUserModal] = useState(false)
+  
   const [topUpDepartment, setTopUpDepartment] = useState(null)
   const [topUpUser, setTopUpUser] = useState(null)
   const [topUpPoints, setTopUpPoints] = useState(0)
@@ -44,7 +57,7 @@ export default function Budgets() {
   const { data: leads } = useQuery({
     queryKey: ['users', { role: 'dept_lead' }],
     queryFn: () => usersAPI.getAll({ role: 'dept_lead' }),
-    enabled: activeTab === 'allocations' || activeTab === 'insights',
+    enabled: activeTab === 'allocations' || activeTab === 'insights' || showDistributeModal,
   })
 
   const { data: employees } = useQuery({
@@ -142,14 +155,98 @@ export default function Budgets() {
     }
   })
 
+  const handleExportReport = async () => {
+    try {
+      const tenantId = tenantInfo?.id
+      if (!tenantId) return
+
+      const response = await fetch(`/api/v1/dashboard/export-report/${tenantId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `budget-export-${new Date().toISOString().split('T')[0]}.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success('Report exported successfully')
+      }
+    } catch (error) {
+      console.error('Export failed:', error)
+      toast.error('Failed to export report')
+    }
+  }
+
+  const quickActions = [
+    {
+      id: 'distribute',
+      title: 'Distribute Points',
+      description: 'Send points to a specific Lead or User directly',
+      icon: HiOutlinePlusCircle,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      onClick: () => setShowDistributeModal(true),
+    },
+    {
+      id: 'per-employee',
+      title: 'Per-Employee Distribution',
+      description: 'Allocate budget to departments based on headcount',
+      icon: HiOutlineUserGroup,
+      color: 'text-perksu-purple',
+      bgColor: 'bg-purple-50',
+      onClick: () => setShowPerEmployeeModal(true),
+    },
+    {
+      id: 'bulk-users',
+      title: 'Bulk User Distribution',
+      description: "Credit points to all active employees' wallets",
+      icon: HiOutlineSparkles,
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-50',
+      onClick: () => setShowBulkUserModal(true),
+    },
+    {
+      id: 'topup',
+      title: 'Top-up Request',
+      description: 'Request additional budget points from system admin',
+      icon: HiOutlineBell,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50',
+      onClick: () => setShowTopupModal(true),
+    },
+    {
+      id: 'export',
+      title: 'Export Transactions',
+      description: 'Download full history of budget allocations (CSV)',
+      icon: HiOutlineDocumentArrowDown,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
+      onClick: handleExportReport,
+    },
+  ]
+
   const handleCreateBudget = (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
+    const totalPoints = parseInt(formData.get('total_points'))
+
+    if (totalPoints > (tenantInfo?.budget_allocation_balance || 0)) {
+      toast.error('Budget exceeds available Master Pool balance')
+      return
+    }
+
     createMutation.mutate({
       name: formData.get('name'),
       fiscal_year: parseInt(formData.get('fiscal_year')),
       fiscal_quarter: formData.get('fiscal_quarter') ? parseInt(formData.get('fiscal_quarter')) : null,
-      total_points: parseFloat(formData.get('total_points')),
+      total_points: totalPoints,
     })
   }
 
@@ -160,11 +257,11 @@ export default function Budgets() {
     
     departments?.forEach((dept) => {
       const points = formData.get(`points_${dept.id}`)
-      if (points && parseFloat(points) > 0) {
+      if (points && parseInt(points) > 0) {
         allocations.push({
           department_id: dept.id,
-          allocated_points: parseFloat(points),
-          monthly_cap: formData.get(`cap_${dept.id}`) ? parseFloat(formData.get(`cap_${dept.id}`)) : null,
+          allocated_points: parseInt(points),
+          monthly_cap: formData.get(`cap_${dept.id}`) ? parseInt(formData.get(`cap_${dept.id}`)) : null,
         })
       }
     })
@@ -191,8 +288,8 @@ export default function Budgets() {
 
   // Prevent runtime NaN/Infinity errors in percentage/width calculations
   const safePercent = (numerator, denominator) => {
-    const n = parseFloat(numerator) || 0
-    const d = parseFloat(denominator) || 0
+    const n = parseInt(numerator) || 0
+    const d = parseInt(denominator) || 0
     if (d === 0) return 0
     const p = (n / d) * 100
     if (!isFinite(p)) return 0
@@ -221,12 +318,12 @@ export default function Budgets() {
               {activeRole === 'platform_admin' && (
                 <>
                   <div className="text-xs text-gray-500">Total Allocated Budget</div>
-                  <div className="text-lg font-semibold text-gray-900">{(tenantInfo.allocated_budget || 0).toLocaleString()} pts</div>
+                  <div className="text-lg font-semibold text-gray-900">{formatCurrency(tenantInfo.allocated_budget || 0)}</div>
                   <div className="text-xs text-gray-400">•</div>
                 </>
               )}
               <div className="text-xs text-gray-500">Total Budget (Tenant)</div>
-              <div className="text-sm font-medium text-gray-700">{(tenantInfo.master_budget_balance || 0).toLocaleString()} pts</div>
+              <div className="text-sm font-medium text-gray-700">{formatCurrency(tenantInfo.master_budget_balance || 0)}</div>
             </div>
           )}
         </div>
@@ -295,109 +392,148 @@ export default function Budgets() {
       </div>
 
       {activeTab === 'budgets' ? (
-        <>
-          {/* Budgets list */}
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : budgets?.length > 0 ? (
-            <div className="space-y-4">
-              {budgets.map((budget) => (
-                <div key={budget.id} className="card">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold text-gray-900">{budget.name}</h3>
-                        <span className={`badge ${getStatusColor(budget.status)}`}>
-                          {budget.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        FY {budget.fiscal_year} {budget.fiscal_quarter && `Q${budget.fiscal_quarter}`}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedBudget(budget)
-                          setShowAllocateModal(true)
-                        }}
-                        className="btn-secondary text-sm"
-                      >
-                        <HiOutlinePencil className="w-4 h-4 mr-1" />
-                        {budget.status === 'draft' ? 'Allocate' : 'Adjust'}
-                      </button>
-                      {budget.status === 'draft' && (
-                        <button
-                          onClick={() => activateMutation.mutate(budget.id)}
-                          className="btn-primary text-sm"
-                          disabled={activateMutation.isPending}
-                        >
-                          <HiOutlineCheck className="w-4 h-4 mr-1" />
-                          Activate
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Total Budget</p>
-                      <p className="text-xl font-semibold text-gray-900">{budget.total_points}</p>
-                    </div>
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Allocated</p>
-                      <p className="text-xl font-semibold text-blue-600">{budget.allocated_points}</p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Remaining</p>
-                      <p className="text-xl font-semibold text-green-600">{budget.remaining_points}</p>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mt-4">
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-perksu-purple to-perksu-blue"
-                        style={{
-                          width: `${safePercent(budget.allocated_points, budget.total_points)}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                        <p className="text-xs text-gray-500">
-                          {safePercent(budget.allocated_points, budget.total_points)}% allocated
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-2 space-y-4">
+            {/* Budgets list stats */}
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-32 bg-gray-200 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : budgets?.length > 0 ? (
+              <div className="space-y-4">
+                {budgets.map((budget) => (
+                  <div key={budget.id} className="card">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-semibold text-gray-900">{budget.name}</h3>
+                          <span className={`badge ${getStatusColor(budget.status)}`}>
+                            {budget.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">
+                          FY {budget.fiscal_year} {budget.fiscal_quarter && `Q${budget.fiscal_quarter}`}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Departmental distribution</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedBudget(budget)
+                            setShowAllocateModal(true)
+                          }}
+                          className="btn-secondary text-sm"
+                        >
+                          <HiOutlinePencil className="w-4 h-4 mr-1" />
+                          {budget.status === 'draft' ? 'Allocate' : 'Adjust'}
+                        </button>
+                        {budget.status === 'draft' && (
+                          <button
+                            onClick={() => activateMutation.mutate(budget.id)}
+                            className="btn-primary text-sm"
+                            disabled={activateMutation.isPending}
+                          >
+                            <HiOutlineCheck className="w-4 h-4 mr-1" />
+                            Activate
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-sm text-gray-500">Total Budget</p>
+                        <p className="text-xl font-semibold text-gray-900">{formatCurrency(budget.total_points)}</p>
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-4">
+                        <p className="text-sm text-gray-500">Allocated</p>
+                        <p className="text-xl font-semibold text-blue-600">{formatCurrency(budget.allocated_points)}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-4">
+                        <p className="text-sm text-gray-500">Remaining</p>
+                        <p className="text-xl font-semibold text-green-600">{formatCurrency(budget.remaining_points)}</p>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mt-4">
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-perksu-purple to-perksu-blue"
+                          style={{
+                            width: `${safePercent(budget.allocated_points, budget.total_points)}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                          <p className="text-xs text-gray-500">
+                            {safePercent(budget.allocated_points, budget.total_points)}% allocated
+                          </p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Departmental distribution</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            ) : (
+              <div className="card text-center py-12">
+                <HiOutlineChartBar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No budgets yet</h3>
+                <p className="text-gray-500 mb-4">
+                  {isHRAdmin() 
+                    ? 'Create your first budget to start allocating points.' 
+                    : 'Wait for an administrator to create a budget for this period.'}
+                </p>
+                {isHRAdmin() && (
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="btn-primary"
+                  >
+                    Create Budget
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-1 space-y-6">
+            {/* Quick Actions Card */}
+            <div className="card !p-0 overflow-hidden border-perksu-purple/10">
+              <div className="px-6 py-4 bg-perksu-purple/5 border-b border-perksu-purple/10">
+                <h3 className="text-sm font-bold text-perksu-purple uppercase tracking-widest">Quick Actions</h3>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.id}
+                    onClick={action.onClick}
+                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-xl ${action.bgColor} flex items-center justify-center ${action.color} group-hover:scale-110 transition`}>
+                        <action.icon className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-gray-900">{action.title}</p>
+                        <p className="text-[10px] text-gray-500">{action.description}</p>
+                      </div>
+                    </div>
+                    <HiOutlinePlus className="w-4 h-4 text-gray-300 group-hover:text-perksu-purple transition" />
+                  </button>
+                ))}
+              </div>
             </div>
-          ) : (
-            <div className="card text-center py-12">
-              <HiOutlineChartBar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No budgets yet</h3>
-              <p className="text-gray-500 mb-4">
-                {isHRAdmin() 
-                  ? 'Create your first budget to start allocating points.' 
-                  : 'Wait for an administrator to create a budget for this period.'}
-              </p>
-              {isHRAdmin() && (
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn-primary"
-                >
-                  Create Budget
-                </button>
-              )}
+
+            {/* Help/Support info */}
+            <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6">
+               <h4 className="text-xs font-bold text-blue-800 uppercase tracking-widest mb-2">Allocation Support</h4>
+               <p className="text-xs text-blue-600 leading-relaxed">
+                 Need help with strategic budget planning? Contact our perks support team or check the organizational guidelines.
+               </p>
             </div>
-          )}
-        </>
+          </div>
+        </div>
       ) : activeTab === 'allocations' ? (
         /* Leads point allocation view */
         <div className="card overflow-hidden">
@@ -419,8 +555,8 @@ export default function Budgets() {
                   const allocation = leadAllocations?.find(a => a.lead_id === lead.id) || null;
                   const budget = budgets?.find(b => b.id === allocation?.budget_id) || null;
                   const usagePct = allocation ? safePercent(allocation.spent_points, allocation.allocated_points) : 0
-                  const allocatedPoints = allocation ? (parseFloat(allocation.allocated_points) || 0) : 0
-                  const spentPoints = allocation ? (parseFloat(allocation.spent_points) || 0) : 0
+                  const allocatedPoints = allocation ? (parseInt(allocation.allocated_points) || 0) : 0
+                  const spentPoints = allocation ? (parseInt(allocation.spent_points) || 0) : 0
                   const remainingPoints = allocation ? Math.max(0, allocatedPoints - spentPoints) : 0
                   
                   return (
@@ -431,13 +567,13 @@ export default function Budgets() {
                         </p>
                       </td>
                       <td className="px-6 py-4 text-center font-semibold text-gray-900">
-                        {allocatedPoints}
+                        {formatCurrency(allocatedPoints)}
                       </td>
                       <td className="px-6 py-4 text-center font-semibold text-orange-600">
-                        {spentPoints}
+                        {formatCurrency(spentPoints)}
                       </td>
                       <td className="px-6 py-4 text-center font-semibold text-green-600">
-                        {remainingPoints}
+                        {formatCurrency(remainingPoints)}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -589,11 +725,26 @@ export default function Budgets() {
         </div>
       )}
 
-      {/* Create Budget Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4">Create New Budget</h2>
+            <h2 className="text-xl font-semibold mb-1">Create New Budget</h2>
+            <p className="text-sm text-gray-500 mb-4">Set up a new spending period</p>
+
+            {tenantInfo && (
+              <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-indigo-700 font-medium">Master Pool Balance</span>
+                  <span className="text-lg font-bold text-indigo-700">
+                    {formatCurrency(tenantInfo.budget_allocation_balance || 0)}
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-600 mt-1">
+                  Points available to move into this new budget.
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleCreateBudget} className="space-y-4">
               <div>
                 <label className="label">Budget Name</label>
@@ -622,13 +773,14 @@ export default function Budgets() {
                 </div>
               </div>
               <div>
-                <label className="label">Total Points</label>
+                <label className="label">Total Points (₹)</label>
                 <input
                   name="total_points"
                   type="number"
                   className="input"
                   required
-                  placeholder="100000"
+                  max={tenantInfo?.budget_allocation_balance}
+                  placeholder={`Max ${tenantInfo?.budget_allocation_balance || 0}`}
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -658,7 +810,7 @@ export default function Budgets() {
           <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-semibold mb-2">Allocate Budget</h2>
             <p className="text-gray-500 mb-4">
-              {selectedBudget.name} - Available: {selectedBudget.remaining_points} points
+              {selectedBudget.name} - Available: {formatCurrency(selectedBudget.remaining_points)}
             </p>
             <form onSubmit={handleAllocate} className="space-y-4">
               {departments?.map((dept) => {
@@ -671,7 +823,7 @@ export default function Budgets() {
                       <p className="font-medium">{dept.name}</p>
                       {existing && (
                         <p className="text-sm text-gray-500">
-                          Current: {existing.allocated_points} pts
+                          Current: {formatCurrency(existing.allocated_points)}
                         </p>
                       )}
                     </div>
@@ -756,7 +908,7 @@ export default function Budgets() {
                 leadPointAllocationMutation.mutate({
                   lead_id: selectedLead.id,
                   budget_id: formData.get('budget_id'),
-                  points: parseFloat(formData.get('points')),
+                  points: parseInt(formData.get('points')),
                 });
               }} 
               className="space-y-4"
@@ -771,7 +923,7 @@ export default function Budgets() {
                 >
                   <option value="">Select a budget</option>
                   {budgets?.filter(b => b.status === 'active').map(b => (
-                    <option key={b.id} value={b.id}>{b.name} (FY{b.fiscal_year}) - {b.remaining_points} left</option>
+                    <option key={b.id} value={b.id}>{b.name} (FY{b.fiscal_year}) - {formatCurrency(b.remaining_points)} left</option>
                   ))}
                 </select>
               </div>
@@ -842,7 +994,7 @@ export default function Budgets() {
                 allocateEmployeeMutation.mutate({
                   budgetId: selectedBudget.id,
                   departmentId: topUpDepartment,
-                  data: { user_id: topUpUser, points: parseFloat(topUpPoints) }
+                  data: { user_id: topUpUser, points: parseInt(topUpPoints) }
                 })
               }} className="space-y-4">
 
@@ -860,7 +1012,7 @@ export default function Budgets() {
                 >
                   <option value="">Select a budget</option>
                   {budgets?.filter(b => b.status === 'active').map(b => (
-                    <option key={b.id} value={b.id}>{b.name} - {b.remaining_points} left</option>
+                    <option key={b.id} value={b.id}>{b.name} - {formatCurrency(b.remaining_points)} left</option>
                   ))}
                 </select>
               </div>
@@ -909,6 +1061,47 @@ export default function Budgets() {
           </div>
         </div>
       )}
+
+      {/* Quick Action Modals */}
+      <DistributePointsModal
+        isOpen={showDistributeModal}
+        onClose={() => setShowDistributeModal(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries(['budgets'])
+          setShowDistributeModal(false)
+        }}
+        availablePoints={tenantInfo?.master_budget_balance || 0}
+        leads={leads || []}
+      />
+
+      <TopupRequestModal
+        isOpen={showTopupModal}
+        onClose={() => setShowTopupModal(false)}
+        onSubmit={() => {
+          toast.success('Request sent to system admin')
+          setShowTopupModal(false)
+        }}
+      />
+
+      <PerEmployeeDistributionModal
+        isOpen={showPerEmployeeModal}
+        onClose={() => setShowPerEmployeeModal(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries(['budgets'])
+          setShowPerEmployeeModal(false)
+        }}
+        availableMasterPool={tenantInfo?.master_budget_balance || 0}
+      />
+
+      <BulkUserDistributionModal
+        isOpen={showBulkUserModal}
+        onClose={() => setShowBulkUserModal(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries(['budgets'])
+          setShowBulkUserModal(false)
+        }}
+        availableMasterPool={tenantInfo?.master_budget_balance || 0}
+      />
     </div>
   )
 }

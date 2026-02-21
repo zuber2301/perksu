@@ -10,7 +10,7 @@ class BudgetBase(BaseModel):
     name: str
     fiscal_year: int
     fiscal_quarter: Optional[int] = None
-    total_points: Decimal
+    total_points: int
     expiry_date: Optional[datetime] = None
 
 
@@ -20,7 +20,7 @@ class BudgetCreate(BudgetBase):
 
 class BudgetUpdate(BaseModel):
     name: Optional[str] = None
-    total_points: Optional[Decimal] = None
+    total_points: Optional[int] = None
     status: Optional[str] = None
     expiry_date: Optional[datetime] = None
 
@@ -28,8 +28,8 @@ class BudgetUpdate(BaseModel):
 class BudgetResponse(BudgetBase):
     id: UUID
     tenant_id: UUID
-    allocated_points: Decimal
-    remaining_points: Decimal
+    allocated_points: int
+    remaining_points: int
     status: str
     created_by: Optional[UUID] = None
     created_at: datetime
@@ -40,8 +40,8 @@ class BudgetResponse(BudgetBase):
 
 class DepartmentBudgetBase(BaseModel):
     department_id: UUID
-    allocated_points: Decimal
-    monthly_cap: Optional[Decimal] = None
+    allocated_points: int
+    monthly_cap: Optional[int] = None
 
 
 class DepartmentBudgetCreate(DepartmentBudgetBase):
@@ -49,8 +49,8 @@ class DepartmentBudgetCreate(DepartmentBudgetBase):
 
 
 class DepartmentBudgetUpdate(BaseModel):
-    allocated_points: Optional[Decimal] = None
-    monthly_cap: Optional[Decimal] = None
+    allocated_points: Optional[int] = None
+    monthly_cap: Optional[int] = None
 
 
 class DepartmentBudgetResponse(BaseModel):
@@ -58,10 +58,10 @@ class DepartmentBudgetResponse(BaseModel):
     tenant_id: UUID
     budget_id: UUID
     department_id: UUID
-    allocated_points: Decimal
-    spent_points: Decimal
-    remaining_points: Decimal
-    monthly_cap: Optional[Decimal] = None
+    allocated_points: int
+    spent_points: int
+    remaining_points: int
+    monthly_cap: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -74,7 +74,7 @@ class BudgetAllocationRequest(BaseModel):
 
 class LeadAllocationBase(BaseModel):
     lead_id: UUID
-    allocated_points: Decimal
+    allocated_points: int
 
 
 class LeadAllocationCreate(LeadAllocationBase):
@@ -85,8 +85,8 @@ class LeadAllocationResponse(LeadAllocationBase):
     id: UUID
     tenant_id: UUID
     budget_id: UUID
-    spent_points: Decimal
-    remaining_points: Decimal
+    spent_points: int
+    remaining_points: int
     usage_percentage: float
     created_at: datetime
 
@@ -97,7 +97,7 @@ class LeadAllocationResponse(LeadAllocationBase):
 class LeadPointAllocationRequest(BaseModel):
     lead_id: UUID
     budget_id: UUID
-    points: Decimal
+    points: int
 
 
 class EmployeeAllocationRequest(BaseModel):

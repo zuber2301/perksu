@@ -1,5 +1,5 @@
 import { HiOutlineChartBar } from 'react-icons/hi2'
-import { formatNumber } from '../../lib/currency'
+import { formatCurrency, formatNumber } from '../../lib/currency'
 
 /**
  * SpendingAnalytics Component
@@ -56,7 +56,7 @@ export default function SpendingAnalytics({ spendingData, currency = 'INR' }) {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-gray-900">
-                      {formatNumber(item.amount) || 0} pts
+                      {formatCurrency(item.amount || 0)}
                     </p>
                     <p className="text-xs text-gray-600">
                       {percentage.toFixed(0)}% of total

@@ -8,22 +8,28 @@ from pydantic import BaseModel, field_validator
 
 
 # ─────────────────────────────────────────────────
-# Catalog
+# Catalog Browsing
 # ─────────────────────────────────────────────────
 
 
 class CatalogItemResponse(BaseModel):
     id: UUID
+    source_type: Literal["MASTER", "CUSTOM"]
     name: str
     brand: Optional[str] = None
     category: str
     description: Optional[str] = None
     image_url: Optional[str] = None
     fulfillment_type: str                # GIFT_CARD_API | INVENTORY_ITEM | MANUAL
-    min_denomination_points: int
-    max_denomination_points: int
-    step_points: int
-    denominations: List[int]             # pre-computed list sent to frontend
+    
+    # Points (Single for custom, Range for master)
+    points_cost: Optional[int] = None    # Set for CUSTOM items
+    min_points: Optional[int] = None     # Set for MASTER items
+    max_points: Optional[int] = None
+    step_points: Optional[int] = None
+    points_per_rupee: Optional[int] = None
+    denominations: List[int] = []        # Pre-computed list for MASTER range
+    
     inventory_count: Optional[int] = None
     is_active: bool
     tenant_id: Optional[UUID] = None
@@ -45,7 +51,7 @@ class CatalogListResponse(BaseModel):
 class RedeemRequest(BaseModel):
     catalog_item_id: UUID
     points: int
-    # Optional delivery address (required for INVENTORY_ITEM)
+    # Optional delivery address
     delivery_name: Optional[str] = None
     delivery_phone: Optional[str] = None
     delivery_address: Optional[str] = None
@@ -102,7 +108,7 @@ class RewardOrderListResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────────
-# Wallet summary (tight view for the Redeem page)
+# Wallet summary
 # ─────────────────────────────────────────────────
 
 
@@ -113,35 +119,39 @@ class WalletSummary(BaseModel):
 
 
 # ─────────────────────────────────────────────────
-# Admin catalog management
+# Admin management
 # ─────────────────────────────────────────────────
 
 
-class CatalogItemCreate(BaseModel):
+class MasterCatalogItemCreate(BaseModel):
     name: str
     brand: Optional[str] = None
     category: str
     description: Optional[str] = None
     image_url: Optional[str] = None
-    fulfillment_type: Literal["GIFT_CARD_API", "INVENTORY_ITEM", "MANUAL"] = "GIFT_CARD_API"
+    fulfillment_type: str = "GIFT_CARD_API"
     provider_code: Optional[str] = None
-    min_denomination_points: int = 500
-    max_denomination_points: int = 5000
+    min_points: int = 500
+    max_points: int = 10000
     step_points: int = 500
-    inventory_count: Optional[int] = None
-    is_active: bool = True
+    points_per_rupee: int = 1
+    is_active_global: bool = True
 
 
-class CatalogItemUpdate(BaseModel):
-    name: Optional[str] = None
+class TenantCatalogSettingUpdate(BaseModel):
+    is_enabled: bool
+    custom_min_points: Optional[int] = None
+    custom_max_points: Optional[int] = None
+    custom_step_points: Optional[int] = None
+
+
+class CustomCatalogItemCreate(BaseModel):
+    name: str
     brand: Optional[str] = None
-    category: Optional[str] = None
+    category: str = "Merchandise"
     description: Optional[str] = None
     image_url: Optional[str] = None
-    fulfillment_type: Optional[Literal["GIFT_CARD_API", "INVENTORY_ITEM", "MANUAL"]] = None
-    provider_code: Optional[str] = None
-    min_denomination_points: Optional[int] = None
-    max_denomination_points: Optional[int] = None
-    step_points: Optional[int] = None
+    fulfillment_type: Literal["INVENTORY_ITEM", "MANUAL"] = "INVENTORY_ITEM"
+    points_cost: int
     inventory_count: Optional[int] = None
-    is_active: Optional[bool] = None
+    is_active: bool = True

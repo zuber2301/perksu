@@ -54,7 +54,7 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
   const handleInjectPoints = async (e) => {
     e.preventDefault();
 
-    if (!injectAmount || isNaN(parseFloat(injectAmount)) || parseFloat(injectAmount) <= 0) {
+    if (!injectAmount || isNaN(parseInt(injectAmount)) || parseInt(injectAmount) <= 0) {
       setMessage({
         type: 'error',
         text: 'Please enter a valid amount',
@@ -66,7 +66,7 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
 
     try {
       const payload = {
-        amount: parseFloat(injectAmount),
+        amount: parseInt(injectAmount),
         description: injectDescription || 'Manual budget injection',
       };
 
@@ -98,7 +98,7 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
   const handleLoadAllocatedBudget = async (e) => {
     e.preventDefault();
 
-    if (!loadAmount || isNaN(parseFloat(loadAmount)) || parseFloat(loadAmount) <= 0) {
+    if (!loadAmount || isNaN(parseInt(loadAmount)) || parseInt(loadAmount) <= 0) {
       setMessage({ type: 'error', text: 'Please enter a valid amount to load' });
       return;
     }
@@ -106,11 +106,11 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
     setLoadingAllocated(true);
     try {
       await api.post(`/tenants/${tenant.tenant_id}/load-budget`, {
-        amount: parseFloat(loadAmount),
+        amount: parseInt(loadAmount),
         description: loadDescription || 'Platform allocated budget load',
       });
 
-      setMessage({ type: 'success', text: `Loaded ${(parseFloat(loadAmount)).toLocaleString()} pts to allocated budget` });
+      setMessage({ type: 'success', text: `Loaded ${formatCurrency(loadAmount)} to allocated budget` });
       setLoadAmount('');
       setLoadDescription('Allocated budget load');
       fetchTransactions();
@@ -149,7 +149,6 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
                 value={injectAmount}
                 onChange={(e) => setInjectAmount(e.target.value)}
                 placeholder="Enter amount"
-                step="0.01"
                 min="0"
                 required
               />
@@ -191,7 +190,6 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
                   value={loadAmount}
                   onChange={(e) => setLoadAmount(e.target.value)}
                   placeholder="Enter amount"
-                  step="0.01"
                   min="0"
                   required
                 />
@@ -227,7 +225,7 @@ export default function TenantFinancialsTab({ tenant, onUpdate, setMessage }) {
         <p className="balance-amount">{formatCurrency(effectiveTenant.master_budget_balance || effectiveTenant.master_balance)}</p>
         <p className="balance-label">Total Points Available</p>
         <div className="mt-2 text-sm text-gray-600">
-          <span className="mr-4">Total Allocated Budget: <strong>{(effectiveTenant.allocated_budget || 0).toLocaleString()} pts</strong></span>
+          <span className="mr-4">Total Allocated Budget: <strong>{formatCurrency(effectiveTenant.allocated_budget || 0)}</strong></span>
         </div>
       </div>
 

@@ -23,6 +23,7 @@ from tenants.schemas import (
     InjectPointsRequest,
     TenantListResponse,
     TenantLoadBudget,
+    TenantRecallBudget,
     TenantProvisionCreate,
     TenantResponse,
     TenantStatsResponse,
@@ -58,7 +59,7 @@ async def get_tenant_overview_stats(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     # Total budget ever allocated by platform admin to this org
-    stored_allocated_budget = float(tenant.allocated_budget or 0)
+    stored_allocated_budget = tenant.allocated_budget or 0
 
     # Note: total_allocated in the overview usually refers to what's been given to the org
     # whereas Budget sums are internal distributions. We'll use the Org's allocated_budget.
@@ -82,8 +83,8 @@ async def get_tenant_overview_stats(
     return {
         "tenant_id": str(tenant.id),
         "total_budget_allocated": stored_allocated_budget,
-        "total_spent": float(total_spent),
-        "budget_remaining": float(tenant.master_budget_balance or 0),
+        "total_spent": total_spent,
+        "budget_remaining": tenant.master_budget_balance or 0,
         "user_counts": {
             "hr_admin": counts.get("hr_admin", 0),
             "lead": counts.get("dept_lead", 0),
@@ -380,7 +381,8 @@ async def list_all_tenants_admin(
                 tenant_id=tenant.id,
                 tenant_name=tenant.name,
                 active_users=active_users,
-                master_balance=float(tenant.master_budget_balance),
+                master_balance=tenant.master_budget_balance,
+                budget_allocation_balance=tenant.budget_allocation_balance or 0,
                 last_activity=last_activity,
                 status=tenant.status,
             )
@@ -450,9 +452,9 @@ async def inject_tenant_points(
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     # Update balance and tenant allocated budget (the total allocated by platform admin)
-    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + Decimal(str(request.amount))
-    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + Decimal(str(request.amount))
-    tenant.allocated_budget = (tenant.allocated_budget or 0) + Decimal(str(request.amount))
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + request.amount
+    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + request.amount
+    tenant.allocated_budget = (tenant.allocated_budget or 0) + request.amount
 
     # Record transaction
     ledger_entry = MasterBudgetLedger(
@@ -470,8 +472,8 @@ async def inject_tenant_points(
         id=ledger_entry.id,
         tenant_id=ledger_entry.tenant_id,
         transaction_type=ledger_entry.transaction_type,
-        amount=float(ledger_entry.amount),
-        balance_after=float(ledger_entry.balance_after),
+        amount=ledger_entry.amount,
+        balance_after=ledger_entry.balance_after,
         description=ledger_entry.description,
         created_at=ledger_entry.created_at,
     )
@@ -566,8 +568,8 @@ async def get_tenant_transactions(
             id=t.id,
             tenant_id=t.tenant_id,
             transaction_type=t.transaction_type,
-            amount=float(t.amount),
-            balance_after=float(t.balance_after),
+            amount=t.amount,
+            balance_after=t.balance_after,
             description=t.description or "",
             created_at=t.created_at,
         )
@@ -742,11 +744,10 @@ async def load_tenant_budget(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    amount_dec = Decimal(str(budget_data.amount))
     # Update tenant balances
-    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + amount_dec
-    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + amount_dec
-    tenant.allocated_budget = (tenant.allocated_budget or 0) + amount_dec
+    tenant.master_budget_balance = (tenant.master_budget_balance or 0) + budget_data.amount
+    tenant.budget_allocation_balance = (tenant.budget_allocation_balance or 0) + budget_data.amount
+    tenant.allocated_budget = (tenant.allocated_budget or 0) + budget_data.amount
 
     # Record in ledger
     ledger_entry = MasterBudgetLedger(
@@ -761,6 +762,46 @@ async def load_tenant_budget(
     db.refresh(tenant)
     return tenant
 
+
+@router.post("/{tenant_id}/recall-budget", response_model=TenantResponse)
+async def recall_tenant_budget(
+    tenant_id: UUID,
+    recall_data: TenantRecallBudget,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_platform_admin),
+):
+    """Recall budget from a tenant (Platform Admin only)
+    Applicable only to remaining budget (budget_allocation_balance)
+    """
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if recall_data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Recall amount must be positive")
+
+    if (tenant.budget_allocation_balance or 0) < recall_data.amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient undistributed budget. Available: {tenant.budget_allocation_balance}",
+        )
+
+    # Update tenant balances
+    # We reduce master_budget_balance and budget_allocation_balance
+    # allocated_budget also needs to be reduced as it tracks total net allocation
+    tenant.master_budget_balance -= recall_data.amount
+    tenant.budget_allocation_balance -= recall_data.amount
+    tenant.allocated_budget -= recall_data.amount
+
+    # Record in ledger
+    ledger_entry = MasterBudgetLedger(
+        tenant_id=tenant.id,
+        transaction_type="debit",
+        amount=recall_data.amount,
+        balance_after=tenant.master_budget_balance,
+        description=f"RECALL: {recall_data.justification}",
+    )
+    db.add(ledger_entry)
     db.commit()
     db.refresh(tenant)
     return tenant

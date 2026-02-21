@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HiOutlineHandRaised, HiOutlineHeart } from 'react-icons/hi2'
+import { formatCurrency } from '../../lib/currency'
 
 /**
  * RecentRecognitionFeed Component
@@ -79,7 +80,7 @@ export default function RecentRecognitionFeed({ recognitions, onRefresh }) {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-blue-600">
-                        +{recognition.points} pts
+                        +{formatCurrency(recognition.points)}
                       </p>
                     </div>
                   </div>

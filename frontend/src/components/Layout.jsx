@@ -61,6 +61,7 @@ export default function Layout() {
         ...base,
         { section: 'Platform' },
         { name: 'Tenants', href: '/tenants', icon: HiOutlineOfficeBuilding },
+        { name: 'Global Catalog', href: '/rewards-admin', icon: HiOutlineGift },
         { name: 'Platform Users', href: '/admin/users', icon: HiOutlineShieldCheck },
         { name: 'Settings', href: '/settings', icon: HiOutlineCog },
       ]
@@ -73,6 +74,7 @@ export default function Layout() {
         { name: 'Users', href: '/users', icon: HiOutlineUsers },
         { name: 'Departments', href: '/departments', icon: HiOutlineOfficeBuilding },
         { name: 'Budgets', href: '/budgets', icon: HiOutlineCurrencyRupee },
+        { name: 'Rewards', href: '/rewards-admin', icon: HiOutlineGift },
         { name: 'Invites', href: '/admin/invite', icon: HiOutlineLink },
         { name: 'Audit Log', href: '/audit', icon: HiOutlineClipboardList },
       ]

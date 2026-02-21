@@ -21,6 +21,7 @@ import Departments from './pages/Departments'
 import Marketplace from './pages/Marketplace'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import RewardsAdmin from './pages/RewardsAdmin'
 
 function PrivateRoute({ children, requiredRole = null }) {
   const { isAuthenticated, activeRole } = useAuthStore()
@@ -125,6 +126,11 @@ function App() {
         <Route path="analytics" element={
           <PrivateRoute requiredRole={['hr_admin']}>
             <Analytics />
+          </PrivateRoute>
+        } />
+        <Route path="rewards-admin" element={
+          <PrivateRoute requiredRole={['hr_admin', 'platform_admin']}>
+            <RewardsAdmin />
           </PrivateRoute>
         } />
         <Route path="settings" element={

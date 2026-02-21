@@ -1,7 +1,7 @@
 import uuid
 
 from auth.utils import get_password_hash
-from models import RewardCatalogItem, SystemAdmin, Tenant
+from models import RewardCatalogMaster, SystemAdmin, Tenant
 
 from database import SessionLocal
 
@@ -54,154 +54,149 @@ def init_platform_admin():
 # ---------------------------------------------------------------------------
 
 _DEFAULT_CATALOG = [
-    # ── Gift Cards ──────────────────────────────────────────────────────────
     {
         "name": "Amazon Pay Gift Card",
         "brand": "Amazon",
         "category": "Gift Cards",
-        "description": "Shop millions of products on Amazon.in",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
+        "description": "Redeem for Amazon.in credits (₹1 per 10 points)",
+        "image_url": "https://img.etimg.com/thumb/msid-59738992,width-1200,height-900,resizemode-4,imgsize-25499/amazon-pay.jpg",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "amazon-in",
-        "min_denomination_points": 500,
-        "max_denomination_points": 5000,
+        "provider_code": "AMZ-IN",
+        "min_points": 1000,
+        "max_points": 10000,
         "step_points": 500,
     },
     {
-        "name": "Flipkart Gift Card",
-        "brand": "Flipkart",
-        "category": "Gift Cards",
-        "description": "India's largest e-commerce platform",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Flipkart_Logo.svg/1200px-Flipkart_Logo.svg.png",
-        "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "flipkart-in",
-        "min_denomination_points": 500,
-        "max_denomination_points": 5000,
-        "step_points": 500,
-    },
-    {
-        "name": "Myntra Gift Card",
-        "brand": "Myntra",
-        "category": "Shopping",
-        "description": "India's top fashion & lifestyle platform",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Myntra_logo.png/640px-Myntra_logo.png",
-        "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "myntra-in",
-        "min_denomination_points": 500,
-        "max_denomination_points": 3000,
-        "step_points": 500,
-    },
-    {
-        "name": "Croma Gift Card",
-        "brand": "Croma",
-        "category": "Shopping",
-        "description": "Electronics & appliances chain",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a3/Logo_of_Croma.svg/1200px-Logo_of_Croma.svg.png",
-        "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "croma-in",
-        "min_denomination_points": 1000,
-        "max_denomination_points": 5000,
-        "step_points": 1000,
-    },
-    # ── Food & Dining ────────────────────────────────────────────────────────
-    {
-        "name": "Swiggy Gift Card",
+        "name": "Swiggy Money Voucher",
         "brand": "Swiggy",
         "category": "Food & Dining",
-        "description": "Order food from your favourite restaurants",
+        "description": "Order food, groceries and more on Swiggy",
         "image_url": "https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Swiggy_logo.svg/1200px-Swiggy_logo.svg.png",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "swiggy-in",
-        "min_denomination_points": 250,
-        "max_denomination_points": 2000,
+        "provider_code": "SWG-IN",
+        "min_points": 500,
+        "max_points": 5000,
         "step_points": 250,
     },
     {
         "name": "Zomato Gift Card",
         "brand": "Zomato",
         "category": "Food & Dining",
-        "description": "Discover restaurants, delivery & more",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/75/Zomato_logo.png",
+        "description": "Redeem on Zomato for food delivery and dining out",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Zomato_Logo.png",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "zomato-in",
-        "min_denomination_points": 250,
-        "max_denomination_points": 2000,
+        "provider_code": "ZOM-IN",
+        "min_points": 500,
+        "max_points": 5000,
         "step_points": 250,
     },
     {
-        "name": "Starbucks Gift Card",
-        "brand": "Starbucks",
-        "category": "Food & Dining",
-        "description": "Your favourite coffee & snacks",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/Starbucks_Corporation_Logo_2011.svg/1200px-Starbucks_Corporation_Logo_2011.svg.png",
+        "name": "Flipkart E-Gift Voucher",
+        "brand": "Flipkart",
+        "category": "Shopping",
+        "description": "India's largest online shopping destination",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Flipkart_logo.png",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "starbucks-in",
-        "min_denomination_points": 500,
-        "max_denomination_points": 2000,
+        "provider_code": "FLK-IN",
+        "min_points": 1000,
+        "max_points": 10000,
         "step_points": 500,
     },
     {
-        "name": "BigBasket Gift Card",
-        "brand": "BigBasket",
-        "category": "Food & Dining",
-        "description": "Groceries & essentials delivered",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a4/BigBasket_logo.svg",
+        "name": "Myntra Gift Card",
+        "brand": "Myntra",
+        "category": "Shopping",
+        "description": "Latest fashion and lifestyle brands",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Myntra_logo.png",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "bigbasket-in",
-        "min_denomination_points": 250,
-        "max_denomination_points": 2000,
+        "provider_code": "MYN-IN",
+        "min_points": 500,
+        "max_points": 5000,
+        "step_points": 500,
+    },
+    {
+        "name": "MakeMyTrip Holiday Voucher",
+        "brand": "MakeMyTrip",
+        "category": "Experiences",
+        "description": "Redeem for flights, hotels and holiday packages",
+        "image_url": "https://logos-world.net/wp-content/uploads/2021/01/MakeMyTrip-Logo.png",
+        "fulfillment_type": "GIFT_CARD_API",
+        "provider_code": "MMT-IN",
+        "min_points": 2000,
+        "max_points": 25000,
+        "step_points": 1000,
+    },
+    {
+        "name": "Uber India E-Gift Card",
+        "brand": "Uber",
+        "category": "Experiences",
+        "description": "Redeem for Uber rides across India",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Uber_logo_2018.svg/1200px-Uber_logo_2018.svg.png",
+        "fulfillment_type": "GIFT_CARD_API",
+        "provider_code": "UBR-IN",
+        "min_points": 250,
+        "max_points": 2000,
         "step_points": 250,
     },
-    # ── Experiences ──────────────────────────────────────────────────────────
     {
-        "name": "BookMyShow Gift Card",
+        "name": "BookMyShow Voucher",
         "brand": "BookMyShow",
         "category": "Experiences",
-        "description": "Movies, concerts, sports & events",
-        "image_url": "https://upload.wikimedia.org/wikipedia/en/1/18/Book_my_show.png",
+        "description": "Movies, events, plays and sports",
+        "image_url": "https://in.bmscdn.com/webdie/desktop/nav/logo.png",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "bookmyshow-in",
-        "min_denomination_points": 500,
-        "max_denomination_points": 2000,
+        "provider_code": "BMS-IN",
+        "min_points": 500,
+        "max_points": 2000,
         "step_points": 500,
     },
     {
-        "name": "Netflix Gift Card",
-        "brand": "Netflix",
-        "category": "Experiences",
-        "description": "Premium streaming subscription",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg",
+        "name": "Starbucks Card",
+        "brand": "Starbucks",
+        "category": "Food & Dining",
+        "description": "Enjoy your favorite coffee at Starbucks",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/Starbucks_Corporation_Logo_2011.svg/1200px-Starbucks_Corporation_Logo_2011.svg.png",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "netflix-in",
-        "min_denomination_points": 500,
-        "max_denomination_points": 2000,
+        "provider_code": "SBUX-IN",
+        "min_points": 500,
+        "max_points": 5000,
         "step_points": 500,
     },
     {
-        "name": "Spotify Premium",
-        "brand": "Spotify",
-        "category": "Experiences",
-        "description": "Ad-free music streaming",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/84/Spotify_icon.svg",
+        "name": "Pantaloons E-Gift Card",
+        "brand": "Pantaloons",
+        "category": "Shopping",
+        "description": "Redeem at any Pantaloons outlet across India",
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Pantaloons_Logo.png",
         "fulfillment_type": "GIFT_CARD_API",
-        "provider_code": "spotify-in",
-        "min_denomination_points": 500,
-        "max_denomination_points": 1500,
+        "provider_code": "PAN-IN",
+        "min_points": 1000,
+        "max_points": 10000,
+        "step_points": 1000,
+    },
+    {
+        "name": "Netmeds Voucher",
+        "brand": "Netmeds",
+        "category": "Shopping",
+        "description": "Order medicines and wellness products online",
+        "image_url": "https://www.netmeds.com/assets/gloryweb/images/netmeds-logo.svg",
+        "fulfillment_type": "GIFT_CARD_API",
+        "provider_code": "NET-IN",
+        "min_points": 500,
+        "max_points": 2000,
         "step_points": 500,
     },
-    # ── Merchandise ──────────────────────────────────────────────────────────
     {
-        "name": "Company Coffee Mug",
-        "brand": "Perksu Swag",
+        "name": "Laptop Sleeve",
+        "brand": "Perksu Merch",
         "category": "Merchandise",
-        "description": "High-quality branded ceramic mug",
+        "description": "Protective sleeve for 13/14 inch laptops",
         "image_url": "",
         "fulfillment_type": "INVENTORY_ITEM",
         "provider_code": None,
-        "min_denomination_points": 200,
-        "max_denomination_points": 200,
+        "min_points": 200,
+        "max_points": 200,
         "step_points": 200,
-        "inventory_count": 100,
     },
     {
         "name": "Company T-Shirt",
@@ -211,10 +206,9 @@ _DEFAULT_CATALOG = [
         "image_url": "",
         "fulfillment_type": "INVENTORY_ITEM",
         "provider_code": None,
-        "min_denomination_points": 500,
-        "max_denomination_points": 500,
+        "min_points": 500,
+        "max_points": 500,
         "step_points": 500,
-        "inventory_count": 50,
     },
     {
         "name": "Company Hoodie",
@@ -224,10 +218,9 @@ _DEFAULT_CATALOG = [
         "image_url": "",
         "fulfillment_type": "INVENTORY_ITEM",
         "provider_code": None,
-        "min_denomination_points": 1000,
-        "max_denomination_points": 1000,
+        "min_points": 1000,
+        "max_points": 1000,
         "step_points": 1000,
-        "inventory_count": 30,
     },
     {
         "name": "Insulated Water Bottle",
@@ -237,12 +230,10 @@ _DEFAULT_CATALOG = [
         "image_url": "",
         "fulfillment_type": "INVENTORY_ITEM",
         "provider_code": None,
-        "min_denomination_points": 400,
-        "max_denomination_points": 400,
+        "min_points": 400,
+        "max_points": 400,
         "step_points": 400,
-        "inventory_count": 75,
     },
-    # ── Social Good ──────────────────────────────────────────────────────────
     {
         "name": "Donate to CRY India",
         "brand": "CRY India",
@@ -251,8 +242,8 @@ _DEFAULT_CATALOG = [
         "image_url": "",
         "fulfillment_type": "MANUAL",
         "provider_code": None,
-        "min_denomination_points": 100,
-        "max_denomination_points": 5000,
+        "min_points": 100,
+        "max_points": 5000,
         "step_points": 100,
     },
     {
@@ -263,35 +254,34 @@ _DEFAULT_CATALOG = [
         "image_url": "",
         "fulfillment_type": "MANUAL",
         "provider_code": None,
-        "min_denomination_points": 100,
-        "max_denomination_points": 5000,
+        "min_points": 100,
+        "max_points": 5000,
         "step_points": 100,
     },
 ]
 
 
 def seed_reward_catalog():
-    """Insert default platform-wide catalog items if they don't exist yet."""
-    print("Seeding reward catalog...")
+    """Insert platform-wide Master Catalog items."""
+    print("Seeding Master Reward Catalog...")
     db = SessionLocal()
     try:
-        existing = db.query(RewardCatalogItem).filter(RewardCatalogItem.tenant_id.is_(None)).count()
+        existing = db.query(RewardCatalogMaster).count()
         if existing > 0:
-            print(f"→ Catalog already seeded ({existing} global items). Skipping.")
+            print(f"→ Master Catalog already seeded ({existing} items). Skipping.")
             return
 
-        print(f"→ Inserting {len(_DEFAULT_CATALOG)} global catalog items...")
+        print(f"→ Inserting {len(_DEFAULT_CATALOG)} master catalog items...")
         for entry in _DEFAULT_CATALOG:
-            item = RewardCatalogItem(
-                tenant_id=None,  # global
+            item = RewardCatalogMaster(
                 **{k: v for k, v in entry.items()},
             )
             db.add(item)
 
         db.commit()
-        print("✓ Reward catalog seeded successfully.")
+        print("✓ Master Reward catalog seeded successfully.")
     except Exception as e:
-        print(f"ERROR seeding reward catalog: {e}")
+        print(f"ERROR seeding master reward catalog: {e}")
         db.rollback()
     finally:
         db.close()

@@ -14,6 +14,7 @@ import {
 } from 'react-icons/hi'
 import RewardsCatalog from '../components/RewardsCatalog'
 import RedemptionHistory from '../components/RedemptionHistory'
+import { formatCurrency } from '../lib/currency'
 
 export default function Redeem() {
   const [activeTab, setActiveTab] = useState('catalog')
@@ -89,10 +90,10 @@ export default function Redeem() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-white/70 text-sm mb-1">Available Points</p>
-            <p className="text-5xl font-bold tracking-tight">{balance.toLocaleString()}</p>
+            <p className="text-5xl font-bold tracking-tight">{formatCurrency(balance)}</p>
             <div className="flex gap-6 mt-3 text-sm text-white/70">
-              <span>↑ {(wallet?.lifetime_earned ?? 0).toLocaleString()} earned</span>
-              <span>↓ {(wallet?.lifetime_spent ?? 0).toLocaleString()} spent</span>
+              <span>↑ {formatCurrency(wallet?.lifetime_earned ?? 0)} earned</span>
+              <span>↓ {formatCurrency(wallet?.lifetime_spent ?? 0)} spent</span>
             </div>
           </div>
           <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -250,13 +251,13 @@ export default function Redeem() {
                 <span className="text-gray-500">Points spent</span>
                 <span className="font-semibold flex items-center gap-1 text-perksu-purple">
                   <HiOutlineSparkles className="w-4 h-4" />
-                  {completedOrder.points_spent}
+                  {formatCurrency(completedOrder.points_spent)}
                 </span>
               </div>
               {completedOrder.wallet_balance_after !== undefined && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Remaining balance</span>
-                  <span className="font-bold text-gray-900">{completedOrder.wallet_balance_after} pts</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(completedOrder.wallet_balance_after)}</span>
                 </div>
               )}
 

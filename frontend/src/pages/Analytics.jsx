@@ -27,7 +27,7 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import { formatNumber } from '../lib/currency'
+import { formatNumber, formatCurrency } from '../lib/currency'
 
 export default function Analytics() {
   const { user } = useAuthStore()
@@ -129,7 +129,7 @@ export default function Analytics() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Points Redeemed</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatNumber(analytics?.totalRedeemed) || '0'}
+                {formatCurrency(analytics?.totalRedeemed || 0)}
               </p>
             </div>
           </div>

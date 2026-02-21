@@ -136,10 +136,10 @@ class Tenant(Base):
 
     # Financials
     subscription_tier = Column(String(50), default="basic")
-    master_budget_balance = Column(Numeric(15, 2), default=0)
-    budget_allocation_balance = Column(Numeric(15, 2), default=0)  # Current pool for distribution
-    allocated_budget = Column(Numeric(15, 2), default=0)  # Total budget allocated by platform admin
-    master_budget_threshold = Column(Numeric(15, 2), default=100.0) # Pause if below this
+    master_budget_balance = Column(Integer, default=0)
+    budget_allocation_balance = Column(Integer, default=0)  # Current pool for distribution
+    allocated_budget = Column(Integer, default=0)  # Total budget allocated by platform admin
+    master_budget_threshold = Column(Integer, default=100) # Pause if below this
     redemptions_paused = Column(Boolean, default=False)
 
     # Status
@@ -199,8 +199,8 @@ class MasterBudgetLedger(Base):
         GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
     )
     transaction_type = Column(String(20), nullable=False)  # credit/debit
-    amount = Column(Numeric(15, 2), nullable=False)
-    balance_after = Column(Numeric(15, 2), nullable=False)
+    amount = Column(Integer, nullable=False)
+    balance_after = Column(Integer, nullable=False)
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -337,8 +337,8 @@ class Budget(Base):
     name = Column(String(255), nullable=False)
     fiscal_year = Column(Integer, nullable=False)
     fiscal_quarter = Column(Integer)
-    total_points = Column(Numeric(15, 2), nullable=False, default=0)
-    allocated_points = Column(Numeric(15, 2), nullable=False, default=0)
+    total_points = Column(Integer, nullable=False, default=0)
+    allocated_points = Column(Integer, nullable=False, default=0)
     status = Column(String(50), default="active")
     expiry_date = Column(DateTime(timezone=True))
     created_by = Column(GUID(), ForeignKey("users.id"))
@@ -354,7 +354,7 @@ class Budget(Base):
 
     @property
     def remaining_points(self):
-        return float(self.total_points) - float(self.allocated_points)
+        return int(self.total_points) - int(self.allocated_points)
 
 
 class DepartmentBudget(Base):
@@ -370,9 +370,9 @@ class DepartmentBudget(Base):
     department_id = Column(
         GUID(), ForeignKey("departments.id", ondelete="CASCADE"), nullable=False
     )
-    allocated_points = Column(Numeric(15, 2), nullable=False, default=0)
-    spent_points = Column(Numeric(15, 2), nullable=False, default=0)
-    monthly_cap = Column(Numeric(15, 2))
+    allocated_points = Column(Integer, nullable=False, default=0)
+    spent_points = Column(Integer, nullable=False, default=0)
+    monthly_cap = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -384,7 +384,7 @@ class DepartmentBudget(Base):
 
     @property
     def remaining_points(self):
-        return float(self.allocated_points) - float(self.spent_points)
+        return int(self.allocated_points) - int(self.spent_points)
 
 
 class Wallet(Base):
@@ -397,9 +397,9 @@ class Wallet(Base):
     user_id = Column(
         GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
-    balance = Column(Numeric(15, 2), nullable=False, default=0)
-    lifetime_earned = Column(Numeric(15, 2), nullable=False, default=0)
-    lifetime_spent = Column(Numeric(15, 2), nullable=False, default=0)
+    balance = Column(Integer, nullable=False, default=0)
+    lifetime_earned = Column(Integer, nullable=False, default=0)
+    lifetime_spent = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -424,8 +424,8 @@ class WalletLedger(Base):
     source = Column(
         String(50), nullable=False
     )  # hr_allocation/recognition/redemption/adjustment/expiry/reversal
-    points = Column(Numeric(15, 2), nullable=False)
-    balance_after = Column(Numeric(15, 2), nullable=False)
+    points = Column(Integer, nullable=False)
+    balance_after = Column(Integer, nullable=False)
     reference_type = Column(String(50))
     reference_id = Column(GUID())
     description = Column(Text)
@@ -446,7 +446,7 @@ class AllocationLog(Base):
     allocated_by = Column(
         GUID(), ForeignKey("system_admins.id"), nullable=False
     )
-    amount = Column(Numeric(15, 2), nullable=False)
+    amount = Column(Integer, nullable=False)
     currency = Column(String(3), default="INR")
     reference_note = Column(Text)
     status = Column(String(20), default="COMPLETED")  # COMPLETED, REVOKED
@@ -491,8 +491,8 @@ class LeadAllocation(Base):
     )
     lead_id = Column(GUID(), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    allocated_points = Column("allocated_budget", Numeric(15, 2), nullable=False, default=0)
-    spent_points = Column(Numeric(15, 2), nullable=False, default=0)
+    allocated_points = Column("allocated_budget", Integer, nullable=False, default=0)
+    spent_points = Column(Integer, nullable=False, default=0)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
@@ -725,44 +725,95 @@ class Notification(Base):
 # =====================================================
 
 
-class RewardCatalogItem(Base):
-    """Unified catalog item supporting gift cards, merchandise, and experiences.
-
-    tenant_id=NULL means the item is available to all tenants (platform-wide).
-    A non-NULL tenant_id restricts the item to that tenant only.
-    Denominations are computed as range(min, max+1, step) on the frontend.
+class RewardCatalogMaster(Base):
+    """
+    Global Rewards Catalog (Managed by Platform Admin).
+    Defines which brands/items are available across the entire platform.
     """
 
-    __tablename__ = "reward_catalog_items"
+    __tablename__ = "reward_catalog_master"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    # NULL = global / available to every tenant
-    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True)
-
     name = Column(String(255), nullable=False)        # "Amazon Pay Gift Card"
     brand = Column(String(100))                       # "Amazon"
-    # "Gift Card", "Food & Dining", "Shopping", "Merch", "Experiences", "Social Good"
-    category = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=False)    # "Gift Card", "Food & Dining", etc.
     description = Column(Text)
     image_url = Column(String(500))
 
-    # Fulfillment
-    fulfillment_type = Column(
-        String(30), nullable=False, default="GIFT_CARD_API"
-    )  # GIFT_CARD_API | INVENTORY_ITEM | MANUAL
-    provider_code = Column(String(100))               # e.g. Xoxoday SKU / TangoCard UTID
+    # Fulfillment Mapping (Hidden from Tenant Manager)
+    fulfillment_type = Column(String(30), nullable=False, default="GIFT_CARD_API")
+    provider_code = Column(String(100))               # SKU / UTID
 
-    # Denomination range (all values in points)
-    min_denomination_points = Column(Integer, nullable=False, default=500)
-    max_denomination_points = Column(Integer, nullable=False, default=5000)
+    # Global point boundaries
+    min_points = Column(Integer, nullable=False, default=500)
+    max_points = Column(Integer, nullable=False, default=5000)
     step_points = Column(Integer, nullable=False, default=500)
+    points_per_rupee = Column(Integer, nullable=False, default=1)
 
-    # Inventory (physical items only; NULL = unlimited / virtual)
-    inventory_count = Column(Integer, nullable=True)
+    is_active_global = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    tenant_configs = relationship("RewardCatalogTenant", back_populates="master_item")
+
+
+class RewardCatalogTenant(Base):
+    """
+    Tenant-specific configuration of a Master Catalog item.
+    Enables/disables items and allows overriding point values within global bands.
+    """
+
+    __tablename__ = "reward_catalog_tenant"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    master_item_id = Column(GUID(), ForeignKey("reward_catalog_master.id", ondelete="CASCADE"), nullable=False)
+
+    is_enabled = Column(Boolean, default=True)
+
+    # Point Overrides (Must be within Master's min/max range)
+    custom_min_points = Column(Integer)
+    custom_max_points = Column(Integer)
+    custom_step_points = Column(Integer)
+
+    visibility_scope = Column(String(50), default="all")  # all / department / location
+    created_by = Column(GUID(), ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    master_item = relationship("RewardCatalogMaster", back_populates="tenant_configs")
+    tenant = relationship("Tenant")
+
+
+class RewardCatalogCustom(Base):
+    """
+    Tenant-specific custom items (e.g. Company Swag, Internal Perks).
+    Managed entirely by the Tenant Manager.
+    """
+
+    __tablename__ = "reward_catalog_custom"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+
+    name = Column(String(255), nullable=False)
+    brand = Column(String(100))
+    category = Column(String(100), nullable=False, default="Merchandise")
+    description = Column(Text)
+    image_url = Column(String(500))
+
+    # Always fulfillment MANUAL or INVENTORY_ITEM for custom stuff
+    fulfillment_type = Column(String(30), nullable=False, default="INVENTORY_ITEM")
+    points_cost = Column(Integer, nullable=False)
+    inventory_count = Column(Integer)  # NULL = infinite
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    tenant = relationship("Tenant")
 
 
 # =====================================================
@@ -834,8 +885,8 @@ class Redemption(Base):
     item_id = Column(GUID())  # References voucher_catalog or merchandise_catalog
     item_name = Column(String(255), nullable=False)
     point_cost = Column(Integer, nullable=False)
-    actual_cost = Column(Numeric(15, 2), nullable=False)  # Vendor cost
-    markup_amount = Column(Numeric(15, 2), default=0.0)  # Profit margin
+    actual_cost = Column(Integer, nullable=False)  # Vendor cost
+    markup_amount = Column(Integer, default=0)  # Profit margin
     status = Column(
         String(20), default="PENDING"
     )  # PENDING, OTP_VERIFIED, PROCESSING, COMPLETED, SHIPPED, FAILED, CANCELLED

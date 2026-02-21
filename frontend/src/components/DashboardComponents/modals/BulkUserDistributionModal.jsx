@@ -10,7 +10,7 @@ import {
   HiOutlineInformationCircle,
   HiOutlineSparkles,
 } from 'react-icons/hi2'
-import { formatNumber } from '../../../lib/currency'
+import { formatCurrency, formatNumber } from '../../../lib/currency'
 
 /**
  * BulkUserDistributionModal
@@ -39,7 +39,7 @@ export default function BulkUserDistributionModal({
     mutationFn: (payload) => budgetsAPI.distributeToAllUsers(payload),
     onSuccess: (res) => {
       toast.success(
-        `Distributed ${formatNumber(res.total_points_distributed)} pts to ${res.total_users_credited} users`
+        `Distributed ${formatCurrency(res.total_points_distributed)} to ${res.total_users_credited} users`
       )
       queryClient.invalidateQueries(['master-pool'])
       queryClient.invalidateQueries(['dashboardSummary'])
@@ -143,7 +143,7 @@ export default function BulkUserDistributionModal({
                 <div className="flex-1 space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Points per user:</span>
-                    <span className="font-semibold">{formatNumber(pts)}</span>
+                    <span className="font-semibold">{formatCurrency(pts)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Active users:</span>
@@ -152,7 +152,7 @@ export default function BulkUserDistributionModal({
                   <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
                     <span className="text-gray-700 font-medium">Total to distribute:</span>
                     <span className={`font-bold ${isOverBudget ? 'text-red-600' : 'text-green-700'}`}>
-                      {formatNumber(totalPoints)}
+                      {formatCurrency(totalPoints)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -194,7 +194,7 @@ export default function BulkUserDistributionModal({
               <HiOutlineSparkles className="w-4 h-4" />
               {mutation.isPending
                 ? 'Distributing…'
-                : `Distribute${totalPoints > 0 ? ` ${formatNumber(totalPoints)} pts` : ''}`}
+                : `Distribute${totalPoints > 0 ? ` ${formatCurrency(totalPoints)}` : ''}`}
             </button>
           </div>
         </form>

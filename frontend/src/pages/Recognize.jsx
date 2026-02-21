@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { HiOutlineSparkles, HiOutlineStar, HiOutlineUsers } from 'react-icons/hi'
+import { formatCurrency } from '../lib/currency'
 import RecognitionModal from '../components/RecognitionModal'
 import FeedCard from '../components/FeedCard'
 
@@ -139,7 +140,7 @@ export default function Recognize() {
                 <HiOutlineStar className="w-6 h-6" />
               </div>
               <p className="font-medium text-gray-900 text-sm">{badge.name}</p>
-              <p className="text-xs text-gray-500">{badge.points_value} pts</p>
+              <p className="text-xs text-gray-500">{formatCurrency(badge.points_value)}</p>
             </div>
           ))}
         </div>

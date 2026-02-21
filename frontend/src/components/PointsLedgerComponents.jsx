@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HiOutlineXMark, HiOutlineEye, HiOutlineTrash } from 'react-icons/hi2'
-import { formatNumber } from '../lib/currency'
+import { formatCurrency, formatNumber } from '../lib/currency'
 
 /**
  * LedgerRow Component - Individual transaction row with expand/collapse
@@ -98,7 +98,7 @@ export function LedgerRow({ transaction, isExpanded, onToggle, onAction, type = 
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Amount</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {formatNumber(transaction.amount || transaction.points || 0)} pts
+                  {formatCurrency(transaction.amount || transaction.points || 0)}
                 </p>
               </div>
               <div>

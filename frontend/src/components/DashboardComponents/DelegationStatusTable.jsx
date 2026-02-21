@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { HiOutlinePencil, HiOutlineTrash, HiOutlineEye } from 'react-icons/hi2'
-import { formatNumber } from '../../lib/currency'
+import { formatNumber, formatCurrency } from '../../lib/currency'
 
 /**
  * DelegationStatusTable Component
@@ -86,12 +86,12 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm font-medium text-gray-900">
-                        {formatNumber(lead.budget) || 0} pts
+                        {formatCurrency(lead.budget || 0)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-600">
-                        {formatNumber(lead.used) || 0} pts
+                        {formatCurrency(lead.used || 0)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -160,8 +160,7 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
               Total Assigned
             </p>
             <p className="text-lg font-bold text-gray-900">
-              {formatNumber(leads.reduce((sum, lead) => sum + (lead.budget || 0), 0))}
-              pts
+              {formatCurrency(leads.reduce((sum, lead) => sum + (lead.budget || 0), 0))}
             </p>
           </div>
           <div>
@@ -169,8 +168,7 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
               Total Used
             </p>
             <p className="text-lg font-bold text-gray-900">
-              {formatNumber(leads.reduce((sum, lead) => sum + (lead.used || 0), 0))}
-              pts
+              {formatCurrency(leads.reduce((sum, lead) => sum + (lead.used || 0), 0))}
             </p>
           </div>
           <div>
@@ -178,11 +176,10 @@ export default function DelegationStatusTable({ leads, currency = 'INR', onRefre
               Remaining
             </p>
             <p className="text-lg font-bold text-green-600">
-              {formatNumber(
+              {formatCurrency(
                 leads.reduce((sum, lead) => sum + (lead.budget || 0), 0) -
                 leads.reduce((sum, lead) => sum + (lead.used || 0), 0)
               )}
-              pts
             </p>
           </div>
         </div>

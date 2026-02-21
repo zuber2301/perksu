@@ -189,3 +189,21 @@ def verify_admin(current_user: User):
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
     return True
+
+
+def verify_platform_admin(current_user: User):
+    """Only allow platform_admin."""
+    if current_user.role != "platform_admin" and current_user.org_role != "platform_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin access required"
+        )
+    return True
+
+
+def verify_tenant_admin(current_user: User):
+    """Allow hr_admin or platform_admin (as superuser)."""
+    if current_user.role not in ["hr_admin", "platform_admin"] and current_user.org_role not in ["hr_admin", "platform_admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Tenant admin access required"
+        )
+    return True

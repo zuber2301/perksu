@@ -18,6 +18,7 @@ import {
   HiOutlineEye,
   HiOutlineCurrencyDollar
 } from 'react-icons/hi'
+import { HiOutlineDocumentArrowDown } from 'react-icons/hi2'
 import { formatCurrency } from '../lib/currency';
  
 export default function Tenants() {
@@ -27,6 +28,7 @@ export default function Tenants() {
   const [slugTouched, setSlugTouched] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
+  const [isRecallModalOpen, setIsRecallModalOpen] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState(null)
   const [activeDropdown, setActiveDropdown] = useState(null)
 
@@ -84,6 +86,19 @@ export default function Tenants() {
     }
   })
 
+  const recallBudgetMutation = useMutation({
+    mutationFn: ({ id, data }) => tenantsAPI.recallBudget(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tenants'])
+      toast.success('Budget recalled successfully')
+      setIsRecallModalOpen(false)
+      setSelectedTenant(null)
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to recall budget')
+    }
+  })
+
   const filteredTenants = tenants?.filter(tenant => 
     tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
@@ -95,7 +110,7 @@ export default function Tenants() {
       name: provName,
       slug: provSlug,
       subscription_tier: e.target.subscription_tier.value,
-      initial_balance: parseFloat(e.target.initial_balance.value),
+      initial_balance: parseInt(e.target.initial_balance.value, 10),
       admin_first_name: e.target.admin_first_name.value,
       admin_last_name: e.target.admin_last_name.value,
       admin_email: e.target.admin_email.value,
@@ -308,6 +323,17 @@ export default function Tenants() {
                             <HiOutlineCurrencyDollar className="w-4 h-4 text-gray-400" />
                             Load Budget
                           </button>
+                          <button 
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            onClick={() => {
+                              setSelectedTenant(tenant)
+                              setIsRecallModalOpen(true)
+                              setActiveDropdown(null)
+                            }}
+                          >
+                            <HiOutlineDocumentArrowDown className="w-4 h-4 text-gray-400" />
+                            Recall Budget
+                          </button>
                           <button                           className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
                             tenant.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'
                           }`}
@@ -460,7 +486,7 @@ export default function Tenants() {
                 e.preventDefault()
                 const formData = new FormData(e.target)
                 const data = {
-                  amount: parseFloat(formData.get('amount')),
+                  amount: parseInt(formData.get('amount'), 10),
                   description: formData.get('description')
                 }
                 loadBudgetMutation.mutate({ id: selectedTenant.id, data })
@@ -499,9 +525,94 @@ export default function Tenants() {
                 <button 
                   type="submit" 
                   className="btn-primary flex-1"
-                  disabled={loadBudgetMutation.isLoading}
+                  disabled={loadBudgetMutation.isPending}
                 >
-                  {loadBudgetMutation.isLoading ? 'Processing...' : 'Confirm Load'}
+                  {loadBudgetMutation.isPending ? 'Processing...' : 'Confirm Load'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Recall Budget Modal */}
+      {isRecallModalOpen && selectedTenant && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-red-600">Recall Budget</h2>
+                <p className="text-sm text-gray-500">{selectedTenant.name}</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsRecallModalOpen(false)
+                  setSelectedTenant(null)
+                }} 
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <HiOutlineXCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 bg-red-50/50 border-b border-red-100">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-red-700 font-medium">Available for Recall</span>
+                <span className="text-lg font-bold text-red-700">
+                  {formatCurrency(selectedTenant.budget_allocation_balance)}
+                </span>
+              </div>
+              <p className="text-xs text-red-600 mt-1">
+                Only undistributed points from the tenant's master pool can be recalled.
+              </p>
+            </div>
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.target)
+                const data = {
+                  amount: parseInt(formData.get('amount'), 10),
+                  justification: formData.get('justification')
+                }
+                recallBudgetMutation.mutate({ id: selectedTenant.id, data })
+              }} 
+              className="p-6 space-y-4"
+            >
+              <div className="space-y-2">
+                <label className="label text-red-700">Amount to Recall</label>
+                <input 
+                  name="amount" 
+                  type="number" 
+                  step="1" 
+                  max={selectedTenant.budget_allocation_balance}
+                  className="input h-12 text-lg font-bold border-red-200 focus:ring-red-500" 
+                  placeholder="0" 
+                  required 
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="label">Mandatory Justification</label>
+                <textarea 
+                  name="justification" 
+                  className="input min-h-[100px] py-2" 
+                  placeholder="e.g. Correction of overallocation, Program adjustment..." 
+                  required
+                />
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsRecallModalOpen(false)}
+                  className="btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary bg-red-600 hover:bg-red-700 border-red-600 flex-1"
+                  disabled={recallBudgetMutation.isPending}
+                >
+                  {recallBudgetMutation.isPending ? 'Processing...' : 'Confirm Recall'}
                 </button>
               </div>
             </form>

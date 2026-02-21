@@ -22,7 +22,7 @@ export default function AddPointsModal({ isOpen, onClose, department, availableP
       return
     }
     if (availablePoints > 0 && parsed > availablePoints) {
-      setError(`Amount exceeds available balance of ${availablePoints} pts`)
+      setError(`Amount exceeds available balance of ${formatCurrency(availablePoints)}`)
       return
     }
     onSubmit(parsed)

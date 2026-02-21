@@ -122,10 +122,10 @@ export const rewardsAPI = {
   getMyOrders: (params) => api.get('/rewards/redemptions', { params }),
   getOrder: (id) => api.get(`/rewards/redemptions/${id}`),
   getWallet: () => api.get('/rewards/wallet'),
-  // Admin catalog management
-  createCatalogItem: (data) => api.post('/rewards/catalog', data),
-  updateCatalogItem: (id, data) => api.put(`/rewards/catalog/${id}`, data),
-  deleteCatalogItem: (id) => api.delete(`/rewards/catalog/${id}`),
+  // Admin management
+  createMasterItem: (data) => api.post('/rewards/admin/master', data),
+  createCustomItem: (data) => api.post('/rewards/admin/custom', data),
+  configureMasterItem: (id, data) => api.put(`/rewards/admin/master/${id}/config`, data),
 }
 
 // Feed API
@@ -153,6 +153,7 @@ export const tenantsAPI = {
   provision: (data) => api.post('/tenants', data),
   toggleStatus: (id) => api.post(`/tenants/${id}/toggle-status`),
   loadBudget: (id, data) => api.post(`/tenants/${id}/load-budget`, data),
+  recallBudget: (id, data) => api.post(`/tenants/${id}/recall-budget`, data),
   getDepartments: () => api.get('/tenants/departments'),
   createDepartment: (data) => api.post('/tenants/departments', data),
   updateDepartment: (id, data) => api.put(`/tenants/departments/${id}`, data),

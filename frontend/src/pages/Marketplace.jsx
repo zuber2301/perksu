@@ -13,6 +13,7 @@ import {
   HiOutlineFilter,
   HiOutlineSearch
 } from 'react-icons/hi'
+import { formatCurrency } from '../lib/currency'
 
 export default function Marketplace() {
   const { user } = useAuthStore()
@@ -278,9 +279,9 @@ export default function Marketplace() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-lg font-bold text-gray-900">₹{finalPrice.toFixed(2)}</div>
+                    <div className="text-lg font-bold text-gray-900">{formatCurrency(finalPrice)}</div>
                     <div className="text-sm text-gray-500">
-                      Base: ₹{item.base_price} (+{markup}%)
+                      Base: {formatCurrency(item.base_price)} (+{markup}%)
                     </div>
                   </div>
                   <div className="text-right">
@@ -335,10 +336,10 @@ export default function Marketplace() {
                   <input
                     type="number"
                     value={formData.base_price}
-                    onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, base_price: parseInt(e.target.value, 10) || 0 })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-perksu-purple focus:border-transparent"
                     min="0"
-                    step="0.01"
+                    step="1"
                     required
                   />
                 </div>

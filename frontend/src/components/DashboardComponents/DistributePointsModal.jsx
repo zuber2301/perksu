@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { HiOutlineXMark } from 'react-icons/hi2'
-import { formatNumber } from '../../lib/currency'
+import { formatNumber, formatCurrency } from '../../lib/currency'
 import { dashboardApi } from '../../lib/api'
 
 /**
@@ -124,7 +124,7 @@ export default function DistributePointsModal({
               {leads.map(lead => (
                 <option key={lead.id} value={lead.id}>
                   {lead.name}
-                  {lead.budget && ` (Current: ${formatNumber(lead.budget)} pts)`}
+                  {lead.budget && ` (Current: ${formatCurrency(lead.budget)})`}
                 </option>
               ))}
             </select>
