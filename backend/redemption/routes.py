@@ -720,29 +720,6 @@ async def resend_reward_email(
 
 
 
-@router.get("/{redemption_id}", response_model=RedemptionResponse)
-async def get_redemption_by_id(
-    redemption_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Get redemption by ID (user must own it)"""
-    redemption = (
-        db.query(Redemption)
-        .filter(
-            and_(
-                Redemption.id == redemption_id,
-                Redemption.user_id == current_user.id,
-            )
-        )
-        .first()
-    )
-
-    if not redemption:
-        raise HTTPException(status_code=404, detail="Redemption not found")
-
-    return RedemptionResponse.model_validate(redemption)
-
 @router.get("/history", response_model=RedemptionListResponse)
 async def get_redemption_history(
     db: Session = Depends(get_db),
@@ -803,6 +780,8 @@ async def list_redemptions(
 # =====================================================
 # ADMIN ROUTES
 # =====================================================
+# NOTE: All static-path GET routes must be registered before GET /{redemption_id}
+# to prevent the UUID path parameter from shadowing them.
 
 
 @router.get("/admin/requests", response_model=list[RedemptionRequestAdmin])
@@ -840,58 +819,6 @@ async def get_pending_requests(
         )
         for r in redemptions
     ]
-
-
-@router.put("/admin/requests/{redemption_id}")
-async def update_redemption_request(
-    redemption_id: UUID,
-    data: RedemptionRequestUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Update redemption request status (admin only)"""
-    verify_admin(current_user)
-
-    redemption = (
-        db.query(Redemption)
-        .filter(
-            and_(
-                Redemption.id == redemption_id,
-                Redemption.tenant_id == current_user.tenant_id,
-            )
-        )
-        .first()
-    )
-
-    if not redemption:
-        raise HTTPException(status_code=404, detail="Redemption not found")
-
-    old_status = redemption.status
-    redemption.status = data.status
-
-    if data.tracking_number:
-        redemption.tracking_number = data.tracking_number
-        redemption.shipped_at = datetime.utcnow()
-
-    if data.failed_reason:
-        redemption.failed_reason = data.failed_reason
-
-    # Log to ledger
-    ledger = RedemptionLedger(
-        redemption_id=redemption.id,
-        tenant_id=current_user.tenant_id,
-        user_id=redemption.user_id,
-        action=data.status,
-        status_before=old_status,
-        status_after=data.status,
-        created_by=current_user.id,
-    )
-    db.add(ledger)
-
-    db.commit()
-    db.refresh(redemption)
-
-    return RedemptionResponse.model_validate(redemption)
 
 
 @router.get("/admin/vendor-balance", response_model=list[VendorBalanceResponse])
@@ -966,6 +893,83 @@ async def get_analytics(
         fulfilled_orders=fulfilled_orders,
         top_items=list(top_items),
     )
+
+
+# Wildcard path parameter — must be registered AFTER all static GET paths above
+@router.get("/{redemption_id}", response_model=RedemptionResponse)
+async def get_redemption_by_id(
+    redemption_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get redemption by ID (user must own it)"""
+    redemption = (
+        db.query(Redemption)
+        .filter(
+            and_(
+                Redemption.id == redemption_id,
+                Redemption.user_id == current_user.id,
+            )
+        )
+        .first()
+    )
+
+    if not redemption:
+        raise HTTPException(status_code=404, detail="Redemption not found")
+
+    return RedemptionResponse.model_validate(redemption)
+
+
+@router.put("/admin/requests/{redemption_id}")
+async def update_redemption_request(
+    redemption_id: UUID,
+    data: RedemptionRequestUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update redemption request status (admin only)"""
+    verify_admin(current_user)
+
+    redemption = (
+        db.query(Redemption)
+        .filter(
+            and_(
+                Redemption.id == redemption_id,
+                Redemption.tenant_id == current_user.tenant_id,
+            )
+        )
+        .first()
+    )
+
+    if not redemption:
+        raise HTTPException(status_code=404, detail="Redemption not found")
+
+    old_status = redemption.status
+    redemption.status = data.status
+
+    if data.tracking_number:
+        redemption.tracking_number = data.tracking_number
+        redemption.shipped_at = datetime.utcnow()
+
+    if data.failed_reason:
+        redemption.failed_reason = data.failed_reason
+
+    # Log to ledger
+    ledger = RedemptionLedger(
+        redemption_id=redemption.id,
+        tenant_id=current_user.tenant_id,
+        user_id=redemption.user_id,
+        action=data.status,
+        status_before=old_status,
+        status_after=data.status,
+        created_by=current_user.id,
+    )
+    db.add(ledger)
+
+    db.commit()
+    db.refresh(redemption)
+
+    return RedemptionResponse.model_validate(redemption)
 
 
 @router.put("/admin/markup")

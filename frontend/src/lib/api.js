@@ -107,9 +107,25 @@ export const redemptionAPI = {
   getCategories: () => api.get('/redemptions/brands/categories'),
   getVouchers: (params) => api.get('/redemptions/vouchers', { params }),
   getVoucherById: (id) => api.get(`/redemptions/vouchers/${id}`),
+  // Legacy single-step (not used by new Redeem page)
   create: (data) => api.post('/redemptions', data),
-  getMyRedemptions: (params) => api.get('/redemptions', { params }),
+  getMyRedemptions: (params) => api.get('/redemptions/history', { params }),
   getById: (id) => api.get(`/redemptions/${id}`),
+}
+
+// Unified Rewards Catalog + Redemption Engine (new)
+export const rewardsAPI = {
+  getCatalog: (params) => api.get('/rewards/catalog', { params }),
+  getCatalogItem: (id) => api.get(`/rewards/catalog/${id}`),
+  getCategories: () => api.get('/rewards/categories'),
+  redeem: (data) => api.post('/rewards/redeem', data),
+  getMyOrders: (params) => api.get('/rewards/redemptions', { params }),
+  getOrder: (id) => api.get(`/rewards/redemptions/${id}`),
+  getWallet: () => api.get('/rewards/wallet'),
+  // Admin catalog management
+  createCatalogItem: (data) => api.post('/rewards/catalog', data),
+  updateCatalogItem: (id, data) => api.put(`/rewards/catalog/${id}`, data),
+  deleteCatalogItem: (id) => api.delete(`/rewards/catalog/${id}`),
 }
 
 // Feed API
@@ -204,6 +220,7 @@ export const usersApi = usersAPI
 export const walletsApi = walletsAPI
 export const budgetsApi = budgetsAPI
 export const redemptionApi = redemptionAPI
+export const rewardsApi = rewardsAPI
 export const feedApi = feedAPI
 export const notificationsApi = notificationsAPI
 export const tenantsApi = tenantsAPI

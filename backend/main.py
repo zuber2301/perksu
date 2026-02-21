@@ -11,7 +11,8 @@ from feed.routes import router as feed_router
 from notifications.routes import router as notifications_router
 from recognition.routes import router as recognition_router
 from redemption.routes import router as redemption_router
-from startup_utils import init_platform_admin
+from rewards.routes import router as rewards_router
+from startup_utils import init_platform_admin, seed_reward_catalog
 from tenants.routes import router as tenants_router
 from users.routes import router as users_router
 from wallets.routes import router as wallets_router
@@ -27,6 +28,8 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     # Ensure platform admin exists (strategic fix 4b)
     init_platform_admin()
+    # Seed default reward catalog items
+    seed_reward_catalog()
     yield
     # Shutdown
     print("Shutting down Perksu API...")
@@ -62,6 +65,7 @@ app.include_router(
 )
 app.include_router(audit_router, prefix="/api/audit", tags=["Audit"])
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+app.include_router(rewards_router, prefix="/api/rewards", tags=["Rewards"])
 
 
 @app.get("/")

@@ -721,6 +721,51 @@ class Notification(Base):
 
 
 # =====================================================
+# UNIFIED REWARD CATALOG
+# =====================================================
+
+
+class RewardCatalogItem(Base):
+    """Unified catalog item supporting gift cards, merchandise, and experiences.
+
+    tenant_id=NULL means the item is available to all tenants (platform-wide).
+    A non-NULL tenant_id restricts the item to that tenant only.
+    Denominations are computed as range(min, max+1, step) on the frontend.
+    """
+
+    __tablename__ = "reward_catalog_items"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    # NULL = global / available to every tenant
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True)
+
+    name = Column(String(255), nullable=False)        # "Amazon Pay Gift Card"
+    brand = Column(String(100))                       # "Amazon"
+    # "Gift Card", "Food & Dining", "Shopping", "Merch", "Experiences", "Social Good"
+    category = Column(String(100), nullable=False)
+    description = Column(Text)
+    image_url = Column(String(500))
+
+    # Fulfillment
+    fulfillment_type = Column(
+        String(30), nullable=False, default="GIFT_CARD_API"
+    )  # GIFT_CARD_API | INVENTORY_ITEM | MANUAL
+    provider_code = Column(String(100))               # e.g. Xoxoday SKU / TangoCard UTID
+
+    # Denomination range (all values in points)
+    min_denomination_points = Column(Integer, nullable=False, default=500)
+    max_denomination_points = Column(Integer, nullable=False, default=5000)
+    step_points = Column(Integer, nullable=False, default=500)
+
+    # Inventory (physical items only; NULL = unlimited / virtual)
+    inventory_count = Column(Integer, nullable=True)
+
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# =====================================================
 # REDEMPTION & CATALOG MODELS
 # =====================================================
 
