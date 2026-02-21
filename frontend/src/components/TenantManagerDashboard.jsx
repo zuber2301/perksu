@@ -148,7 +148,7 @@ export default function TenantManagerDashboard() {
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2">
-                <DepartmentManagementTable onRefresh={refetch} />
+                <DepartmentManagementTable onRefresh={refetch} availableBalance={dashboardData?.stats?.master_pool || 0} />
               </div>
               <div className="lg:col-span-1">
                 <ActionSidebar
@@ -165,7 +165,7 @@ export default function TenantManagerDashboard() {
 
         {activeTab === 'departments' && (
           <div className="space-y-8">
-            <DepartmentManagementTable onRefresh={refetch} />
+            <DepartmentManagementTable onRefresh={refetch} availableBalance={dashboardData?.stats?.master_pool || 0} />
             <DelegationStatusTable
               leads={dashboardData?.leads || []}
               currency={dashboardData?.currency}

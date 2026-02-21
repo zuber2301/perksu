@@ -7,7 +7,7 @@ import { HiOutlinePlus, HiOutlineEye } from 'react-icons/hi2'
 import AddPointsModal from './modals/AddPointsModal'
 import { formatCurrency } from '../../lib/currency'
 
-export default function DepartmentManagementTable({ onRefresh }) {
+export default function DepartmentManagementTable({ onRefresh, availableBalance = 0 }) {
   const queryClient = useQueryClient()
   const { data: departments = [] , refetch } = useQuery({
     queryKey: ['departments-management'],
@@ -18,6 +18,9 @@ export default function DepartmentManagementTable({ onRefresh }) {
     queryKey: ['master-pool'],
     queryFn: () => departmentsAPI.getMasterPool(),
   })
+
+  // Use parent-provided balance if master-pool query hasn't loaded yet
+  const resolvedAvailable = masterPool?.balance ?? availableBalance
 
   const [activeDept, setActiveDept] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -117,8 +120,8 @@ export default function DepartmentManagementTable({ onRefresh }) {
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           department={activeDept}
-          availablePoints={masterPool?.balance || 0}
-          isLoading={isLoadingPool}
+          availablePoints={resolvedAvailable}
+          isLoading={isLoadingPool && resolvedAvailable === 0}
           onSubmit={(amount) => addPointsMutation.mutate({ departmentId: activeDept.id, amount })}
         />
       )}

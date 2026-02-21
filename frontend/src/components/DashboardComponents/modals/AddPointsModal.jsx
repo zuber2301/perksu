@@ -21,8 +21,8 @@ export default function AddPointsModal({ isOpen, onClose, department, availableP
       setError('Please enter a valid amount')
       return
     }
-    if (parsed > availablePoints) {
-      setError('Amount cannot exceed the Total Budget (Tenant)')
+    if (availablePoints > 0 && parsed > availablePoints) {
+      setError(`Amount exceeds available balance of ${availablePoints} pts`)
       return
     }
     onSubmit(parsed)
