@@ -37,10 +37,13 @@ from rewards.fulfillment import get_gift_card_provider
 from rewards.schemas import (
     CatalogItemResponse,
     CatalogListResponse,
+    CustomCatalogItemCreate,
+    MasterCatalogItemCreate,
     RedeemRequest,
     RedeemResponse,
     RewardOrderItem,
     RewardOrderListResponse,
+    TenantCatalogSettingUpdate,
     WalletSummary,
 )
 

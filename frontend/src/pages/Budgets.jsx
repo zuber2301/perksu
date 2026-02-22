@@ -152,7 +152,7 @@ export default function Budgets() {
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || 'Failed to top-up employee')
-    }
+    },
   })
 
   const handleExportReport = async () => {
@@ -494,8 +494,8 @@ export default function Budgets() {
             </div>
           </div>
         </div>
+        </div>
       ) : activeTab === 'allocations' ? (
-        /* Leads point allocation view */
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -575,7 +575,6 @@ export default function Budgets() {
           </div>
         </div>
       ) : (
-        /* Spend Analysis / Insights View */
         <div className="space-y-6">
           {/* Top Metric Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

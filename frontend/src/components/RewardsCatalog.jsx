@@ -125,7 +125,12 @@ export default function RewardsCatalog({ items = [], categories = [], walletBala
               >
                 <div className={`h-28 bg-gradient-to-br ${colorClass} flex items-center justify-center relative`}>
                   {item.image_url ? (
-                    <img src={item.image_url} alt={item.name} className="h-14 max-w-[80%] object-contain drop-shadow" />
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="h-14 max-w-[80%] object-contain drop-shadow"
+                      onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo' }}
+                    />
                   ) : (
                     <span className="text-5xl">{CATEGORY_ICONS[item.category] || '🎁'}</span>
                   )}

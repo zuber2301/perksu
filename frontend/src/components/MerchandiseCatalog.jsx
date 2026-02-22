@@ -122,6 +122,7 @@ function MerchandiseCard({ item, userBalance, onRedeem }) {
             src={item.image_url}
             alt={item.name}
             className="w-full h-full object-cover hover:scale-105 transition-transform"
+            onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/600x300?text=Logo' }}
           />
         ) : (
           <div className="text-5xl">{getCategoryEmoji(item.category)}</div>

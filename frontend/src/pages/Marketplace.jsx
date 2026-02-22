@@ -247,6 +247,7 @@ export default function Marketplace() {
                   src={item.image_url}
                   alt={item.name}
                   className="w-full h-48 object-cover"
+                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/600x300?text=Logo' }}
                 />
               )}
               <div className="p-6">

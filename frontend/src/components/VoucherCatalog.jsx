@@ -100,6 +100,7 @@ function VoucherCard({ voucher, userBalance, onRedeem }) {
             src={voucher.image_url}
             alt={voucher.vendor_name}
             className="w-full h-full object-cover"
+            onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/600x300?text=Logo' }}
           />
         ) : (
           <div className="text-4xl">{getVendorEmoji(voucher.vendor_name)}</div>
