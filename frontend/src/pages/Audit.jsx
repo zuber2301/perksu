@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { auditAPI } from '../lib/api'
+import { auditAPI, tenantsAPI } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import { format } from 'date-fns'
-import { HiOutlineClipboardList, HiOutlineFilter } from 'react-icons/hi'
+import { HiOutlineClipboardList, HiOutlineFilter, HiOutlineCheck } from 'react-icons/hi'
 
 export default function Audit() {
   const [filterAction, setFilterAction] = useState('')
@@ -30,11 +30,100 @@ export default function Audit() {
     queryFn: () => auditAPI.getEntityTypes(),
   })
 
+  const { data: departments } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => tenantsAPI.getDepartments(),
+  })
+
   const getActionColor = (action) => {
     if (action.includes('created')) return 'bg-green-100 text-green-800'
     if (action.includes('updated') || action.includes('allocated')) return 'bg-blue-100 text-blue-800'
     if (action.includes('deleted') || action.includes('revoked')) return 'bg-red-100 text-red-800'
     return 'bg-gray-100 text-gray-800'
+  }
+
+  const formatChangeValue = (key, value) => {
+    // Handle nested objects - convert to readable format
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      const formattedPairs = Object.entries(value)
+        .map(([k, v]) => {
+          // Special handling for department_id in nested objects
+          if (k === 'department_id' && departments) {
+            const dept = departments.find(d => d.id === v)
+            return `${formatKeyLabel(k)}: ${dept ? dept.name : v}`
+          }
+          return `${formatKeyLabel(k)}: ${formatChangeValue(k, v)}`
+        })
+        .join(', ')
+      return formattedPairs
+    }
+
+    // Handle arrays
+    if (Array.isArray(value)) {
+      return value
+        .map(v => formatChangeValue(key, v))
+        .join(', ')
+    }
+    
+    // Replace department_id with department name
+    if (key === 'department_id' && departments) {
+      const dept = departments.find(d => d.id === value)
+      return dept ? dept.name : String(value)
+    }
+    
+    // Format boolean values
+    if (typeof value === 'boolean') {
+      return value ? 'Yes' : 'No'
+    }
+    
+    // Format currency values
+    if (key.includes('points') || key.includes('balance') || key.includes('amount')) {
+      return typeof value === 'number' ? value.toLocaleString() : String(value)
+    }
+    
+    // Format status and role values
+    if (key.includes('status') || key.includes('role')) {
+      return String(value).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    }
+    
+    // Convert everything else to string
+    return String(value)
+  }
+
+  const formatKeyLabel = (key) => {
+    return key
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+  }
+
+  const renderChangesBullets = (newValues, oldValues = {}) => {
+    if (!newValues || Object.keys(newValues).length === 0) {
+      return <span className="text-gray-400 text-xs">No changes recorded</span>
+    }
+
+    return (
+      <ul className="space-y-1">
+        {Object.entries(newValues).map(([key, newValue]) => {
+          const oldValue = oldValues?.[key]
+          const hasChange = oldValue !== undefined && oldValue !== newValue
+          
+          return (
+            <li key={key} className="text-xs text-gray-700 flex items-start gap-2">
+              <HiOutlineCheck className="w-3.5 h-3.5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="font-medium">{formatKeyLabel(key)}:</span>
+                <span className="text-gray-600"> {formatChangeValue(key, newValue)}</span>
+                {hasChange && (
+                  <span className="text-gray-400 ml-2">
+                    (was: {formatChangeValue(key, oldValue)})
+                  </span>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    )
   }
 
   if (!isHRAdmin()) {
@@ -141,11 +230,7 @@ export default function Audit() {
                       )}
                     </td>
                     <td className="px-4 py-4 text-sm">
-                      {log.new_values && (
-                        <pre className="text-xs bg-gray-100 p-2 rounded max-w-xs overflow-x-auto">
-                          {JSON.stringify(log.new_values, null, 2)}
-                        </pre>
-                      )}
+                      {renderChangesBullets(log.new_values, log.old_values)}
                     </td>
                   </tr>
                 ))}
